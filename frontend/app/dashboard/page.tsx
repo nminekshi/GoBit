@@ -5,7 +5,7 @@ export default function CustomerDashboard() {
   return (
     <main className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex flex-col items-center px-4 py-8">
       <nav className="w-full max-w-6xl flex justify-between items-center py-6 mb-8">
-        <div className="text-2xl font-bold text-indigo-700 tracking-tight">Bidify</div>
+        <div className="text-2xl font-bold text-indigo-700 tracking-tight">GoBit</div>
         <div className="flex gap-4">
           <Link href="/dashboard" className="text-indigo-700 font-semibold">Dashboard</Link>
           <Link href="/" className="text-gray-600 hover:text-indigo-600">Home</Link>

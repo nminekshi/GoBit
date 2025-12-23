@@ -1,0 +1,10 @@
+# core
+agno==2.3.4
+
+# example extras you may want later (memory/vector stores, DBs)
+psycopg2-binary>=2.9.6
+pgvector>=0.7.0
+sqlalchemy>=1.4.0
+
+# useful small libs
+python-dotenv>=1.0.0
