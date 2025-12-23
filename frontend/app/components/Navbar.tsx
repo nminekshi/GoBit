@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { orbitron } from "../fonts/orbitron";
+
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -19,7 +19,7 @@ export default function Navbar() {
         </div>
         <div className="flex items-center gap-4 mt-4 md:mt-0">
           <Link href="/login" className="text-lg font-semibold text-gray-500 hover:text-black transition flex items-center">LogIn</Link>
-          <Link href="/register" className="px-6 py-2 bg-black text-white rounded-lg font-semibold shadow hover:bg-gray-900 transition flex items-center">Register</Link>
+          <Link href="/register" className="px-6 py-2 bg-[#2c3847] text-white rounded-lg font-semibold shadow hover:bg-gray-900 transition flex items-center">Register</Link>
         </div>
       </nav>
     </header>

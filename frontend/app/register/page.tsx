@@ -11,7 +11,7 @@ export default function RegisterPage() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#182430]">
       <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md flex flex-col items-center">
         <h1 className="text-3xl font-bold text-gray-700 mb-8 text-center">Welcome</h1>
         <form className="w-full flex flex-col gap-6">
