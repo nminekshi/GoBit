@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link";
+import FAQ from "./components/FAQ";
 
 export default function Home() {
   return (
@@ -249,6 +250,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* FAQ Section */}
+      <FAQ />
     </div>
   );
 }
