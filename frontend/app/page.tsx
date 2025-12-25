@@ -9,11 +9,11 @@ export default function Home() {
       <section className="w-screen min-h-[700px] flex flex-col items-center justify-center px-6 md:px-12 py-10">
         <div className="flex flex-col md:flex-row items-center justify-center w-full max-w-6xl gap-10">
           <div className="flex-1 flex flex-col items-start justify-center gap-6">
-            <h1 className="text-5xl md:text-7xl font-extrabold text-gray-800 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-extrabold text-[#0b1524] leading-tight">
               Explore<br />Auctions<br />Beyond<br />the Ordinary
             </h1>
             <Link href="/ongoing-auctions">
-              <button className="mt-2 px-8 py-3 bg-[#2c3847] text-white rounded-lg font-semibold text-lg shadow hover:bg-gray-900 transition">Explore Auctions</button>
+              <button className="mt-2 px-8 py-3 bg-[#0b1524] text-white rounded-lg font-semibold text-lg shadow hover:bg-gray-900 transition">Explore Auctions</button>
             </Link>
           </div>
           <div className="flex-1 flex justify-center items-center">
@@ -46,7 +46,7 @@ export default function Home() {
       </section>
 
       {/* Most Loved Auctions Section */}
-      <section className="bg-[#212d3a] text-white w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] px-6 sm:px-12 lg:px-20 py-24">
+      <section className="bg-[#0b1524] text-white w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] px-6 sm:px-12 lg:px-20 py-24">
         <div className="w-full max-w-[1600px] mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-extrabold text-white mt-4">Highly Favored Auction Listings</h2>
@@ -172,15 +172,15 @@ export default function Home() {
 
             {/* Featured review */}
               <div className="flex flex-col gap-8">
-              <div className="bg-[#2c3847] text-white rounded-3xl p-6 shadow-xl border-2 border-black-500">
+              <div className="bg-[#0b1524] text-white rounded-3xl p-6 shadow-xl border-2 border-black-500">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-lg font-semibold text-gray-900 ">KR</div>
                   <div>
                     <h3 className="text-base font-semibold">Kaniya Rehani</h3>
-                    <p className="text-sm text-gray-400">Sri Lanka</p>
+                    <p className="text-1.5xl text-gray-400">Sri Lanka</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed">The bidding process was smooth and transparent. I found exactly what I was looking for at a great price.</p>
+                <p className="mt-4 text-1.5xl leading-relaxed">The bidding process was smooth and transparent. I found exactly what I was looking for at a great price.</p>
                 <div className="mt-4 flex items-center gap-1 text-white  text-lg">
                   <span>★</span>
                   <span>★</span>
@@ -190,15 +190,15 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-[#2c3847] text-white rounded-3xl p-6 shadow-xl">
+              <div className="bg-[#0b1524] text-white rounded-3xl p-6 shadow-xl">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-lg font-semibold text-gray-900 ">AR</div>
                   <div>
                     <h3 className="text-base font-semibold">Ariana Ranasinghe</h3>
-                    <p className="text-sm text-gray-400">Sri Lanka</p>
+                    <p className="text-1.5xl text-gray-400">Sri Lanka</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed">Excellent auction experience! The listings were clear, and updates during bidding were very helpful.</p>
+                <p className="mt-4 text-1.5xl leading-relaxed">Excellent auction experience! The listings were clear, and updates during bidding were very helpful.</p>
                 <div className="mt-4 flex items-center gap-1 text-white  text-lg">
                   <span>★</span>
                   <span>★</span>
@@ -211,15 +211,15 @@ export default function Home() {
 
             {/* Secondary reviews */}
             <div className="flex flex-col gap-8">
-              <div className="bg-[#2c3847] text-white rounded-3xl p-6 shadow-xl border-2 border-black-500">
+              <div className="bg-[#0b1524] text-white rounded-3xl p-6 shadow-xl border-2 border-black-500">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-lg font-semibold text-gray-900 ">MP</div>
                   <div>
                     <h3 className="text-base font-semibold">Marina Perera</h3>
-                    <p className="text-sm text-gray-400">Sri Lanka</p>
+                    <p className="text-1.5xl text-gray-400">Sri Lanka</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed">A reliable platform with high-quality items. I’ve participated in multiple auctions and never been disappointed.</p>
+                <p className="mt-4 text-1.5xl leading-relaxed">A reliable platform with high-quality items. I’ve participated in multiple auctions and never been disappointed.</p>
                 <div className="mt-4 flex items-center gap-1 text-white  text-lg">
                   <span>★</span>
                   <span>★</span>
@@ -229,15 +229,15 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="bg-[#2c3847] text-white rounded-3xl p-6 shadow-xl">
+              <div className="bg-[#0b1524] text-white rounded-3xl p-6 shadow-xl">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-lg font-semibold text-gray-900 ">HG</div>
                   <div>
                     <h3 className="text-base font-semibold">Hareena Gunathilaka</h3>
-                    <p className="text-sm text-gray-400">Sri Lanka</p>
+                    <p className="text-1.5xl text-gray-400">Sri Lanka</p>
                   </div>
                 </div>
-                <p className="mt-4 text-sm leading-relaxed">Easy to use, secure, and well-organized. This has become my go-to auction site.</p>
+                <p className="mt-4 text-1.5xl leading-relaxed">Easy to use, secure, and well-organized. This has become my go-to auction site.</p>
                 <div className="mt-4 flex items-center gap-1 text-white  text-lg">
                   <span>★</span>
                   <span>★</span>

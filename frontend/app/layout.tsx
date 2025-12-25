@@ -35,8 +35,8 @@ export default function RootLayout({
         <Navbar />
         {children}
         {/* Feedback widget (client component) */}
-        <footer className="w-full bg-[#2c3847] text-white py-10 px-6">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-14 items-start">
+        <footer className="w-full bg-[#0a1020] text-white py-10 px-6">
+          <div className="max-w-8xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-15 items-start">
             {/* Column 1: Branding, feedback, contact, social */}
             <div>
               <div className="flex flex-col items-center">

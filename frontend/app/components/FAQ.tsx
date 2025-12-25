@@ -57,7 +57,7 @@ export default function FAQ() {
   };
 
   return (
-    <section className="w-screen bg-gray-50 text-gray-900 px-4 py-20">
+    <section className="w-screen bg-gray-50 text-[#0b1524] px-4 py-20">
       <div className="max-w-6xl mx-auto">
         <h2 className="text-center text-3xl md:text-4xl font-bold mt-4">
           Frequently Asked Questions
@@ -110,7 +110,7 @@ export default function FAQ() {
         <div className="text-center mt-10">
           <a
             href="/faqs"
-            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#2c3847] text-white font-semibold hover:bg-gray-900 transition"
+            className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[#0a1020] text-white font-semibold hover:bg-gray-900 transition"
           >
             View all FAQs
           </a>
