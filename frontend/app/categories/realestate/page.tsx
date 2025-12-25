@@ -1,128 +1,135 @@
-"use client";
+import CategoryDetailPage from "../../components/CategoryDetailPage";
 
+const hero = {
+  eyebrow: "Institutional real estate",
+  title: "Income-producing assets with instant underwriting",
+  subtitle:
+    "Hospitality, multifamily, and luxury residential lots ship with live rent rolls, drone scans, and diligence vaults.",
+  highlight: "Title, insurance, and escrow partners on standby",
+  statLabel: "Cap rate ceiling",
+  statValue: "12.1%",
+  statDetail: "Mountain cabin micro-fund",
+  actions: [
+    { label: "Book diligence call", href: "/inquiry-form" },
+    { label: "Download sample PSA", href: "/company-profile", variant: "secondary" },
+  ],
+};
 
-import CategorySidebar from "../../components/CategorySidebar";
-import { useState } from "react";
-
-const items = [
-  { name: "Downtown Apartment", img: "/images/Downtown Apartment.png", currentBid: 320000, endsIn: "12h 0m" },
-  { name: "Beach House", img: "/images/Beach House.png", currentBid: 750000, endsIn: "8h 30m" },
-  { name: "Luxury Penthouse", img: "/images/Luxury Penthouse.png", currentBid: 1200000, endsIn: "15h 20m" },
-  { name: "Country Villa", img: "/images/Country Villa.png", currentBid: 540000, endsIn: "11h 10m" },
-  { name: "City Loft", img: "/images/City Loft.png", currentBid: 410000, endsIn: "13h 45m" },
-  { name: "Mountain Cabin", img: "/images/Mountain Cabin.png", currentBid: 290000, endsIn: "14h 55m" },
+const metrics = [
+  { label: "Assets live", value: "32", detail: "+4 boutique hotels" },
+  { label: "Avg. discount", value: "11%", detail: "vs broker guide" },
+  { label: "Verified buyers", value: "260", detail: "family offices" },
+  { label: "Due diligence kits", value: "29", detail: "shared this week" },
 ];
 
+const insights = [
+  {
+    label: "Beach markets",
+    detail: "Coastal rentals locking 20% higher occupancy guarantees.",
+    trend: "+20% ADR",
+  },
+  {
+    label: "Urban infill",
+    detail: "Downtown loft conversions closing inside 9 days post-bid.",
+    trend: "9-day close",
+  },
+  {
+    label: "Cabin funds",
+    detail: "Fractional cabin syndicates oversubscribed 1.4x.",
+    trend: "+1.4x demand",
+  },
+];
 
-function RealEstateAuction() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [bid, setBid] = useState("");
-  const [error, setError] = useState("");
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
-  const openLogin = () => {
-    setLoginOpen(true);
-    setLoginUsername("");
-    setLoginPassword("");
-    setLoginError("");
-  };
-  const closeLogin = () => {
-    setLoginOpen(false);
-    setLoginUsername("");
-    setLoginPassword("");
-    setLoginError("");
-  };
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginUsername || !loginPassword) {
-      setLoginError("Please enter both username and password.");
-      return;
-    }
-    // Here you would handle login logic (API call, etc.)
-    closeLogin();
-    alert("Logged in!");
-  };
+const timeline = [
+  { label: "Legal packet refresh", detail: "Updated PSAs + estoppels", eta: "Today" },
+  { label: "Site visits", detail: "Mountain + villa tours streaming", eta: "Tomorrow 10:00" },
+  { label: "Wire cutoff", detail: "Escrow prefunding window", eta: "Friday" },
+];
 
-  const openModal = (item: any) => {
-    setSelectedItem(item);
-    setBid("");
-    setError("");
-    setModalOpen(true);
-  };
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedItem(null);
-    setBid("");
-    setError("");
-  };
-  const handleBid = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bid || isNaN(Number(bid)) || Number(bid) <= (selectedItem?.currentBid || 0)) {
-      setError("Please enter a valid bid higher than the current bid.");
-      return;
-    }
-    // Here you would handle the bid submission (API call, etc.)
-    closeModal();
-    alert("Your bid has been placed!");
-  };
+const items = [
+  {
+    name: "Downtown Apartment",
+    img: "/images/Downtown Apartment.png",
+    currentBid: 320000,
+    endsIn: "12h 0m",
+    watchers: 18,
+    condition: "2BR loft · NOI $62k",
+  },
+  {
+    name: "Beach House",
+    img: "/images/Beach House.png",
+    currentBid: 750000,
+    endsIn: "8h 30m",
+    watchers: 24,
+    condition: "5BR · turnkey STR",
+  },
+  {
+    name: "Luxury Penthouse",
+    img: "/images/Luxury Penthouse.png",
+    currentBid: 1200000,
+    endsIn: "15h 20m",
+    watchers: 31,
+    condition: "Skyline view · capex complete",
+  },
+  {
+    name: "Country Villa",
+    img: "/images/Country Villa.png",
+    currentBid: 540000,
+    endsIn: "11h 10m",
+    watchers: 16,
+    condition: "Organic vineyard tie-in",
+  },
+  {
+    name: "City Loft",
+    img: "/images/City Loft.png",
+    currentBid: 410000,
+    endsIn: "13h 45m",
+    watchers: 19,
+    condition: "Converted warehouse",
+  },
+  {
+    name: "Mountain Cabin",
+    img: "/images/Mountain Cabin.png",
+    currentBid: 290000,
+    endsIn: "14h 55m",
+    watchers: 22,
+    condition: "Dual revenue (ski + summer)",
+  },
+  {
+    name: "Harborfront Loft Stack",
+    img: "/images/Downtown Apartment.png",
+    currentBid: 360000,
+    endsIn: "9h 20m",
+    watchers: 21,
+    condition: "4-unit micro living",
+  },
+  {
+    name: "Lakeside Villa Cluster",
+    img: "/images/Beach House.png",
+    currentBid: 820000,
+    endsIn: "10h 35m",
+    watchers: 27,
+    condition: "STR licenses grandfathered",
+  },
+  {
+    name: "Skyline Hospitality Floors",
+    img: "/images/Luxury Penthouse.png",
+    currentBid: 1340000,
+    endsIn: "16h 25m",
+    watchers: 34,
+    condition: "Boutique hotel conversion",
+  },
+];
 
+export default function RealEstateAuction() {
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center py-12">
-      <div className="w-full max-w-7xl flex gap-8">
-        <div className="hidden md:block w-72 shrink-0">
-          <CategorySidebar category="realestate" />
-        </div>
-        <div className="flex-1">
-          <div className="flex justify-between items-center mb-10">
-            <h1 className="text-5xl font-bold text-gray-700">Real Estate Auction</h1>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            {items.map(item => (
-              <div key={item.name} className="bg-gray-100 rounded-xl shadow p-6 flex flex-col items-center">
-                <div className="w-64 h-48 flex justify-center items-center mb-4">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-contain rounded" />
-                </div>
-                <h2 className="text-2xl font-semibold mb-2 text-gray-800">{item.name}</h2>
-                <div className="text-lg text-gray-800 mb-2">Current Bid: <span className="font-bold text-black">${item.currentBid}</span></div>
-                <div className="text-sm text-gray-700 mb-4">Ends in: {item.endsIn}</div>
-                <button onClick={() => openModal(item)} className="px-8 py-2 bg-black text-white rounded-lg font-semibold shadow hover:bg-gray-900 transition">Bid Now</button>
-              </div>
-            ))}
-          </div>
-
-          {/* Bid Modal */}
-          {modalOpen && selectedItem && (
-            <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-40">
-              <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md relative">
-                <button onClick={closeModal} className="absolute top-2 right-3 text-2xl text-gray-400 hover:text-black">&times;</button>
-                <h2 className="text-2xl font-bold mb-4 text-center text-gray-900">Bid for {selectedItem.name}</h2>
-                <div className="mb-2 text-center text-gray-600">Current Bid: <span className="font-bold text-black">${selectedItem.currentBid}</span></div>
-                <form onSubmit={handleBid} className="flex flex-col gap-4 mt-4">
-                  <input
-                    type="number"
-                    min={selectedItem.currentBid + 1}
-                    value={bid}
-                    onChange={e => setBid(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black placeholder-gray-700"
-                    placeholder={`Enter your bid (> ${selectedItem.currentBid})`}
-                    autoFocus
-                  />
-                  {error && <div className="text-red-500 text-sm text-center">{error}</div>}
-                  <div className="flex gap-4 justify-center mt-2">
-                    <button type="submit" className="px-8 py-2 bg-black text-white rounded-lg font-semibold shadow hover:bg-gray-900 transition">Place Bid</button>
-                    <button type="button" onClick={closeModal} className="px-8 py-2 bg-gray-300 text-gray-700 rounded-lg font-semibold shadow hover:bg-gray-400 transition">Cancel</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <CategoryDetailPage
+      categoryKey="realestate"
+      hero={hero}
+      metrics={metrics}
+      insights={insights}
+      timeline={timeline}
+      items={items}
+    />
   );
 }
-
-export default RealEstateAuction;
