@@ -1,6 +1,6 @@
-import CategoryDetailPage from "../../components/CategoryDetailPage";
+import CategoryDetailPage, { type CategoryHero } from "../../components/CategoryDetailPage";
 
-const hero = {
+const hero: CategoryHero = {
   eyebrow: "High-demand tech",
   title: "Consumer electronics that move in hours",
   subtitle:

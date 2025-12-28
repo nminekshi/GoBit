@@ -35,7 +35,7 @@ export default function RootLayout({
       >
         <Navbar />
         {children}
-        <footer className="w-full bg-gradient-to-b from-[#020617] via-[#111827] to-[#4b5563] text-white mt-10">
+        <footer className="w-full bg-linear-to-b from-[#020617] via-[#111827] to-[#4b5563] text-white mt-10">
           <div className="w-full py-10 px-4 md:px-8 lg:px-12">
             <div className="w-full grid grid-cols-1 gap-10 md:grid-cols-4 md:items-start">
               {/* Column 1: Branding, feedback, contact, social */}

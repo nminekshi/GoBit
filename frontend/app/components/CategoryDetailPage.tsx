@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import CategorySidebar from "./CategorySidebar";
 
-type ActionVariant = "primary" | "secondary" | "ghost";
+export type ActionVariant = "primary" | "secondary" | "ghost";
 
-type CategoryHero = {
+export type CategoryHero = {
   eyebrow: string;
   title: string;
   subtitle: string;
