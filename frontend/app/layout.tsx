@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import FeedbackWidget from "./components/FeedbackWidget";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -34,81 +35,82 @@ export default function RootLayout({
       >
         <Navbar />
         {children}
-        {/* Feedback widget (client component) */}
-        <footer className="w-full bg-[#0a1020] text-white py-10 px-6">
-          <div className="max-w-8xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-15 items-start">
-            {/* Column 1: Branding, feedback, contact, social */}
-            <div>
-              <div className="flex flex-col items-center">
-                <img src="/logo.png" alt="GoBit Logo" className="h-24 mb-2 -mt-4" />
-                <FeedbackWidget />
-              </div>
-              <div className="mt-2">
-                <span className="font-bold text-base mb-2 block">Contact Us</span>
-                <div className="flex items-center gap-2 mt-2 text-base">
-                  <span role="img" aria-label="phone">📞</span> <span>+94 77 123 4567</span>
+        <footer className="w-full bg-gradient-to-b from-[#020617] via-[#111827] to-[#4b5563] text-white mt-10">
+          <div className="w-full py-10 px-4 md:px-8 lg:px-12">
+            <div className="w-full grid grid-cols-1 gap-10 md:grid-cols-4 md:items-start">
+              {/* Column 1: Branding, feedback, contact, social */}
+              <div>
+                <div className="flex flex-col items-center md:items-start">
+                  <img src="/logo.png" alt="GoBit Logo" className="h-24 mb-2 -mt-4" />
+                  <FeedbackWidget />
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-base">
-                  <span role="img" aria-label="email">✉️</span> <span>info@gobit.com</span>
+                <div className="mt-2">
+                  <span className="font-bold text-base mb-2 block">Contact Us</span>
+                  <div className="flex items-center gap-2 mt-2 text-base">
+                    <span role="img" aria-label="phone">📞</span> <span>+94 77 123 4567</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-base">
+                    <span role="img" aria-label="email">✉️</span> <span>info@gobit.com</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-base">
+                    <span role="img" aria-label="location">📍</span> <span>123 Auction Ave, Colombo, Sri Lanka</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-base">
-                  <span role="img" aria-label="location">📍</span> <span>123 Auction Ave, Colombo, Sri Lanka</span>
+                <div className="mt-4 flex gap-3 justify-center md:justify-start">
+                  <a href="#" aria-label="Facebook"><img src="/facebook.png" alt="Facebook" className="h-7 w-7" /></a>
+                  <a href="#" aria-label="Instagram"><img src="/instagram.png" alt="Instagram" className="h-7 w-7" /></a>
+                  <a href="#" aria-label="Twitter"><img src="/twitter.png" alt="Twitter" className="h-7 w-7" /></a>
+                  <a href="#" aria-label="YouTube"><img src="/youtube.png" alt="YouTube" className="h-7 w-7" /></a>
+                  <a href="#" aria-label="TikTok"><img src="/tiktok.png" alt="TikTok" className="h-7 w-7" /></a>
+                  <a href="#" aria-label="LinkedIn"><img src="/linkedin.png" alt="LinkedIn" className="h-7 w-7" /></a>
                 </div>
               </div>
-              <div className="mt-4 flex gap-3 justify-center">
-                <a href="#" aria-label="Facebook"><img src="/facebook.png" alt="Facebook" className="h-7 w-7" /></a>
-                <a href="#" aria-label="Instagram"><img src="/instagram.png" alt="Instagram" className="h-7 w-7" /></a>
-                <a href="#" aria-label="Twitter"><img src="/twitter.png" alt="Twitter" className="h-7 w-7" /></a>
-                <a href="#" aria-label="YouTube"><img src="/youtube.png" alt="YouTube" className="h-7 w-7" /></a>
-                <a href="#" aria-label="TikTok"><img src="/tiktok.png" alt="TikTok" className="h-7 w-7" /></a>
-                <a href="#" aria-label="LinkedIn"><img src="/linkedin.png" alt="LinkedIn" className="h-7 w-7" /></a>
+              {/* Column 2: About Us */}
+              <div>
+                <span className="font-bold text-lg mb-2 block">About Us</span>
+                <ul className="space-y-2 text-base text-gray-200">
+                  <li><Link href="/about" className="hover:text-emerald-300">About GoBit</Link></li>
+                  <li><Link href="/why-choose" className="hover:text-emerald-300">Why Choose GoBit</Link></li>
+                  <li><Link href="/company-profile" className="hover:text-emerald-300">Company Profile</Link></li>
+                  <li><Link href="/terms" className="hover:text-emerald-300">Terms and Conditions</Link></li>
+                  <li><Link href="/privacy" className="hover:text-emerald-300">Privacy Policy</Link></li>
+                  <li><Link href="/careers" className="hover:text-emerald-300">Careers</Link></li>
+                </ul>
+              </div>
+              {/* Column 3: Help & Support */}
+              <div>
+                <span className="font-bold text-lg mb-2 block">Help & Support</span>
+                <ul className="space-y-2 text-base text-gray-200">
+                  <li><Link href="/inquiry-form" className="hover:text-emerald-300">Inquiry Form</Link></li>
+                  <li><Link href="/auction-information-request" className="hover:text-emerald-300">Auction Information Request</Link></li>
+                  <li><Link href="/how-to-buy" className="hover:text-emerald-300">How to Buy</Link></li>
+                  <li><Link href="/how-to-pay" className="hover:text-emerald-300">How to Pay</Link></li>
+                  <li><Link href="/how-to-pick-the-right-item" className="hover:text-emerald-300">How to Pick the Right Item</Link></li>
+                  <li><Link href="/faqs" className="hover:text-emerald-300">FAQs</Link></li>
+                </ul>
+              </div>
+              {/* Column 4: Categories, newsletter, payment icons */}
+              <div>
+                <span className="font-bold text-lg mb-2 block">Explore by Category</span>
+                <ul className="space-y-2 text-base text-gray-200">
+                  <li><Link href="/categories/vehicles" className="hover:text-emerald-300">Vehicles</Link></li>
+                  <li><Link href="/categories/electronics" className="hover:text-emerald-300">Electronics</Link></li>
+                  <li><Link href="/categories/watches" className="hover:text-emerald-300">Watches</Link></li>
+                  <li><Link href="/categories/art" className="hover:text-emerald-300">Art</Link></li>
+                  <li><Link href="/categories/realestate" className="hover:text-emerald-300">Real Estate</Link></li>
+                  <li><Link href="/categories/computers" className="hover:text-emerald-300">Computers</Link></li>
+                </ul>
+                <span className="font-bold text-base mb-2 block mt-6">Bank Information</span>
+                <div className="flex gap-3 mt-2">
+                  <img src="/Visa.png" alt="Visa" className="h-7" />
+                  <img src="/master.png" alt="Mastercard" className="h-7" />
+                  <img src="/amex.png" alt="Amex" className="h-7" />
+                </div>
               </div>
             </div>
-            {/* Column 2: About Us */}
-            <div>
-              <span className="font-bold text-lg mb-2 block">About Us</span>
-              <ul className="space-y-2">
-                <li><a href="/about" className="hover:underline">About GoBit</a></li>
-                <li><a href="/why-choose" className="hover:underline">Why Choose GoBit</a></li>
-                <li><a href="/company-profile" className="hover:underline">Company Profile</a></li>
-                <li><a href="/terms" className="hover:underline">Terms and Conditions</a></li>
-                <li><a href="/privacy" className="hover:underline">Privacy Policy</a></li>
-                <li><a href="/careers" className="hover:underline">Careers</a></li>
-              </ul>
+            <div className="w-full text-center text-gray-300 text-sm mt-8 px-4">
+              &copy; {new Date().getFullYear()} GoBit Auctions. All rights reserved.
             </div>
-            {/* Column 3: Help & Support */}
-            <div>
-              <span className="font-bold text-lg mb-2 block">Help & Support</span>
-              <ul className="space-y-2">
-                <li><a href="/inquiry-form" className="hover:underline">Inquiry Form</a></li>
-                <li><a href="/auction-information-request" className="hover:underline">Auction Information Request</a></li>
-                <li><a href="/how-to-buy" className="hover:underline">How to Buy</a></li>
-                <li><a href="/how-to-pay" className="hover:underline">How to Pay</a></li>
-                <li><a href="/how-to-pick-the-right-item" className="hover:underline">How to Pick the Right Item</a></li>
-                <li><a href="/faqs" className="hover:underline">FAQs</a></li>
-              </ul>
-            </div>
-            {/* Column 4: Categories, newsletter, payment icons */}
-            <div>
-              <span className="font-bold text-lg mb-2 block">Explore by Category</span>
-              <ul className="space-y-2">
-                <li><a href="/categories/vehicles" className="hover:underline">Vehicles</a></li>
-                <li><a href="/categories/electronics" className="hover:underline">Electronics</a></li>
-                <li><a href="/categories/watches" className="hover:underline">Watches</a></li>
-                <li><a href="/categories/art" className="hover:underline">Art</a></li>
-                <li><a href="/categories/realestate" className="hover:underline">Real Estate</a></li>
-                <li><a href="/categories/computers" className="hover:underline">Computers</a></li>
-              </ul>
-              <span className="font-bold text-base mb-2 block mt-6">Bank Information</span>
-              <div className="flex gap-3 mt-2">
-                <img src="/Visa.png" alt="Visa" className="h-7" />
-                <img src="/master.png" alt="Mastercard" className="h-7" />
-                <img src="/amex.png" alt="Amex" className="h-7" />
-              </div>
-            </div>
-          </div>
-          <div className="max-w-7xl mx-auto text-center text-gray-400 text-xs mt-8 px-4">
-            &copy; {new Date().getFullYear()} GoBit Auctions. All rights reserved.
           </div>
         </footer>
       </body>
