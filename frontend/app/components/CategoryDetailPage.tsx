@@ -166,7 +166,7 @@ export default function CategoryDetailPage({
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/0 px-5 py-4"
+                className="rounded-3xl border border-white/10 bg-linear-to-b from-white/10 to-white/0 px-5 py-4"
               >
                 <p className="text-xs uppercase tracking-wide text-white/60">
                   {metric.label}
@@ -193,9 +193,18 @@ export default function CategoryDetailPage({
                   key={item.name}
                   className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
                 >
-                  <div className="relative h-56 w-full border-b border-white/10 bg-black/30">
-                    <img src={item.img} alt={item.name} className="h-full w-full object-cover" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openModal(item)}
+                    className="relative flex h-56 w-full items-center justify-center overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
+                    aria-label={`View details for ${item.name}`}
+                  >
+                    <img
+                      src={item.img}
+                      alt={item.name}
+                      className="h-full w-full object-cover object-center"
+                    />
+                  </button>
                   <div className="flex flex-1 flex-col p-5">
                     <h3 className="text-xl font-semibold">{item.name}</h3>
                     <p className="mt-1 text-sm text-white/60">
@@ -244,11 +253,14 @@ export default function CategoryDetailPage({
             </button>
             <div className="mt-2 text-center">
               <p className="text-xs uppercase tracking-wide text-white/50">
-                Bid submission
+                Lot details & bid
               </p>
               <h3 className="mt-2 text-2xl font-semibold">{selectedItem.name}</h3>
               <p className="mt-1 text-sm text-white/60">
                 Current bid ${selectedItem.currentBid.toLocaleString()} · {selectedItem.endsIn} remaining
+              </p>
+              <p className="mt-1 text-sm text-white/60">
+                {(selectedItem.condition || "Verified asset") + " · " + selectedItem.watchers + " watchers"}
               </p>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">
