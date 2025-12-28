@@ -7,18 +7,18 @@ export default function SellerDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-sky-50 via-slate-50 to-indigo-100 px-4 py-10 text-slate-900 text-xl sm:px-6 lg:px-10">
-      <div className="mx-auto flex w-full max-w-full flex-col gap-8">
+    <main className="min-h-screen bg-[#040918] px-4 py-10 text-white text-xl sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-full flex-col gap-8 rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8">
         {/* Header */}
-        <header className="flex flex-col gap-4 border-b border-emerald-100 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-3xl font-semibold uppercase tracking-[0.24em] text-emerald-600">
+            <p className="text-3xl font-semibold uppercase tracking-[0.24em] text-emerald-300">
               Seller dashboard
             </p>
-            <h1 className="mt-1 text-5xl font-semibold tracking-tight text-slate-900 md:text-6xl">
+            <h1 className="mt-1 text-5xl font-semibold tracking-tight text-white md:text-6xl">
               Welcome back, Seller
             </h1>
-            <p className="mt-4 max-w-3xl text-xl text-slate-600">
+            <p className="mt-4 max-w-3xl text-xl text-white/70">
               Create new auctions, track performance, and see simple AI insights
               about your prices, timing, and buyer trust.
             </p>

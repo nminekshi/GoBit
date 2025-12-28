@@ -51,7 +51,7 @@ export default function BuyerDashboard() {
                     AI-recommended auctions based on what you watch, bid on, and win.
                   </p>
                 </div>
-                <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                   AI powered
                 </span>
               </div>
@@ -78,7 +78,7 @@ export default function BuyerDashboard() {
             <div className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-2xl font-semibold md:text-3xl">Live auctions</h2>
-                <span className="rounded-full bg-rose-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-200">
+                <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700">
                   Live now
                 </span>
               </div>
@@ -92,7 +92,9 @@ export default function BuyerDashboard() {
                     <p className="text-xs text-slate-600">Your bid: $2,120 · 2m ago</p>
                   </div>
                   <div className="text-right text-xs md:text-sm">
-                    <p className="font-semibold text-emerald-300">Winning</p>
+                    <p className="inline-flex items-center justify-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                      Winning
+                    </p>
                     <p className="text-slate-600">Ends in 32m</p>
                   </div>
                 </div>
@@ -102,7 +104,9 @@ export default function BuyerDashboard() {
                     <p className="text-xs text-slate-600">Highest bid: $5,430</p>
                   </div>
                   <div className="text-right text-xs md:text-sm">
-                    <p className="font-semibold text-rose-300">Outbid</p>
+                    <p className="inline-flex items-center justify-center rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700">
+                      Outbid
+                    </p>
                     <p className="text-slate-600">Ends in 1h 12m</p>
                   </div>
                 </div>
@@ -112,7 +116,9 @@ export default function BuyerDashboard() {
                     <p className="text-xs text-slate-600">Your bid: $520</p>
                   </div>
                   <div className="text-right text-xs md:text-sm">
-                    <p className="font-semibold text-amber-200">Close</p>
+                    <p className="inline-flex items-center justify-center rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">
+                      Close
+                    </p>
                     <p className="text-slate-600">Ends in 8m</p>
                   </div>
                 </div>
@@ -145,15 +151,21 @@ export default function BuyerDashboard() {
                 <ul className="mt-3 space-y-2 text-sm">
                   <li className="flex items-center justify-between">
                     <span>iPad Pro 12.9" (Won)</span>
-                    <span className="text-xs text-emerald-300">Paid</span>
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      Paid
+                    </span>
                   </li>
                   <li className="flex items-center justify-between">
                     <span>Yeezy 350 V2 (Bid)</span>
-                    <span className="text-xs text-rose-200">Outbid</span>
+                    <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                      Outbid
+                    </span>
                   </li>
                   <li className="flex items-center justify-between">
                     <span>LG OLED 65" (Won)</span>
-                    <span className="text-xs text-amber-200">Awaiting pickup</span>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                      Awaiting pickup
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -199,12 +211,12 @@ export default function BuyerDashboard() {
                   className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition md:text-sm ${
                     autoBidEnabled
                       ? "bg-emerald-500/90 text-white"
-                      : "bg-white/10 text-white/70"
+                      : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   <span
                     className={`mr-2 h-2 w-2 rounded-full ${
-                      autoBidEnabled ? "bg-emerald-200" : "bg-white/40"
+                      autoBidEnabled ? "bg-emerald-200" : "bg-slate-500"
                     }`}
                   />
                   {autoBidEnabled ? "Enabled" : "Disabled"}
@@ -215,7 +227,7 @@ export default function BuyerDashboard() {
               </p>
               <div className="mt-4 space-y-3 text-sm md:text-base">
                 <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-wide text-white/60">
+                  <label className="text-xs uppercase tracking-wide text-slate-600">
                     Max budget (per auction)
                   </label>
                   <input
