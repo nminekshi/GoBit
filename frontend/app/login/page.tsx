@@ -7,35 +7,40 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ username: "", password: "" });
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#182430]">
-      <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-sm flex flex-col items-center">
-        <h1 className="text-3xl font-bold text-gray-700 mb-8">Log In</h1>
-        <form className="w-full flex flex-col gap-6">
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#040918] via-[#101827] to-[#1e293b] px-4">
+    <div className="w-full max-w-sm rounded-2xl bg-slate-900/90 border border-slate-700/70 shadow-2xl shadow-slate-900/60 p-8 flex flex-col items-center backdrop-blur">
+      <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Log in</h1>
+      <p className="text-sm text-slate-300 mb-8 text-center">
+        Access your account to bid, watch items, and manage your details.
+      </p>
+      <form className="w-full flex flex-col gap-5">
           <div>
-            <label className="block text-lg font-semibold text-gray-500 mb-2" htmlFor="username">Username</label>
+          <label className="block text-sm font-semibold text-slate-200 mb-1" htmlFor="username">Username</label>
             <input
               id="username"
               type="text"
-              className="w-full rounded-lg bg-[#efeaea] px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-black"
+            className="w-full rounded-lg bg-slate-800/80 border border-slate-700 px-4 py-2.5 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
               autoComplete="username"
               value={form.username}
               onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+            placeholder="Enter your username"
             />
           </div>
           <div className="relative">
-            <label className="block text-lg font-semibold text-gray-500 mb-2" htmlFor="password">Password</label>
+          <label className="block text-sm font-semibold text-slate-200 mb-1" htmlFor="password">Password</label>
             <input
               id="password"
               type={showPassword ? "text" : "password"}
-              className="w-full rounded-lg bg-[#efeaea] px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-black pr-10"
+            className="w-full rounded-lg bg-slate-800/80 border border-slate-700 px-4 py-2.5 pr-10 text-sm text-slate-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
               autoComplete="current-password"
               value={form.password}
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+            placeholder="Enter your password"
             />
             <button
               type="button"
               tabIndex={-1}
-              className="absolute right-3 bottom-3 text-lg text-gray-700 hover:text-black"
+            className="absolute right-3 bottom-2.5 text-lg text-slate-300 hover:text-white"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
@@ -46,16 +51,18 @@ export default function LoginPage() {
               )}
             </button>
           </div>
-          <div className="flex items-center justify-between mt-1 mb-4">
-            <label className="flex items-center gap-2 text-base text-gray-600">
-              <input type="checkbox" className="form-checkbox rounded border-gray-400" />
+          <div className="flex items-center justify-between mt-1 mb-2">
+            <label className="flex items-center gap-2 text-xs md:text-sm text-slate-300">
+              <input type="checkbox" className="form-checkbox rounded border-slate-500 accent-emerald-500" />
               Remember me
             </label>
-            <Link href="/forget-password" className="text-base text-gray-600 font-semibold hover:underline">Forget Password?</Link>
+            <Link href="/forget-password" className="text-xs md:text-sm text-emerald-400 font-semibold hover:text-emerald-300 hover:underline">
+              Forgot password?
+            </Link>
           </div>
           <button
             type="submit"
-            className="mx-auto mt-4 px-8 py-3 bg-black text-white text-lg rounded-xl font-medium shadow hover:bg-gray-900 transition"
+            className="mx-auto mt-3 px-8 py-3 bg-emerald-500 text-slate-950 text-sm md:text-base rounded-xl font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-colors"
           >
             Login
           </button>

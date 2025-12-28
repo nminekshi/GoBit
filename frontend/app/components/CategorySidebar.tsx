@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
 
 const categories = [
   { name: "Electronics", href: "/categories/electronics" },
@@ -15,17 +14,21 @@ type CategorySidebarProps = {
   category: string;
 };
 
-export default function CategorySidebar({ category }: CategorySidebarProps) {
-  const [open, setOpen] = useState<string | null>(null);
+const inputClasses =
+  "w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-white/50 focus:outline-none";
 
+const selectClasses =
+  "w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white focus:border-white/50 focus:outline-none";
+
+export default function CategorySidebar({ category }: CategorySidebarProps) {
   function renderFilters() {
     switch (category) {
       case "vehicles":
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Vehicle Type</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="sedan">Sedan</option>
                 <option value="suv">SUV</option>
@@ -34,29 +37,29 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Year</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Mileage</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Mileage</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -64,27 +67,27 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-              <input type="text" placeholder="Brand" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Brand</p>
+              <input type="text" placeholder="Brand" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Condition</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="new">New</option>
                 <option value="used">Used</option>
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -92,35 +95,35 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-              <input type="text" placeholder="Brand" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Brand</p>
+              <input type="text" placeholder="Brand" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Type</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="laptop">Laptop</option>
                 <option value="desktop">Desktop</option>
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">RAM (GB)</label>
-              <input type="number" placeholder="e.g. 16" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">RAM (GB)</p>
+              <input type="number" placeholder="e.g. 16" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Storage (GB)</label>
-              <input type="number" placeholder="e.g. 512" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Storage (GB)</p>
+              <input type="number" placeholder="e.g. 512" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -128,8 +131,8 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Property Type</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="apartment">Apartment</option>
                 <option value="house">House</option>
@@ -140,23 +143,23 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
-              <input type="number" placeholder="e.g. 3" className="w-full rounded-lg border border-gray-300 px-3 py-2" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Bedrooms</p>
+              <input type="number" placeholder="e.g. 3" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-              <input type="text" placeholder="City or Area" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Location</p>
+              <input type="text" placeholder="City or Area" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -164,8 +167,8 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Medium</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Medium</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="painting">Painting</option>
                 <option value="sculpture">Sculpture</option>
@@ -175,19 +178,19 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Artist</label>
-              <input type="text" placeholder="Artist name" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Artist</p>
+              <input type="text" placeholder="Artist name" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -195,27 +198,27 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
         return (
           <>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Brand</label>
-              <input type="text" placeholder="Brand" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Brand</p>
+              <input type="text" placeholder="Brand" className={inputClasses} />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Condition</label>
-              <select className="w-full rounded-lg border border-gray-300 px-3 py-2">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Condition</p>
+              <select className={selectClasses}>
                 <option value="">All</option>
                 <option value="new">New</option>
                 <option value="used">Used</option>
               </select>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Price</p>
               <div className="flex gap-2">
-                <input type="number" placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
-                <input type="number" placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+                <input type="number" placeholder="Min" className={inputClasses} />
+                <input type="number" placeholder="Max" className={inputClasses} />
               </div>
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Keywords</label>
-              <input type="text" placeholder="Enter keywords" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" />
+            <div className="mb-1">
+              <p className="mb-2 text-xs uppercase tracking-wide text-white/60">Keywords</p>
+              <input type="text" placeholder="Enter keywords" className={inputClasses} />
             </div>
           </>
         );
@@ -225,23 +228,38 @@ export default function CategorySidebar({ category }: CategorySidebarProps) {
   }
 
   return (
-    <aside className="w-full max-w-xs">
-      <div className="bg-white rounded-xl shadow p-4 border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">Categories</h3>
-        <ul className="flex flex-col gap-2">
-          {categories.map((c) => (
-            <li key={c.name}>
-                <Link href={c.href} className="block px-3 py-2 rounded hover:bg-gray-100 text-gray-800">
-                {c.name}
-              </Link>
-            </li>
-          ))}
+    <aside className="w-full max-w-xs space-y-6">
+      <div className="rounded-3xl border border-white/15 bg-white/5 p-5 text-white backdrop-blur">
+        <h3 className="text-sm uppercase tracking-wide text-white/60">Categories</h3>
+        <ul className="mt-4 space-y-2 text-sm font-semibold">
+          {categories.map((categoryLink) => {
+            const isActive = categoryLink.href.endsWith(category);
+            return (
+              <li key={categoryLink.name}>
+                <Link
+                  href={categoryLink.href}
+                  className={`flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
+                    isActive
+                      ? "border-white bg-white text-gray-900"
+                      : "border-white/10 text-white/70 hover:border-white/40 hover:text-white"
+                  }`}
+                >
+                  <span>{categoryLink.name}</span>
+                  {isActive && <span className="text-xs font-normal text-gray-700">Live</span>}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </div>
-      <div className="mt-6 bg-white rounded-xl shadow p-4 border border-gray-200">
-          <h3 className="text-lg font-semibold mb-3 text-gray-900">Filters</h3>
-        {renderFilters()}
-        <button className="w-full mt-2 px-4 py-2 bg-black text-white rounded-lg">Apply</button>
+      <div className="rounded-3xl border border-white/15 bg-white/5 p-5 text-white backdrop-blur">
+        <h3 className="text-sm uppercase tracking-wide text-white/60">Filters</h3>
+        <div className="mt-4">
+          {renderFilters()}
+          <button className="mt-4 w-full rounded-2xl border border-white/40 px-4 py-2 text-sm font-semibold text-white transition hover:border-white">
+            Apply filters
+          </button>
+        </div>
       </div>
     </aside>
   );
