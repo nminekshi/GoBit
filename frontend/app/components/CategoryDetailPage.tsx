@@ -177,40 +177,6 @@ export default function CategoryDetailPage({
             ))}
           </section>
 
-          <section className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold">Market Intel</h2>
-                <span className="text-xs text-emerald-300">Live feed</span>
-              </div>
-              <ul className="mt-4 space-y-4 text-sm text-white/80">
-                {insights.map((insight) => (
-                  <li key={insight.label} className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-white">{insight.label}</span>
-                      <span className="text-emerald-300">{insight.trend}</span>
-                    </div>
-                    <p className="mt-1 text-white/60">{insight.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h2 className="text-base font-semibold">Release Timeline</h2>
-              <ul className="mt-4 space-y-4 text-sm text-white/80">
-                {timeline.map((event) => (
-                  <li key={event.label} className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white">{event.label}</p>
-                      <p className="text-white/60">{event.detail}</p>
-                    </div>
-                    <span className="text-emerald-300">{event.eta}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <div>

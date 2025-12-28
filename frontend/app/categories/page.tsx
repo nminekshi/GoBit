@@ -25,25 +25,9 @@ const tagFilters = [
   "Collectibles",
 ];
 
-const microCategories = [
-  { label: "Fine Jewelry", count: 28 },
-  { label: "Gaming Rigs", count: 16 },
-  { label: "Classic Cars", count: 12 },
-  { label: "Rare Timepieces", count: 34 },
-  { label: "AI Servers", count: 9 },
-  { label: "Crypto Assets", count: 7 },
-];
-
-const categorySignals = [
-  { label: "Active verticals", value: "26", delta: "+5 this quarter" },
-  { label: "Avg. savings", value: "24%", delta: "vs retail MSRP" },
-  { label: "Watchlists shared", value: "162", delta: "+21 enterprise" },
-  { label: "Median close", value: "3.8h", delta: "turnover velocity" },
-];
-
 const categoryShowcase: Category[] = [
   {
-    name: "Prestige Watches",
+    name: "Watches",
     slug: "watches",
     description: "Swiss complications, indie makers, and auction-only releases with concierge certification included.",
     heroStat: "Top hammer $420K",
@@ -55,7 +39,7 @@ const categoryShowcase: Category[] = [
     trend: "+12% demand",
   },
   {
-    name: "Performance Vehicles",
+    name: "Vehicles",
     slug: "vehicles",
     description: "Restomod builds, track-ready exotics, and enterprise fleet liquidations updated twice daily.",
     heroStat: "Cap rate 9.4%",
@@ -67,7 +51,7 @@ const categoryShowcase: Category[] = [
     trend: "+4% bidders",
   },
   {
-    name: "Studio-Grade Electronics",
+    name: "Electronics",
     slug: "electronics",
     description: "Cinema cameras, mastering decks, and audiophile runs sourced from verified production houses.",
     heroStat: "Bundles under $9K",
@@ -79,7 +63,7 @@ const categoryShowcase: Category[] = [
     trend: "+19% watchlists",
   },
   {
-    name: "Investment Real Estate",
+    name: "Real Estate",
     slug: "realestate",
     description: "Prime hospitality, logistics hubs, and coastal residential pads with instant underwriting packs.",
     heroStat: "Yield up to 12%",
@@ -91,7 +75,7 @@ const categoryShowcase: Category[] = [
     trend: "Stable demand",
   },
   {
-    name: "Modern Art & Editions",
+    name: "Art & Editions",
     slug: "art",
     description: "Museum-provenanced works, signed editions, and primary drops verified on-chain.",
     heroStat: "200+ curators",
@@ -103,7 +87,7 @@ const categoryShowcase: Category[] = [
     trend: "+6% consignors",
   },
   {
-    name: "Enterprise Compute",
+    name: "Computers",
     slug: "computers",
     description: "GPU clusters, edge-ready servers, and XR dev kits available for instant redeployment.",
     heroStat: "Overclocked lots",
@@ -153,14 +137,7 @@ export default function CategoriesPage() {
       <section className="mx-auto flex max-w-full flex-col gap-8 px-6 py-14 lg:flex-row lg:px-12">
         <div className="flex-1 space-y-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
-                Live Category Directory
-              </span>
-              <p className="text-sm text-white/60">
-                Updated hourly · Concierge verified
-              </p>
-            </div>
+           
             <div className="mt-4 space-y-3">
               <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
                 Browse the full marketplace without the hero fluff
@@ -176,14 +153,14 @@ export default function CategoriesPage() {
                 Build watchlist
               </button>
               <Link
-                href="/explore-auctions"
+                href="/trending-auctions"
                 className="rounded-2xl border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white"
               >
-                View live auctions
+                Go to trending auctions
               </Link>
               <Link
                 href="/ongoing-auctions"
-                className="rounded-2xl border border-white/10 px-5 py-2.5 text-sm text-white/80 transition hover:text-white"
+                className="rounded-2xl border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white"
               >
                 Compare ongoing lots
               </Link>
@@ -246,29 +223,14 @@ export default function CategoriesPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categorySignals.map((signal) => (
-              <div
-                key={signal.label}
-                className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/0 px-6 py-5 text-white shadow-[0_10px_35px_rgba(15,23,42,0.25)]"
-              >
-                <p className="text-xs uppercase tracking-wide text-white/60">
-                  {signal.label}
-                </p>
-                <p className="mt-2 text-4xl font-semibold">{signal.value}</p>
-                <p className="mt-1 text-sm text-emerald-400">{signal.delta}</p>
-              </div>
-            ))}
-          </div>
-
           <div className="space-y-4">
             <p className="text-sm text-white/60">Browse by vertical</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {quickCategories.map((category) => (
                 <Link
                   key={category.slug}
                   href={category.href}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white"
+                  className="rounded-[999px] border border-emerald-400/60 bg-emerald-500/15 px-8 py-5 text-lg font-semibold text-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.25)] transition hover:border-emerald-300 hover:bg-emerald-500/30 hover:text-white"
                 >
                   {category.name}
                 </Link>
@@ -276,61 +238,6 @@ export default function CategoriesPage() {
             </div>
           </div>
         </div>
-
-        <aside className="w-full max-w-sm space-y-6">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Market signals</h2>
-              <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-300">
-                Real time
-              </span>
-            </div>
-            <ul className="mt-5 space-y-4 text-sm text-white/80">
-              <li className="flex items-start justify-between gap-4">
-                <span>Liquidity alerts synced</span>
-                <span className="text-emerald-300">+38 this week</span>
-              </li>
-              <li className="flex items-start justify-between gap-4">
-                <span>Concierge deals reserved</span>
-                <span className="text-emerald-300">14 pending</span>
-              </li>
-              <li className="flex items-start justify-between gap-4">
-                <span>Partner watchlists shared</span>
-                <span className="text-emerald-300">62 exported</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <h3 className="text-sm uppercase tracking-wide text-white/60">
-              Micro categories with momentum
-            </h3>
-            <div className="mt-4 space-y-3">
-              {microCategories.map((micro) => (
-                <div key={micro.label} className="flex items-center justify-between text-sm">
-                  <span>{micro.label}</span>
-                  <span className="text-white/60">{micro.count} lots</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-white/20 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 p-6">
-            <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
-              Concierge assist
-            </p>
-            <h4 className="mt-3 text-2xl font-semibold">
-              Need to syndicate a custom category board?
-            </h4>
-            <p className="mt-2 text-sm text-white/70">
-              Ping the desk to spin up private auctions, reserve allocations, or
-              release due diligence kits for buyers.
-            </p>
-            <button className="mt-5 w-full rounded-2xl border border-white/40 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white">
-              Talk to concierge
-            </button>
-          </div>
-        </aside>
       </section>
 
       <section className="mx-auto max-w-full px-6 pb-16 lg:px-12">
