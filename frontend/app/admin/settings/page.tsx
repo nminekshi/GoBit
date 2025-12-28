@@ -6,7 +6,7 @@ export default function AdminSettingsPage() {
       <div className="mx-auto flex w-full max-w-full flex-col gap-8">
         {/* Header */}
         <header className="border-b border-slate-200 pb-4">
-          <p className="text-base font-semibold uppercase tracking-[0.2em] text-emerald-600">
+          <p className="text-2xl font-semibold uppercase tracking-[0.2em] text-emerald-600">
             Admin settings
           </p>
           <h1 className="mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
