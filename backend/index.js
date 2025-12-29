@@ -1,6 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
+
+const authRoutes = require("./routes/auth");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -12,6 +15,7 @@ if (!MONGODB_URI) {
 }
 
 // Basic middleware
+app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
@@ -29,6 +33,9 @@ mongoose
 app.get("/", (req, res) => {
   res.send("Backend API is running and connected to MongoDB");
 });
+
+// Auth routes
+app.use("/auth", authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
