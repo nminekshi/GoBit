@@ -1,10 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function BuyerDashboard() {
   const [autoBidEnabled, setAutoBidEnabled] = useState(true);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("auth");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const username = parsed?.user?.username as string | undefined;
+      if (username) {
+        setDisplayName(username);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
 
   return (
   <main className="min-h-screen bg-[#040918] px-4 py-10 text-white text-lg sm:px-6 lg:px-10">
@@ -16,7 +32,7 @@ export default function BuyerDashboard() {
               Buyer dashboard
             </p>
             <h1 className="mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
-              Welcome back, bidder
+              Welcome back, {displayName || "bidder"}
             </h1>
             <p className="mt-3 max-w-2xl text-base text-white/70 md:text-lg">
               Track the auctions you care about, tune your auto-bid bot,
