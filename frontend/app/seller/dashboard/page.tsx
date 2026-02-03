@@ -8,9 +8,13 @@ interface Auction {
   id: string;
   title: string;
   category: string;
+  description: string;
   startPrice: number;
   currentBid: number;
   status: "active" | "draft" | "sold";
+  startTime: Date;
+  endTime: Date;
+  winner?: string;
   bidsCount: number;
   imageUrl: string;
   views: number;
@@ -21,11 +25,14 @@ interface Auction {
 const MOCK_SELLER_AUCTIONS: Auction[] = [
   {
     id: "s1",
-    title: "Vintage Leica M3",
+    title: "2021 Tesla Model 3 Long Range", // Updated to match style of request
     category: "Electronics",
-    startPrice: 1200,
-    currentBid: 1550,
+    description: "All-Wheel Drive, 28,000 miles. Autopilot enabled. Includes Wall Connector and...",
+    startPrice: 32500,
+    currentBid: 32500,
     status: "active",
+    startTime: new Date("2026-02-01T13:47:00"),
+    endTime: new Date("2026-02-05T13:50:00"),
     bidsCount: 8,
     imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
     views: 124,
@@ -35,9 +42,12 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
     id: "s2",
     title: "Eames Lounge Chair Replica",
     category: "Art & Editions",
+    description: "High-quality reproduction with premium Italian leather and walnut veneer finish.",
     startPrice: 500,
     currentBid: 500,
     status: "draft",
+    startTime: new Date("2026-02-10T09:00:00"),
+    endTime: new Date("2026-02-15T18:00:00"),
     bidsCount: 0,
     imageUrl: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=260&h=200",
     views: 0,
@@ -47,9 +57,13 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
     id: "s3",
     title: "Signed Basketball Jersey",
     category: "Art & Editions",
+    description: "Authentic signed jersey from the 2024 championship game. COA included.",
     startPrice: 200,
-    currentBid: 450,
+    currentBid: 52000,
     status: "sold",
+    startTime: new Date("2026-01-20T10:00:00"),
+    endTime: new Date("2026-02-01T13:50:00"),
+    winner: "Dili@gmail.com",
     bidsCount: 15,
     imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=260&h=200", // placeholder
     views: 340,
@@ -60,20 +74,12 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
 export default function SellerDashboard() {
   // --- State ---
   const [myAuctions, setMyAuctions] = useState<Auction[]>(MOCK_SELLER_AUCTIONS);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   // Dashboard Filters
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "draft" | "sold">("all");
 
-  // Create Form State
-  const [newAuction, setNewAuction] = useState({
-    title: "",
-    category: "Watches",
-    startPrice: "",
-    imageUrl: "",
-  });
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
 
   // --- Effects ---
   useEffect(() => {
@@ -102,51 +108,7 @@ export default function SellerDashboard() {
     }
   }, []);
 
-  // --- Handlers ---
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handleCreateAuction = (e: React.FormEvent) => {
-    e.preventDefault();
-    const auction: Auction = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: newAuction.title,
-      category: newAuction.category,
-      startPrice: Number(newAuction.startPrice),
-      currentBid: Number(newAuction.startPrice),
-      status: "active",
-      bidsCount: 0,
-      imageUrl: previewUrl || newAuction.imageUrl || "https://images.unsplash.com/photo-1550259114-ad7188f0a967?auto=format&fit=crop&q=80&w=260&h=200", // default placeholder
-      views: 0,
-      createdAt: new Date(),
-    };
-
-    const updatedAuctions = [auction, ...myAuctions];
-    setMyAuctions(updatedAuctions);
-
-    // Save to LocalStorage
-    try {
-      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-      const savedAuctions = savedAuctionsRaw ? JSON.parse(savedAuctionsRaw) : [];
-      const newGlobalAuctions = [auction, ...savedAuctions];
-      window.localStorage.setItem("global_auctions", JSON.stringify(newGlobalAuctions));
-    } catch (err) {
-      console.error("Failed to save auction locally:", err);
-    }
-
-    setIsCreateOpen(false);
-    setNewAuction({ title: "", category: "Watches", startPrice: "", imageUrl: "" });
-    setPreviewUrl(null);
-    alert("Auction Created Successfully!");
-  };
 
   // --- Derived State ---
   const filteredAuctions = myAuctions.filter(a => filterStatus === "all" || a.status === filterStatus);
@@ -177,12 +139,11 @@ export default function SellerDashboard() {
                 Switch to Buyer View
               </button>
             </Link>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600"
-            >
-              + Create New Auction
-            </button>
+            <Link href="/seller/create-auction">
+              <button className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600">
+                + Create New Auction
+              </button>
+            </Link>
           </div>
         </header>
 
@@ -226,179 +187,76 @@ export default function SellerDashboard() {
             {filteredAuctions.length === 0 ? (
               <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-white/10 bg-white/5">
                 <p className="text-slate-500">No auctions found in this category.</p>
-                <button
-                  onClick={() => setIsCreateOpen(true)}
-                  className="mt-4 text-emerald-400 hover:underline"
-                >
-                  Create your first auction
-                </button>
+                <Link href="/seller/create-auction">
+                  <button className="mt-4 text-emerald-400 hover:underline">
+                    Create your first auction
+                  </button>
+                </Link>
               </div>
             ) : (
-              filteredAuctions.map(auction => (
-                <div key={auction.id} className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-emerald-500/30">
-                  {/* Image */}
-                  <div className="relative aspect-[4/3] w-full bg-slate-800">
-                    <img src={auction.imageUrl} alt={auction.title} className="h-full w-full object-cover" />
-                    <div className="absolute top-3 right-3">
-                      <span className={`px-2.5 py-1 text-xs font-bold uppercase rounded-full ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
-                        auction.status === 'sold' ? 'bg-blue-500 text-white' :
-                          'bg-slate-500 text-white'
-                        }`}>
-                        {auction.status}
-                      </span>
-                    </div>
-                  </div>
+              filteredAuctions.map(auction => {
+                // Calculate time left (mock logic for demo, real would differ)
+                const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
 
-                  {/* Content */}
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="line-clamp-1 text-lg font-bold text-white">{auction.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1">{auction.category}</p>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-lg bg-white/5 p-2">
-                        <p className="text-[10px] uppercase text-slate-500">Current Bid</p>
-                        <p className="font-semibold text-white">${auction.currentBid}</p>
-                      </div>
-                      <div className="rounded-lg bg-white/5 p-2">
-                        <p className="text-[10px] uppercase text-slate-500">Bids</p>
-                        <p className="font-semibold text-white">{auction.bidsCount}</p>
+                return (
+                  <div key={auction.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
+                    {/* Image */}
+                    <div className="relative flex h-56 w-full items-center justify-center overflow-hidden border-b border-white/10 bg-black/30">
+                      <img
+                        src={auction.imageUrl}
+                        alt={auction.title}
+                        className="h-full w-full object-cover object-center transition duration-500 hover:scale-105"
+                      />
+                      <div className="absolute top-3 right-3">
+                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
+                          auction.status === 'sold' ? 'bg-blue-500 text-white' :
+                            'bg-slate-500 text-white'
+                          }`}>
+                          {auction.status}
+                        </span>
                       </div>
                     </div>
+
+                    {/* Content Body */}
+                    <div className="flex flex-1 flex-col p-5">
+                      <h3 className="text-xl font-semibold text-white leading-tight line-clamp-1">{auction.title}</h3>
+                      <p className="mt-1 text-sm text-white/60">
+                        {auction.category}
+                      </p>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                          <p className="text-xs uppercase tracking-wide text-white/50">
+                            Current bid
+                          </p>
+                          <p className="text-lg font-semibold text-white">${auction.currentBid.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                          <p className="text-xs uppercase tracking-wide text-white/50">
+                            Ends in
+                          </p>
+                          <p className="text-lg font-semibold text-white">{timeLeft}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between text-sm">
+                        <span className="text-white/60">{auction.views} watchers</span>
+                        <span className="text-emerald-300">Bid ready</span>
+                      </div>
+
+                      <button className="mt-5 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
+                        Manage Listing
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
       </div>
 
-      {/* Create Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-[#0B1121] border border-white/10 p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Create New Auction</h2>
-              <button onClick={() => setIsCreateOpen(false)} className="text-slate-400 hover:text-white">✕</button>
-            </div>
 
-            <form onSubmit={handleCreateAuction} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Item Title</label>
-                <input
-                  required
-                  type="text"
-                  value={newAuction.title}
-                  onChange={e => setNewAuction({ ...newAuction, title: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
-                  placeholder="e.g. Vintage Camera Lens"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Category</label>
-                  <select
-                    value={newAuction.category}
-                    onChange={e => setNewAuction({ ...newAuction, category: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="Watches">Watches</option>
-                    <option value="Vehicles">Vehicles</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Art & Editions">Art & Editions</option>
-                    <option value="Computers">Computers</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Start Price</label>
-                  <input
-                    required
-                    type="number"
-                    value={newAuction.startPrice}
-                    onChange={e => setNewAuction({ ...newAuction, startPrice: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Item Image</label>
-
-                {/* File Upload & Preview */}
-                <div className="flex flex-col gap-3">
-                  {previewUrl && (
-                    <div className="relative h-40 w-full overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPreviewUrl(null);
-                          // Reset file input if needed, but managing uncontrolled input ref is extra work. 
-                          // Simple URL preview clear is fine.
-                        }}
-                        className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white hover:bg-red-500"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {/* File Input */}
-                    <div className="relative flex items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 p-4 transition hover:border-emerald-500/50 hover:bg-emerald-500/10">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 cursor-pointer opacity-0"
-                      />
-                      <div className="text-center">
-                        <span className="text-sm text-emerald-400 font-medium">+ Upload Image</span>
-                        <p className="text-xs text-slate-500 mt-1">From device</p>
-                      </div>
-                    </div>
-
-                    {/* URL Input */}
-                    <input
-                      type="text"
-                      value={newAuction.imageUrl}
-                      onChange={e => {
-                        setNewAuction({ ...newAuction, imageUrl: e.target.value });
-                        // Optionally clear preview if URL is typed? Or keep both and prioritize preview?
-                        // Plan said prioritize file.
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
-                      placeholder="Or paste image URL..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-emerald-500 px-6 py-2 text-sm font-bold text-white hover:bg-emerald-600"
-                >
-                  Create Auction
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
