@@ -1,6 +1,6 @@
-import CategoryDetailPage from "../../components/CategoryDetailPage";
+import CategoryDetailPage, { CategoryHero } from "../../components/CategoryDetailPage";
 
-const hero = {
+const hero: CategoryHero = {
   eyebrow: "Curated releases",
   title: "Gallery-ready canvases & sculptural statements",
   subtitle:
