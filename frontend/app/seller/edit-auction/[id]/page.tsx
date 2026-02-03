@@ -180,6 +180,53 @@ export default function EditAuctionPage() {
         }
     };
 
+    // Handle delete
+    const handleDelete = () => {
+        if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
+            if (savedAuctionsRaw) {
+                const savedAuctions = JSON.parse(savedAuctionsRaw);
+                const newAuctions = savedAuctions.filter((a: any) => a.id !== auctionId);
+
+                // If it was a mock auction that hadn't been saved yet, we just ensure it's "deleted" 
+                // by adding it to a "deletedIds" list OR just not showing it if we were fully using LS.
+                // But for this hybrid approach, if it's not in LS, we can't "delete" it from the hardcoded mocks 
+                // without persisting a "deleted" state. 
+                // SIMPLIFICATION: We will save the filtered list back. 
+                // If the user tries to delete a MOCK that hasn't been edited (so not in LS), 
+                // we technically need to add it to a "deleted_auctions" list in LS to filter it out from Dashboard.
+                // allow me to implement that robustness:
+
+                window.localStorage.setItem("global_auctions", JSON.stringify(newAuctions));
+
+                // Track deleted mock IDs
+                const deletedRaw = window.localStorage.getItem("deleted_auctions");
+                const deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
+                if (!deletedIds.includes(auctionId)) {
+                    deletedIds.push(auctionId);
+                    window.localStorage.setItem("deleted_auctions", JSON.stringify(deletedIds));
+                }
+            } else {
+                // No global auctions yet, so it must be a mock or fresh.
+                // Just track as deleted
+                const deletedRaw = window.localStorage.getItem("deleted_auctions");
+                const deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
+                deletedIds.push(auctionId);
+                window.localStorage.setItem("deleted_auctions", JSON.stringify(deletedIds));
+            }
+
+            alert("Auction deleted successfully.");
+            router.push("/seller/dashboard");
+        } catch (err) {
+            console.error("Failed to delete auction:", err);
+            alert("Failed to delete auction. Please try again.");
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden">
             {/* Ambient Background Glow */}
@@ -305,7 +352,7 @@ export default function EditAuctionPage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center justify-center gap-4 pt-4">
+                        <div className="flex items-center justify-between pt-4">
                             <Link href="/seller/dashboard">
                                 <button
                                     type="button"
@@ -314,18 +361,29 @@ export default function EditAuctionPage() {
                                     ← Cancel
                                 </button>
                             </Link>
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="rounded-xl bg-emerald-500 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-500/40 transition disabled:opacity-70 flex items-center gap-2"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        SAVING CHANGES...
-                                    </>
-                                ) : "SAVE CHANGES"}
-                            </button>
+
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-bold text-red-500 hover:bg-red-500 hover:text-white transition"
+                                >
+                                    DELETE LISTING
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="rounded-xl bg-emerald-500 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-emerald-500/40 transition disabled:opacity-70 flex items-center gap-2"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            SAVING...
+                                        </>
+                                    ) : "SAVE CHANGES"}
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
