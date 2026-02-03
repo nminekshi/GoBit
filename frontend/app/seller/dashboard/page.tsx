@@ -97,11 +97,13 @@ export default function SellerDashboard() {
       const savedAuctions = window.localStorage.getItem("global_auctions");
       if (savedAuctions) {
         const parsedAuctions = JSON.parse(savedAuctions);
-        // Filter only auctions created by current user (or all for demo simplicity)
-        // For demo, we just merge mock and saved unique ones
-        const existingIds = new Set(MOCK_SELLER_AUCTIONS.map(a => a.id));
-        const newAuctions = parsedAuctions.filter((a: any) => !existingIds.has(a.id));
-        setMyAuctions([...MOCK_SELLER_AUCTIONS, ...newAuctions]);
+
+        // Merge logic: Create a map with MOCKs, then override with saved auctions if ID matches
+        const auctionMap = new Map();
+        MOCK_SELLER_AUCTIONS.forEach(a => auctionMap.set(a.id, a));
+        parsedAuctions.forEach((a: any) => auctionMap.set(a.id, a));
+
+        setMyAuctions(Array.from(auctionMap.values()) as Auction[]);
       }
     } catch {
       // ignore parse errors
@@ -244,9 +246,11 @@ export default function SellerDashboard() {
                         <span className="text-emerald-300">Bid ready</span>
                       </div>
 
-                      <button className="mt-5 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
-                        Manage Listing
-                      </button>
+                      <Link href={`/seller/edit-auction/${auction.id}`}>
+                        <button className="mt-5 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
+                          Manage Listing
+                        </button>
+                      </Link>
                     </div>
                   </div>
                 )
