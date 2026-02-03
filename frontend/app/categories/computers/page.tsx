@@ -55,6 +55,7 @@ const items = [
     endsIn: "4h 5m",
     watchers: 58,
     condition: "M3 Max · 64GB RAM",
+    description: "New Listing"
   },
   {
     name: "Dell XPS 13",
@@ -63,6 +64,7 @@ const items = [
     endsIn: "2h 50m",
     watchers: 34,
     condition: "OLED · 32GB/1TB",
+    description: "Ultrabook"
   },
   {
     name: "HP Spectre x360",
@@ -71,6 +73,7 @@ const items = [
     endsIn: "3h 30m",
     watchers: 27,
     condition: "2-in-1 Creator spec",
+    description: "Convertible"
   },
   {
     name: "Lenovo ThinkPad X1",
@@ -79,6 +82,7 @@ const items = [
     endsIn: "5h 10m",
     watchers: 41,
     condition: "Carbon Gen 11",
+    description: "Business Class"
   },
   {
     name: "Microsoft Surface Pro 9",
@@ -87,6 +91,7 @@ const items = [
     endsIn: "2h 20m",
     watchers: 30,
     condition: "5G · Keyboard bundle",
+    description: "Tablet PC"
   },
   {
     name: "Asus ROG Zephyrus",
@@ -95,6 +100,7 @@ const items = [
     endsIn: "6h 45m",
     watchers: 52,
     condition: "RTX 4090 · 240Hz",
+    description: "Gaming"
   },
   {
     name: "Asus ROG Zephyrus Duo",
@@ -103,6 +109,7 @@ const items = [
     endsIn: "4h 40m",
     watchers: 36,
     condition: "Dual-screen · creator tuned",
+    description: "New Listing"
   },
   {
     name: "Dell XPS 13 Developer Batch",
@@ -111,6 +118,7 @@ const items = [
     endsIn: "3h 15m",
     watchers: 28,
     condition: "Ubuntu imaged · 32GB",
+    description: "Developer Edition"
   },
   {
     name: "Surface Mobility Pod",
@@ -119,6 +127,7 @@ const items = [
     endsIn: "5h 55m",
     watchers: 25,
     condition: "LTE + keyboard flight cases",
+    description: "Bundle"
   },
 ];
 

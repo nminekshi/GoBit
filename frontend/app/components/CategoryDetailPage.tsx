@@ -48,6 +48,7 @@ type AuctionItem = {
   watchers: number;
   condition?: string;
   location?: string;
+  description?: string;
 };
 
 type CategoryDetailPageProps = {
@@ -101,7 +102,8 @@ export default function CategoryDetailPage({
           endsIn: "3d 5h", // mock
           watchers: 0,
           condition: "New Listing",
-          location: "Local"
+          location: "Local",
+          description: a.description // map description from saved auction
         }));
 
         setMergedItems(prev => {
@@ -240,10 +242,18 @@ export default function CategoryDetailPage({
                     />
                   </button>
                   <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <p className="mt-1 text-sm text-white/60">
-                      {item.condition || "Verified asset"}
+                    <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>
+                    <p className="mt-1 text-sm text-white/60 font-medium">
+                      {item.description || "New Listing"}
                     </p>
+                    {/* Optional: We can hide condition if description is present, or show both. 
+                        The prompt asks to 'add description section' 'like this'. 
+                        I'll keep condition below but maybe smaller or just let it stack. */}
+                    {item.condition && (
+                      <p className="mt-1 text-xs text-white/40">
+                        {item.condition}
+                      </p>
+                    )}
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                         <p className="text-xs uppercase tracking-wide text-white/50">

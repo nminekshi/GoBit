@@ -54,6 +54,7 @@ const items = [
     endsIn: "2h 30m",
     watchers: 78,
     condition: "256GB · sealed",
+    description: "Smartphone"
   },
   {
     name: "Samsung QLED TV",
@@ -62,6 +63,7 @@ const items = [
     endsIn: "1h 10m",
     watchers: 33,
     condition: "65\" flagship with stand",
+    description: "New Listing"
   },
   {
     name: "Sony WH-1000XM5 Headphones",
@@ -70,6 +72,7 @@ const items = [
     endsIn: "3h 5m",
     watchers: 45,
     condition: "Midnight · open-box",
+    description: "Audio"
   },
   {
     name: "GoPro Hero 12",
@@ -78,6 +81,7 @@ const items = [
     endsIn: "4h 20m",
     watchers: 29,
     condition: "Adventure bundle",
+    description: "Action Camera"
   },
   {
     name: "iPad Pro 12.9",
@@ -86,6 +90,7 @@ const items = [
     endsIn: "2h 50m",
     watchers: 51,
     condition: "M4 · Pencil Pro",
+    description: "Tablet"
   },
   {
     name: "Canon EOS R7 Camera",
@@ -94,6 +99,7 @@ const items = [
     endsIn: "5h 15m",
     watchers: 37,
     condition: "Dual lens kit",
+    description: "Photography"
   },
   {
     name: "Apple Watch Ultra Bundle",
@@ -102,6 +108,7 @@ const items = [
     endsIn: "1h 35m",
     watchers: 44,
     condition: "Trail Loop + AppleCare",
+    description: "Wearable"
   },
   {
     name: "Bose Studio Soundbar 900",
@@ -110,6 +117,7 @@ const items = [
     endsIn: "3h 40m",
     watchers: 26,
     condition: "Dolby Atmos kit",
+    description: "Home Audio"
   },
   {
     name: "Canon Creator Combo",
@@ -118,6 +126,7 @@ const items = [
     endsIn: "6h 5m",
     watchers: 31,
     condition: "R7 + gimbal + mics",
+    description: "Pro Kit"
   },
 ];
 

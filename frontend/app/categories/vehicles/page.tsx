@@ -54,6 +54,7 @@ const items = [
     endsIn: "6h 20m",
     watchers: 64,
     condition: "Dual motor · 34k mi",
+    description: "Electric Sedan"
   },
   {
     name: "BMW X5",
@@ -62,6 +63,7 @@ const items = [
     endsIn: "5h 10m",
     watchers: 41,
     condition: "M Sport · full history",
+    description: "Luxury SUV"
   },
   {
     name: "Audi Q7",
@@ -70,6 +72,7 @@ const items = [
     endsIn: "7h 30m",
     watchers: 35,
     condition: "Prestige trim",
+    description: "New Listing"
   },
   {
     name: "Mercedes-Benz C-Class",
@@ -78,6 +81,7 @@ const items = [
     endsIn: "8h 15m",
     watchers: 29,
     condition: "AMG package",
+    description: "Sedan"
   },
   {
     name: "Toyota Land Cruiser",
@@ -86,6 +90,7 @@ const items = [
     endsIn: "9h 5m",
     watchers: 33,
     condition: "Heritage edition",
+    description: "Off-Road Ready"
   },
   {
     name: "Ford Mustang",
@@ -94,6 +99,7 @@ const items = [
     endsIn: "10h 40m",
     watchers: 47,
     condition: "GT performance",
+    description: "Coupe"
   },
   {
     name: "Tesla Model S Performance",
@@ -102,6 +108,7 @@ const items = [
     endsIn: "7h 15m",
     watchers: 52,
     condition: "Plaid · 21k mi",
+    description: "Performance EV"
   },
   {
     name: "BMW X5 Executive Fleet",
@@ -110,6 +117,7 @@ const items = [
     endsIn: "6h 5m",
     watchers: 37,
     condition: "xDrive50e · 3-unit release",
+    description: "Fleet Sale"
   },
   {
     name: "Audi Q7 Technik Series",
@@ -118,6 +126,7 @@ const items = [
     endsIn: "8h 55m",
     watchers: 32,
     condition: "Adaptive air suspension",
+    description: "New Listing"
   },
 ];
 
