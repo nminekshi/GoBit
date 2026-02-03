@@ -4,6 +4,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
+const emailRoutes = require("./routes/email");
+const { verifyConnection } = require("./utils/emailService");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -21,8 +23,14 @@ app.use(express.json());
 // Connect to MongoDB
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB");
+
+    // Verify SMTP connection
+    const smtpReady = await verifyConnection();
+    if (!smtpReady) {
+      console.warn("Warning: SMTP server not configured properly. Email functionality may not work.");
+    }
   })
   .catch((err) => {
     console.error("Error connecting to MongoDB:", err);
@@ -36,6 +44,9 @@ app.get("/", (req, res) => {
 
 // Auth routes
 app.use("/auth", authRoutes);
+
+// Email routes
+app.use("/email", emailRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
