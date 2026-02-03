@@ -1,12 +1,102 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
+// --- Types ---
+interface Auction {
+  id: string;
+  title: string;
+  category: string;
+  imageUrl: string; // Using simple placeholders for now
+  currentBid: number;
+  myBid?: number; // The user's highest bid if any
+  endsIn: string; // content string like "2h 15m"
+  bidsCount: number;
+  isWatchlisted: boolean;
+  status: "active" | "won" | "ended";
+  seller: string;
+  trustScore: number;
+}
+
+// --- Mock Data ---
+const MOCK_AUCTIONS: Auction[] = [
+  {
+    id: "1",
+    title: "Vintage Rolex Datejust",
+    category: "Watches",
+    imageUrl: "https://images.unsplash.com/photo-1587839600078-450eb93895e6?auto=format&fit=crop&q=80&w=260&h=200",
+    currentBid: 5430,
+    endsIn: "2h 15m",
+    bidsCount: 12,
+    isWatchlisted: false,
+    status: "active",
+    seller: "LuxuryTime",
+    trustScore: 4.9,
+  },
+  {
+    id: "2",
+    title: "Sony PlayStation 5 Digital",
+    category: "Gaming",
+    imageUrl: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&q=80&w=260&h=200",
+    currentBid: 320,
+    endsIn: "45m",
+    bidsCount: 28,
+    isWatchlisted: true,
+    status: "active",
+    seller: "GameHub",
+    trustScore: 4.7,
+  },
+  {
+    id: "3",
+    title: "MacBook Pro M3 Max",
+    category: "Computers",
+    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=260&h=200",
+    currentBid: 2900,
+    endsIn: "1d 4h",
+    bidsCount: 5,
+    isWatchlisted: false,
+    status: "active",
+    seller: "AppleReseller",
+    trustScore: 5.0,
+  },
+  {
+    id: "4",
+    title: "Herman Miller Aeron Chair",
+    category: "Furniture",
+    imageUrl: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=260&h=200",
+    currentBid: 650,
+    endsIn: "5h 30m",
+    bidsCount: 8,
+    isWatchlisted: false,
+    status: "active",
+    seller: "OfficeComfort",
+    trustScore: 4.5,
+  },
+  {
+    id: "5",
+    title: "Nikon Z6 II Body",
+    category: "Cameras",
+    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
+    currentBid: 1400,
+    endsIn: "Ended",
+    bidsCount: 15,
+    isWatchlisted: false,
+    status: "won",
+    seller: "CamWorld",
+    trustScore: 4.8,
+    myBid: 1400,
+  },
+];
+
 export default function BuyerDashboard() {
-  const [autoBidEnabled, setAutoBidEnabled] = useState(true);
+  // --- State ---
+  const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
+  const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [displayName, setDisplayName] = useState<string | null>(null);
 
+  // --- Effects ---
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -17,316 +107,290 @@ export default function BuyerDashboard() {
       if (username) {
         setDisplayName(username);
       }
+
+      // Load global auctions from local storage
+      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
+      if (savedAuctionsRaw) {
+        const savedAuctions = JSON.parse(savedAuctionsRaw);
+        // Convert seller auction format to buyer auction format if needed
+        const formattedSavedAuctions = savedAuctions.map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          category: a.category,
+          imageUrl: a.imageUrl,
+          currentBid: a.currentBid,
+          // saved auctions don't have endsIn, mock it
+          endsIn: "3d 5h",
+          bidsCount: a.bidsCount,
+          isWatchlisted: false,
+          status: a.status,
+          seller: displayName || "Local Seller", // assume current user is seller for demo
+          trustScore: 5.0
+        }));
+
+        setAuctions((prev) => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = formattedSavedAuctions.filter((a: any) => !existingIds.has(a.id));
+          return [...uniqueNew, ...prev];
+        });
+      }
+
     } catch {
       // ignore parse errors
     }
   }, []);
 
+  // --- Handlers ---
+  const handleBid = (id: string) => {
+    setAuctions((prev) =>
+      prev.map((auction) => {
+        if (auction.id === id) {
+          const nextBid = auction.currentBid + 50; // Simple increment
+          return { ...auction, currentBid: nextBid, myBid: nextBid, bidsCount: auction.bidsCount + 1 };
+        }
+        return auction;
+      })
+    );
+    alert("Bid placed successfully!");
+  };
+
+  const toggleWatchlist = (id: string) => {
+    setAuctions((prev) =>
+      prev.map((auction) => {
+        if (auction.id === id) {
+          return { ...auction, isWatchlisted: !auction.isWatchlisted };
+        }
+        return auction;
+      })
+    );
+  };
+
+  // --- Derived State ---
+  const filteredAuctions = auctions.filter((auction) => {
+    // 1. Filter by Tab
+    if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
+    if (activeTab === "bidding" && auction.myBid === undefined) return false;
+
+    // 2. Filter by Search
+    if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Stats
+  const activeBidsCount = auctions.filter((a) => a.myBid && a.status === "active").length;
+  const watchlistCount = auctions.filter((a) => a.isWatchlisted).length;
+  const auctionsWon = auctions.filter((a) => a.status === "won").length;
+
   return (
-  <main className="min-h-screen bg-[#040918] px-4 py-10 text-white text-lg sm:px-6 lg:px-10">
-      <div className="mx-auto flex w-full max-w-full flex-col gap-8 rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8">
-        {/* Header */}
-        <header className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
+      <div className="w-full space-y-8">
+        {/* Header Section */}
+        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-3xl font-semibold uppercase tracking-[0.25em] text-emerald-300">
-              Buyer dashboard
-            </p>
-            <h1 className="mt-1 text-5xl font-semibold tracking-tight md:text-6xl">
-              Welcome back, {displayName || "bidder"}
+            <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+              Hello, <span className="text-emerald-400">{displayName || "Buyer"}</span>
             </h1>
-            <p className="mt-3 max-w-2xl text-base text-white/70 md:text-lg">
-              Track the auctions you care about, tune your auto-bid bot,
-              and see simple AI insights on pricing and trust before you place bids.
+            <p className="mt-2 text-slate-400">
+              Welcome to your auction command center. Find, bid, and win.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/categories"
-              className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-white/90 md:text-base"
-            >
-              Explore categories
+          <div className="flex gap-3">
+            <Link href="/categories">
+              <button className="rounded-xl bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/20">
+                Browse Categories
+              </button>
             </Link>
-            <Link
-              href="/trending-auctions"
-              className="rounded-xl border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white md:text-base"
-            >
-              View trending auctions
-            </Link>
+            <button className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600">
+              Deposit Funds
+            </button>
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)]">
-          {/* Left column */}
-          <section className="space-y-6">
-            {/* Personalized Feed */}
-            <div className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold md:text-3xl">Personalized feed</h2>
-                  <p className="mt-1 text-base text-slate-600 md:text-lg">
-                    AI-recommended auctions based on what you watch, bid on, and win.
-                  </p>
-                </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                  AI powered
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Sneakers</p>
-                  <p className="mt-1 text-base font-semibold text-slate-900 md:text-lg">Jordan 1 Retro High</p>
-                  <p className="mt-1 text-xs text-slate-600">Ends in 2h 18m · 14 bids</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Phones</p>
-                  <p className="mt-1 text-base font-semibold text-slate-900 md:text-lg">iPhone 15 Pro Max</p>
-                  <p className="mt-1 text-xs text-slate-600">Ends in 5h 02m · 21 bids</p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Tech</p>
-                  <p className="mt-1 text-base font-semibold text-slate-900 md:text-lg">RTX 4090 Gaming PC</p>
-                  <p className="mt-1 text-xs text-slate-600">Ends in 1d 03h · 9 bids</p>
-                </div>
-              </div>
-            </div>
+        {/* Stats Grid */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+            <p className="text-sm font-medium text-slate-400">Active Bids</p>
+            <p className="mt-2 text-3xl font-bold text-white">{activeBidsCount}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+            <p className="text-sm font-medium text-slate-400">Watchlist</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-400">{watchlistCount}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+            <p className="text-sm font-medium text-slate-400">Auctions Won</p>
+            <p className="mt-2 text-3xl font-bold text-amber-400">{auctionsWon}</p>
+          </div>
+        </section>
 
-            {/* Live Auctions */}
-            <div className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-semibold md:text-3xl">Live auctions</h2>
-                <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-700">
-                  Live now
-                </span>
-              </div>
-      				<p className="mt-1 text-base text-slate-600 md:text-lg">
-                Auctions you're currently bidding on, with real-time updates.
-              </p>
-              <div className="mt-4 space-y-3 text-sm md:text-base">
-                <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">Gaming laptop · RTX 4080</p>
-                    <p className="text-xs text-slate-600">Your bid: $2,120 · 2m ago</p>
-                  </div>
-                  <div className="text-right text-xs md:text-sm">
-                    <p className="inline-flex items-center justify-center rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
-                      Winning
-                    </p>
-                    <p className="text-slate-600">Ends in 32m</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">Vintage Rolex Datejust</p>
-                    <p className="text-xs text-slate-600">Highest bid: $5,430</p>
-                  </div>
-                  <div className="text-right text-xs md:text-sm">
-                    <p className="inline-flex items-center justify-center rounded-full bg-rose-50 px-3 py-1 font-semibold text-rose-700">
-                      Outbid
-                    </p>
-                    <p className="text-slate-600">Ends in 1h 12m</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-slate-900">PS5 Digital Edition</p>
-                    <p className="text-xs text-slate-600">Your bid: $520</p>
-                  </div>
-                  <div className="text-right text-xs md:text-sm">
-                    <p className="inline-flex items-center justify-center rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">
-                      Close
-                    </p>
-                    <p className="text-slate-600">Ends in 8m</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Watchlist & History */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-                <h2 className="text-xl font-semibold md:text-2xl">Watchlist</h2>
-                <p className="mt-1 text-base text-slate-600">Items you're tracking but not bidding on yet.</p>
-                <ul className="mt-3 space-y-2 text-sm">
-                  <li className="flex items-center justify-between">
-                    <span>MacBook Pro 16" · M3</span>
-                    <span className="text-xs text-slate-600">Ends in 3d</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Tesla Model 3 · 2021</span>
-                    <span className="text-xs text-slate-600">Ends in 5d</span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Canon R5 + RF 24-70</span>
-                    <span className="text-xs text-slate-600">Ends in 18h</span>
-                  </li>
-                </ul>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-                <h2 className="text-xl font-semibold md:text-2xl">Bid history & won auctions</h2>
-                <p className="mt-1 text-base text-slate-600">Quick look at your recent bidding activity.</p>
-                <ul className="mt-3 space-y-2 text-sm">
-                  <li className="flex items-center justify-between">
-                    <span>iPad Pro 12.9" (Won)</span>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      Paid
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>Yeezy 350 V2 (Bid)</span>
-                    <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                      Outbid
-                    </span>
-                  </li>
-                  <li className="flex items-center justify-between">
-                    <span>LG OLED 65" (Won)</span>
-                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                      Awaiting pickup
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* Right column */}
-          <aside className="space-y-6">
-            {/* AI Insights Panel */}
-            <section className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <h2 className="text-2xl font-semibold md:text-3xl">AI insights</h2>
-              <p className="mt-1 text-base text-slate-600 md:text-lg">
-                Predictions and trust signals for the auctions you care about.
-              </p>
-              <div className="mt-4 space-y-3 text-sm md:text-base">
-                <div className="rounded-xl bg-white px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Predicted price range</p>
-                  <p className="mt-1 text-lg font-semibold">$1,850 – $2,150</p>
-                  <p className="text-xs text-slate-600">Based on similar items, seasonality, and demand.</p>
-                </div>
-                <div className="rounded-xl bg-white px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Seller trust score</p>
-                  <p className="mt-1 text-lg font-semibold">4.8 / 5.0</p>
-                  <p className="text-xs text-slate-600">Fast shipping, responsive, and low dispute rate.</p>
-                </div>
-                <div className="rounded-xl bg-white px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Sentiment summary</p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    "Reviews highlight accurate descriptions and strong packaging. Occasional delays on
-                    international shipping, but issues are usually resolved quickly."
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Auto-Bid Bot Settings */}
-            <section className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-semibold md:text-3xl">Auto-bid bot</h2>
-                <button
-                  type="button"
-                  onClick={() => setAutoBidEnabled((prev) => !prev)}
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold transition md:text-sm ${
-                    autoBidEnabled
-                      ? "bg-emerald-500/90 text-white"
-                      : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  <span
-                    className={`mr-2 h-2 w-2 rounded-full ${
-                      autoBidEnabled ? "bg-emerald-200" : "bg-slate-500"
-                    }`}
-                  />
-                  {autoBidEnabled ? "Enabled" : "Disabled"}
-                </button>
-              </div>
-      			  <p className="mt-1 text-base text-slate-600 md:text-lg">
-                Set your guardrails and let the bot place bids for you.
-              </p>
-              <div className="mt-4 space-y-3 text-sm md:text-base">
-                <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-wide text-slate-600">
-                    Max budget (per auction)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="$2,000"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none md:text-base"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs uppercase tracking-wide text-slate-600">
-                    Aggressiveness level
-                  </label>
-                  <select
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none md:text-base"
-                    defaultValue="balanced"
+        {/* Main Content Area */}
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Main Feed */}
+          <div className="flex-1 space-y-6">
+            {/* Controls */}
+            <div className="flex flex-col gap-4 sticky top-4 z-10 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
+              {/* Tabs */}
+              <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
+                {(["all", "bidding", "watchlist"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab
+                      ? "bg-emerald-500 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                      }`}
                   >
-                    <option value="calm" className="text-gray-900">
-                      Calm (only key jumps)
-                    </option>
-                    <option value="balanced" className="text-gray-900">
-                      Balanced (smart increments)
-                    </option>
-                    <option value="aggressive" className="text-gray-900">
-                      Aggressive (stay on top)
-                    </option>
-                  </select>
-                </div>
+                    {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
+                  </button>
+                ))}
               </div>
-            </section>
 
-            {/* Payments & Invoices */}
-            <section className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <h2 className="text-2xl font-semibold md:text-3xl">Payments & invoices</h2>
-              <p className="mt-1 text-base text-slate-600 md:text-lg">
-                Keep track of what you've paid and what's due.
-              </p>
-              <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 md:text-base">
-                <div className="rounded-xl bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Due now</p>
-                  <p className="mt-1 text-lg font-semibold">$1,240</p>
-                  <p className="text-xs text-slate-600">2 invoices awaiting payment</p>
-                </div>
-                <div className="rounded-xl bg-white p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Paid this month</p>
-                  <p className="mt-1 text-lg font-semibold">$3,980</p>
-                  <p className="text-xs text-slate-600">Across 5 completed auctions</p>
-                </div>
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search current auctions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 pl-10 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:w-64"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </div>
-            </section>
+            </div>
 
-            {/* Notifications */}
-            <section className="rounded-2xl border border-white/10 bg-white p-6 text-slate-900">
-              <h2 className="text-2xl font-semibold md:text-3xl">Notifications</h2>
-              <p className="mt-1 text-base text-slate-600 md:text-lg">
-                Stay ahead of outbids and auctions that are about to close.
-              </p>
-              <ul className="mt-3 space-y-3 text-sm md:text-base">
-                <li className="flex items-start gap-3 rounded-xl bg-white px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-rose-400" />
-                  <div>
-                    <p className="font-semibold">Outbid on "Vintage Rolex Datejust"</p>
-                    <p className="text-xs text-slate-600">Raise your max or let auto-bid handle it.</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-white px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-amber-300" />
-                  <div>
-                    <p className="font-semibold">Auction ending soon: "PS5 Digital Edition"</p>
-                    <p className="text-xs text-slate-600">8 minutes left · current bid $520.</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-white px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-300" />
-                  <div>
-                    <p className="font-semibold">Invoice ready for "LG OLED 65"</p>
-                    <p className="text-xs text-slate-600">Pay within 48 hours to avoid relist.</p>
-                  </div>
-                </li>
-              </ul>
-            </section>
-          </aside>
+            {/* Auction Grid */}
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredAuctions.length === 0 ? (
+                <div className="col-span-full py-20 text-center">
+                  <p className="text-slate-500">No auctions found matching your criteria.</p>
+                </div>
+              ) : (
+                filteredAuctions.map((auction) => (
+                  <AuctionCard
+                    key={auction.id}
+                    auction={auction}
+                    onBid={handleBid}
+                    onWatchlist={toggleWatchlist}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </main>
+  );
+}
+
+// --- Components ---
+
+function AuctionCard({
+  auction,
+  onBid,
+  onWatchlist,
+}: {
+  auction: Auction;
+  onBid: (id: string) => void;
+  onWatchlist: (id: string) => void;
+}) {
+  return (
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-emerald-500/30 hover:shadow-xl hover:shadow-emerald-900/10">
+      {/* Image Area */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-800">
+        <img
+          src={auction.imageUrl}
+          alt={auction.title}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        {/* Badges */}
+        <div className="absolute left-3 top-3 flex gap-2">
+          <span className="rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
+            {auction.category}
+          </span>
+          {auction.status === 'won' && (
+            <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-black shadow-lg">
+              WON
+            </span>
+          )}
+        </div>
+
+        {/* Watchlist Button */}
+        <button
+          onClick={() => onWatchlist(auction.id)}
+          className="absolute right-3 top-3 rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-rose-500 hover:text-white"
+        >
+          <svg
+            className={`h-5 w-5 ${auction.isWatchlisted ? "fill-rose-500 text-rose-500" : "text-white"}`}
+            fill={auction.isWatchlisted ? "currentColor" : "none"}
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Info Area */}
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="line-clamp-1 text-lg font-bold text-white group-hover:text-emerald-400">
+            {auction.title}
+          </h3>
+        </div>
+
+        <p className="text-xs text-slate-400 mt-1">
+          Sold by <span className="text-slate-300">{auction.seller}</span> ★ {auction.trustScore}
+        </p>
+
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
+          <div>
+            <p className="text-xs font-medium uppercase text-slate-500">Current Bid</p>
+            <p className="text-xl font-bold text-white">${auction.currentBid.toLocaleString()}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-medium uppercase text-slate-500">Ends In</p>
+            <p className={`font-mono text-sm font-semibold ${auction.endsIn === 'Ended' ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {auction.endsIn}
+            </p>
+            <p className="text-[10px] text-slate-500">{auction.bidsCount} bids</p>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="mt-5">
+          {auction.status === 'won' ? (
+            <button className="w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-black transition hover:bg-amber-400">
+              Claim Item
+            </button>
+          ) : (
+            <button
+              onClick={() => onBid(auction.id)}
+              className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-[0.98]"
+            >
+              Place Bid (${(auction.currentBid + 50).toLocaleString()})
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

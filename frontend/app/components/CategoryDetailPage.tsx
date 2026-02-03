@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CategorySidebar from "./CategorySidebar";
 
 export type ActionVariant = "primary" | "secondary" | "ghost";
@@ -80,6 +80,40 @@ export default function CategoryDetailPage({
   const [selectedItem, setSelectedItem] = useState<AuctionItem | null>(null);
   const [bid, setBid] = useState("");
   const [error, setError] = useState("");
+  const [mergedItems, setMergedItems] = useState<AuctionItem[]>(items);
+
+  // Load created auctions from LocalStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
+      if (savedAuctionsRaw) {
+        const savedAuctions = JSON.parse(savedAuctionsRaw);
+        // Filter by category (case-insensitive)
+        const relevantAuctions = savedAuctions.filter((a: any) =>
+          a.category.toLowerCase() === categoryKey.toLowerCase()
+        );
+
+        const formattedAuctions = relevantAuctions.map((a: any) => ({
+          name: a.title,
+          img: a.imageUrl,
+          currentBid: a.currentBid,
+          endsIn: "3d 5h", // mock
+          watchers: 0,
+          condition: "New Listing",
+          location: "Local"
+        }));
+
+        setMergedItems(prev => {
+          const existingNames = new Set(prev.map(p => p.name));
+          const uniqueNew = formattedAuctions.filter((a: any) => !existingNames.has(a.name));
+          return [...uniqueNew, ...prev];
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load local auctions", e);
+    }
+  }, [categoryKey]);
 
   const openModal = (item: AuctionItem) => {
     setSelectedItem(item);
@@ -185,10 +219,10 @@ export default function CategoryDetailPage({
                 </p>
                 <h2 className="text-2xl font-semibold">Active consignments</h2>
               </div>
-              <span className="text-sm text-white/60">{items.length} curated lots</span>
+              <span className="text-sm text-white/60">{mergedItems.length} curated lots</span>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {items.map((item) => (
+              {mergedItems.map((item) => (
                 <div
                   key={item.name}
                   className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
