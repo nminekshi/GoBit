@@ -22,7 +22,7 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
   {
     id: "s1",
     title: "Vintage Leica M3",
-    category: "Cameras",
+    category: "Electronics",
     startPrice: 1200,
     currentBid: 1550,
     status: "active",
@@ -34,7 +34,7 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
   {
     id: "s2",
     title: "Eames Lounge Chair Replica",
-    category: "Furniture",
+    category: "Art & Editions",
     startPrice: 500,
     currentBid: 500,
     status: "draft",
@@ -46,7 +46,7 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
   {
     id: "s3",
     title: "Signed Basketball Jersey",
-    category: "Sports",
+    category: "Art & Editions",
     startPrice: 200,
     currentBid: 450,
     status: "sold",
@@ -69,10 +69,11 @@ export default function SellerDashboard() {
   // Create Form State
   const [newAuction, setNewAuction] = useState({
     title: "",
-    category: "Electronics",
+    category: "Watches",
     startPrice: "",
     imageUrl: "",
   });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -102,6 +103,17 @@ export default function SellerDashboard() {
   }, []);
 
   // --- Handlers ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateAuction = (e: React.FormEvent) => {
     e.preventDefault();
     const auction: Auction = {
@@ -112,7 +124,7 @@ export default function SellerDashboard() {
       currentBid: Number(newAuction.startPrice),
       status: "active",
       bidsCount: 0,
-      imageUrl: newAuction.imageUrl || "https://images.unsplash.com/photo-1550259114-ad7188f0a967?auto=format&fit=crop&q=80&w=260&h=200", // default placeholder
+      imageUrl: previewUrl || newAuction.imageUrl || "https://images.unsplash.com/photo-1550259114-ad7188f0a967?auto=format&fit=crop&q=80&w=260&h=200", // default placeholder
       views: 0,
       createdAt: new Date(),
     };
@@ -131,7 +143,8 @@ export default function SellerDashboard() {
     }
 
     setIsCreateOpen(false);
-    setNewAuction({ title: "", category: "Electronics", startPrice: "", imageUrl: "" });
+    setNewAuction({ title: "", category: "Watches", startPrice: "", imageUrl: "" });
+    setPreviewUrl(null);
     alert("Auction Created Successfully!");
   };
 
@@ -289,10 +302,12 @@ export default function SellerDashboard() {
                     onChange={e => setNewAuction({ ...newAuction, category: e.target.value })}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
                   >
+                    <option value="Watches">Watches</option>
+                    <option value="Vehicles">Vehicles</option>
                     <option value="Electronics">Electronics</option>
-                    <option value="Fashion">Fashion</option>
-                    <option value="Home">Home</option>
-                    <option value="Collectibles">Collectibles</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Art & Editions">Art & Editions</option>
+                    <option value="Computers">Computers</option>
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -309,14 +324,60 @@ export default function SellerDashboard() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Image URL (Optional)</label>
-                <input
-                  type="text"
-                  value={newAuction.imageUrl}
-                  onChange={e => setNewAuction({ ...newAuction, imageUrl: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
-                  placeholder="https://..."
-                />
+                <label className="text-sm font-medium text-slate-300">Item Image</label>
+
+                {/* File Upload & Preview */}
+                <div className="flex flex-col gap-3">
+                  {previewUrl && (
+                    <div className="relative h-40 w-full overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewUrl(null);
+                          // Reset file input if needed, but managing uncontrolled input ref is extra work. 
+                          // Simple URL preview clear is fine.
+                        }}
+                        className="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white hover:bg-red-500"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* File Input */}
+                    <div className="relative flex items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/5 p-4 transition hover:border-emerald-500/50 hover:bg-emerald-500/10">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                      />
+                      <div className="text-center">
+                        <span className="text-sm text-emerald-400 font-medium">+ Upload Image</span>
+                        <p className="text-xs text-slate-500 mt-1">From device</p>
+                      </div>
+                    </div>
+
+                    {/* URL Input */}
+                    <input
+                      type="text"
+                      value={newAuction.imageUrl}
+                      onChange={e => {
+                        setNewAuction({ ...newAuction, imageUrl: e.target.value });
+                        // Optionally clear preview if URL is typed? Or keep both and prioritize preview?
+                        // Plan said prioritize file.
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:outline-none"
+                      placeholder="Or paste image URL..."
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 flex justify-end gap-3 pt-4">
