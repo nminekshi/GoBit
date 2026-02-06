@@ -94,6 +94,7 @@ export default function BuyerDashboard() {
   const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
   const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   // --- Effects ---
@@ -171,6 +172,10 @@ export default function BuyerDashboard() {
     if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
     if (activeTab === "bidding" && auction.myBid === undefined) return false;
 
+    if (activeCategory !== "all" && auction.category.toLowerCase() !== activeCategory) {
+      return false;
+    }
+
     // 2. Filter by Search
     if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -227,6 +232,10 @@ export default function BuyerDashboard() {
 
         {/* Main Content Area */}
         <div className="flex flex-col gap-6 lg:flex-row">
+          <FiltersPanel
+            activeCategory={activeCategory}
+            onCategorySelect={setActiveCategory}
+          />
           {/* Main Feed */}
           <div className="flex-1 space-y-6">
             {/* Controls */}
@@ -299,6 +308,86 @@ export default function BuyerDashboard() {
 
 // --- Components ---
 
+type FiltersPanelProps = {
+  activeCategory: string;
+  onCategorySelect: (value: string) => void;
+};
+
+function FiltersPanel({ activeCategory, onCategorySelect }: FiltersPanelProps) {
+  const categories = [
+    { label: "All", value: "all" },
+    { label: "Watches", value: "watches" },
+    { label: "Electronics", value: "electronics" },
+    { label: "Computers", value: "computers" },
+    { label: "Vehicles", value: "vehicles" },
+    { label: "Real Estate", value: "real estate" },
+    { label: "Art", value: "art" },
+    { label: "Cameras", value: "cameras" },
+    { label: "Furniture", value: "furniture" },
+    { label: "Gaming", value: "gaming" },
+  ];
+
+  const inputClasses = "w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none";
+
+  return (
+    <aside className="w-full shrink-0 space-y-4 lg:w-80">
+      <div className="rounded-3xl border border-white/10 bg-[#0b1020] p-5 backdrop-blur">
+        <p className="text-sm uppercase tracking-wide text-white/60">Categories</p>
+        <div className="mt-4 space-y-2">
+          {categories.map((category) => {
+            const isActive = activeCategory === category.value;
+            return (
+              <button
+                key={category.value}
+                onClick={() => onCategorySelect(category.value)}
+                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "border-white bg-white text-gray-900 shadow"
+                    : "border-white/10 text-white/70 hover:border-white/30 hover:text-white"
+                }`}
+              >
+                <span>{category.label}</span>
+                {isActive && <span className="text-xs font-normal text-gray-700">Live</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/10 bg-[#0b1020] p-5 backdrop-blur">
+        <p className="text-sm uppercase tracking-wide text-white/60">Filters</p>
+        <div className="mt-4 space-y-4 text-sm text-white/80">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-white/60">Brand</p>
+            <input type="text" placeholder="Brand" className={inputClasses} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-white/60">Condition</p>
+            <select className={inputClasses}>
+              <option value="">All</option>
+              <option value="new" className="text-gray-900">New</option>
+              <option value="used" className="text-gray-900">Used</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-white/60">Price</p>
+            <div className="flex gap-2">
+              <input type="number" placeholder="Min" className={inputClasses} />
+              <input type="number" placeholder="Max" className={inputClasses} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-white/60">Keywords</p>
+            <input type="text" placeholder="Enter keywords" className={inputClasses} />
+          </div>
+          <button className="w-full rounded-2xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white">Apply filters</button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+
 function AuctionCard({
   auction,
   onBid,
@@ -346,11 +435,11 @@ function AuctionCard({
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
         <img
           src={auction.imageUrl}
           alt={auction.title}
-          className="h-44 w-full object-cover object-center transition duration-500 group-hover:scale-105"
+          className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-hover:scale-105"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
       </div>

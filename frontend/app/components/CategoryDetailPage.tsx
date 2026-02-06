@@ -232,7 +232,7 @@ export default function CategoryDetailPage({
                   <button
                     type="button"
                     onClick={() => openModal(item)}
-                    className="relative flex h-56 w-full items-center justify-center overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
+                    className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918] flex items-center justify-center"
                     aria-label={`View details for ${item.name}`}
                   >
                     <img
@@ -240,6 +240,7 @@ export default function CategoryDetailPage({
                       alt={item.name}
                       className="h-full w-full object-cover object-center"
                     />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
                   </button>
                   <div className="flex flex-1 flex-col p-5">
                     <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>

@@ -102,7 +102,9 @@ export default function ExploreAuctionsPage() {
           </h2>
           {auctions.filter(a => a.recommended).map(a => (
             <div key={a.id} className="flex items-center gap-6 bg-purple-50 border border-purple-200 rounded-2xl p-4 mb-4 shadow-sm">
-              <img src={a.img} alt={a.title} className="w-24 h-24 object-cover rounded-xl" />
+              <div className="relative w-24 aspect-square overflow-hidden rounded-xl">
+                <img src={a.img} alt={a.title} className="absolute inset-0 h-full w-full object-cover" />
+              </div>
               <div className="flex-1">
                 <div className="text-lg font-bold text-gray-800 mb-1">{a.title}</div>
                 <div className="text-gray-500 text-sm mb-1">{a.category}</div>
@@ -123,8 +125,8 @@ export default function ExploreAuctionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {filteredAuctions.map(a => (
               <div key={a.id} className="bg-white rounded-2xl shadow p-4 flex flex-col">
-                <div className="relative">
-                  <img src={a.img} alt={a.title} className="w-full h-40 object-cover rounded-xl mb-3" />
+                <div className="relative mb-3 overflow-hidden rounded-xl aspect-[4/3]">
+                  <img src={a.img} alt={a.title} className="absolute inset-0 h-full w-full object-cover" />
                   {a.aiVerified && (
                     <span className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">AI Verified</span>
                   )}

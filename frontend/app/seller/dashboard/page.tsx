@@ -203,11 +203,11 @@ export default function SellerDashboard() {
                 return (
                   <div key={auction.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
                     {/* Image */}
-                    <div className="relative flex h-56 w-full items-center justify-center overflow-hidden border-b border-white/10 bg-black/30">
+                    <div className="relative w-full overflow-hidden border-b border-white/10 bg-black/30 aspect-[4/3]">
                       <img
                         src={auction.imageUrl}
                         alt={auction.title}
-                        className="h-full w-full object-cover object-center transition duration-500 hover:scale-105"
+                        className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 hover:scale-105"
                       />
                       <div className="absolute top-3 right-3">
                         <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
