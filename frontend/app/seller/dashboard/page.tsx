@@ -71,6 +71,36 @@ const MOCK_SELLER_AUCTIONS: Auction[] = [
   },
 ];
 
+// Normalize persisted auctions to ensure numeric fields and defaults are present
+const normalizeAuction = (a: any): Auction => {
+  const startPrice = Number(a.startPrice) || 0;
+  const currentBid = Number(a.currentBid ?? startPrice) || startPrice;
+  const views = Number(a.views) || 0;
+  const bidsCount = Number(a.bidsCount) || 0;
+  const startTime = a.startTime ? new Date(a.startTime) : new Date();
+  const endTime = a.endTime ? new Date(a.endTime) : new Date();
+
+  const statusList = ["active", "draft", "sold"] as const;
+  const status = statusList.includes(a.status) ? a.status : "draft";
+
+  return {
+    id: a.id ?? crypto.randomUUID(),
+    title: a.title ?? "Untitled Auction",
+    category: a.category ?? "Misc",
+    description: a.description ?? "",
+    startPrice,
+    currentBid,
+    status,
+    startTime,
+    endTime,
+    winner: a.winner,
+    bidsCount,
+    imageUrl: a.imageUrl || "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
+    views,
+    createdAt: a.createdAt ? new Date(a.createdAt) : new Date(),
+  };
+};
+
 export default function SellerDashboard() {
   // --- State ---
   const [myAuctions, setMyAuctions] = useState<Auction[]>(MOCK_SELLER_AUCTIONS);
@@ -98,12 +128,12 @@ export default function SellerDashboard() {
       if (savedAuctions) {
         const parsedAuctions = JSON.parse(savedAuctions);
 
-        // Merge logic: Create a map with MOCKs, then override with saved auctions if ID matches
-        const auctionMap = new Map();
-        MOCK_SELLER_AUCTIONS.forEach(a => auctionMap.set(a.id, a));
-        parsedAuctions.forEach((a: any) => auctionMap.set(a.id, a));
+        // Merge logic: normalize all auctions then overlay saved on top of mocks by id
+        const auctionMap = new Map<string, Auction>();
+        MOCK_SELLER_AUCTIONS.map(normalizeAuction).forEach(a => auctionMap.set(a.id, a));
+        parsedAuctions.map(normalizeAuction).forEach((a: Auction) => auctionMap.set(a.id, a));
 
-        setMyAuctions(Array.from(auctionMap.values()) as Auction[]);
+        setMyAuctions(Array.from(auctionMap.values()));
       }
     } catch {
       // ignore parse errors
@@ -117,10 +147,10 @@ export default function SellerDashboard() {
 
   const totalEarnings = myAuctions
     .filter((a) => a.status === "sold")
-    .reduce((sum, a) => sum + a.currentBid, 0);
+    .reduce((sum, a) => sum + (Number(a.currentBid) || Number(a.startPrice) || 0), 0);
 
   const activeListings = myAuctions.filter(a => a.status === 'active').length;
-  const totalViews = myAuctions.reduce((sum, a) => sum + a.views, 0);
+  const totalViews = myAuctions.reduce((sum, a) => sum + (Number(a.views) || 0), 0);
 
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -242,7 +272,7 @@ export default function SellerDashboard() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between text-sm">
-                        <span className="text-white/60">{auction.views} watchers</span>
+                        <span className="text-white/60">{auction.views} views</span>
                         <span className="text-emerald-300">Bid ready</span>
                       </div>
 
