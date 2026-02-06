@@ -308,89 +308,106 @@ function AuctionCard({
   onBid: (id: string) => void;
   onWatchlist: (id: string) => void;
 }) {
+  const statusTone = auction.status === "won"
+    ? "bg-amber-500/20 text-amber-200"
+    : auction.status === "active"
+      ? "bg-emerald-500/15 text-emerald-200"
+      : "bg-white/10 text-white/70";
+
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-emerald-500/30 hover:shadow-xl hover:shadow-emerald-900/10">
-      {/* Image Area */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-800">
+    <div className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-white transition hover:border-white/30 hover:shadow-[0_18px_40px_rgba(16,185,129,0.2)]">
+      <div className="flex items-center justify-between">
+        <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+          {auction.category}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusTone}`}>
+            {auction.status}
+          </span>
+          <button
+            onClick={() => onWatchlist(auction.id)}
+            className="rounded-full border border-white/10 bg-black/30 p-2 text-white transition hover:border-rose-400/60 hover:text-rose-300"
+            aria-label="Toggle watchlist"
+          >
+            <svg
+              className={`h-5 w-5 ${auction.isWatchlisted ? "fill-rose-500 text-rose-400" : "text-white"}`}
+              fill={auction.isWatchlisted ? "currentColor" : "none"}
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
         <img
           src={auction.imageUrl}
           alt={auction.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-44 w-full object-cover object-center transition duration-500 group-hover:scale-105"
         />
-        {/* Badges */}
-        <div className="absolute left-3 top-3 flex gap-2">
-          <span className="rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-md">
-            {auction.category}
-          </span>
-          {auction.status === 'won' && (
-            <span className="rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-black shadow-lg">
-              WON
-            </span>
-          )}
-        </div>
-
-        {/* Watchlist Button */}
-        <button
-          onClick={() => onWatchlist(auction.id)}
-          className="absolute right-3 top-3 rounded-full bg-black/40 p-2 text-white backdrop-blur-md transition-colors hover:bg-rose-500 hover:text-white"
-        >
-          <svg
-            className={`h-5 w-5 ${auction.isWatchlisted ? "fill-rose-500 text-rose-500" : "text-white"}`}
-            fill={auction.isWatchlisted ? "currentColor" : "none"}
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
-        </button>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
       </div>
 
-      {/* Info Area */}
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-1 text-lg font-bold text-white group-hover:text-emerald-400">
-            {auction.title}
-          </h3>
-        </div>
-
-        <p className="text-xs text-slate-400 mt-1">
-          Sold by <span className="text-slate-300">{auction.seller}</span> ★ {auction.trustScore}
+      <div className="space-y-1">
+        <h3 className="text-xl font-semibold leading-tight group-hover:text-emerald-300">
+          {auction.title}
+        </h3>
+        <p className="text-sm text-white/60">
+          Sold by <span className="text-white/80">{auction.seller}</span> · ★ {auction.trustScore}
         </p>
+        {auction.myBid && (
+          <p className="text-xs font-semibold text-emerald-300">Your bid ${auction.myBid.toLocaleString()}</p>
+        )}
+      </div>
 
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-white/5 px-4 py-3">
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-500">Current Bid</p>
-            <p className="text-xl font-bold text-white">${auction.currentBid.toLocaleString()}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs font-medium uppercase text-slate-500">Ends In</p>
-            <p className={`font-mono text-sm font-semibold ${auction.endsIn === 'Ended' ? 'text-rose-400' : 'text-emerald-400'}`}>
-              {auction.endsIn}
-            </p>
-            <p className="text-[10px] text-slate-500">{auction.bidsCount} bids</p>
-          </div>
+      <div className="grid grid-cols-3 gap-3 text-sm">
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-white/50">Current bid</p>
+          <p className="text-lg font-semibold">${auction.currentBid.toLocaleString()}</p>
         </div>
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-white/50">Ends in</p>
+          <p className={`text-lg font-semibold ${auction.endsIn === "Ended" ? "text-rose-400" : "text-emerald-300"}`}>
+            {auction.endsIn}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-white/50">Bids</p>
+          <p className="text-lg font-semibold">{auction.bidsCount}</p>
+        </div>
+      </div>
 
-        {/* Action Button */}
-        <div className="mt-5">
-          {auction.status === 'won' ? (
-            <button className="w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-black transition hover:bg-amber-400">
-              Claim Item
-            </button>
-          ) : (
-            <button
-              onClick={() => onBid(auction.id)}
-              className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-500 active:scale-[0.98]"
-            >
-              Place Bid (${(auction.currentBid + 50).toLocaleString()})
-            </button>
-          )}
-        </div>
+      <div className="flex items-center justify-between text-sm text-white/60">
+        <span>{auction.isWatchlisted ? "On your watchlist" : "Add to watchlist"}</span>
+        <span className="text-emerald-300">Secure escrow</span>
+      </div>
+
+      <div className="flex gap-3">
+        {auction.status === "won" ? (
+          <button className="flex-1 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-amber-400">
+            Claim item
+          </button>
+        ) : (
+          <button
+            onClick={() => onBid(auction.id)}
+            className="flex-1 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
+          >
+            Place bid ${`${(auction.currentBid + 50).toLocaleString()}`}
+          </button>
+        )}
+        <button
+          onClick={() => onWatchlist(auction.id)}
+          className="rounded-2xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:border-white/50 hover:text-white"
+        >
+          {auction.isWatchlisted ? "Unwatch" : "Watch"}
+        </button>
       </div>
     </div>
   );
