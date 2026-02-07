@@ -60,8 +60,8 @@ export default function MessagesPage() {
   const thread = useMemo(() => THREADS.find((t) => t.id === activeThread)!, [activeThread]);
 
   return (
-    <main className="min-h-screen bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+    <main className="min-h-screen w-full bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
+      <div className="grid w-full gap-4 lg:grid-cols-[320px_1fr]">
         <aside className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
             <Search className="h-4 w-4 text-white/50" />

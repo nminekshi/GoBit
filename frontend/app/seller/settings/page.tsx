@@ -10,8 +10,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("Profile");
 
   return (
-    <main className="min-h-screen bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="flex flex-col gap-6">
+    <main className="min-h-screen w-full bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
+      <div className="flex w-full flex-col gap-6">
         <header className="flex flex-wrap items-center gap-3 justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">Seller</p>
