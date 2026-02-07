@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import FeedbackWidget from "./components/FeedbackWidget";
 import ChatbaseWidget from "./components/ChatbaseWidget";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -44,7 +43,6 @@ export default function RootLayout({
               <div>
                 <div className="flex flex-col items-center md:items-start">
                   <img src="/logo.png" alt="GoBit Logo" className="h-24 mb-2 -mt-4" />
-                  <FeedbackWidget />
                 </div>
                 <div className="mt-2">
                   <span className="font-bold text-base mb-2 block">Contact Us</span>
