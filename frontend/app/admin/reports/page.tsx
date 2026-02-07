@@ -11,7 +11,7 @@ export default function AdminReportsPage() {
 
   return (
     <main className="min-h-screen bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="mx-auto w-full max-w-none space-y-6">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-emerald-400">Admin</p>
