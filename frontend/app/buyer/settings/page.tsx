@@ -22,6 +22,12 @@ export default function BuyerSettingsPage() {
   const [profileName, setProfileName] = useState("Alex Morgan");
   const [profileEmail, setProfileEmail] = useState("alex.morgan@example.com");
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [securityPrefs, setSecurityPrefs] = useState({
+    twoFactor: true,
+    biometric: true,
+    trustedDevices: true,
+  });
+  const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [draftName, setDraftName] = useState(profileName);
@@ -199,6 +205,18 @@ export default function BuyerSettingsPage() {
     }
   };
 
+  const toggleSecurity = (key: keyof typeof securityPrefs) => {
+    setSecurityPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleNotification = (index: number) => {
+    setNotifications((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], enabled: !next[index].enabled };
+      return next;
+    });
+  };
+
   return (
     <main className="theme-page min-h-screen px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-none space-y-8">
@@ -264,9 +282,9 @@ export default function BuyerSettingsPage() {
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card title="Security" icon={<Lock className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3 text-sm text-theme-muted">
-              <Toggle label="Two-factor authentication" enabled />
-              <Toggle label="Biometric unlock (mobile)" enabled />
-              <Toggle label="Trusted devices" enabled />
+              <Toggle label="Two-factor authentication" enabled={securityPrefs.twoFactor} onToggle={() => toggleSecurity("twoFactor")} />
+              <Toggle label="Biometric unlock (mobile)" enabled={securityPrefs.biometric} onToggle={() => toggleSecurity("biometric")} />
+              <Toggle label="Trusted devices" enabled={securityPrefs.trustedDevices} onToggle={() => toggleSecurity("trustedDevices")} />
               <div className="rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-theme-muted">Last login</p>
                 <p className="text-sm font-semibold text-theme-strong">Feb 7, 2026 — 11:42 UTC</p>
@@ -277,13 +295,13 @@ export default function BuyerSettingsPage() {
 
           <Card title="Notifications" icon={<Bell className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3">
-              {NOTIFICATIONS.map((item) => (
+              {notifications.map((item, idx) => (
                 <div key={item.title} className="flex items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-theme-strong">{item.title}</p>
                     <p className="text-xs text-theme-muted">{item.desc}</p>
                   </div>
-                  <ToggleSwitch enabled={item.enabled} />
+                  <ToggleSwitch enabled={item.enabled} onToggle={() => toggleNotification(idx)} />
                 </div>
               ))}
             </div>
@@ -490,18 +508,23 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Toggle({ label, enabled }: { label: string; enabled?: boolean }) {
+function Toggle({ label, enabled, onToggle }: { label: string; enabled?: boolean; onToggle?: () => void }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3">
       <span className="text-sm text-theme-strong">{label}</span>
-      <ToggleSwitch enabled={enabled} />
+      <ToggleSwitch enabled={enabled} onToggle={onToggle} />
     </div>
   );
 }
 
-function ToggleSwitch({ enabled }: { enabled?: boolean }) {
+function ToggleSwitch({ enabled, onToggle }: { enabled?: boolean; onToggle?: () => void }) {
   return (
-    <button className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${enabled ? "bg-emerald-500" : "bg-white/20"}`}>
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${enabled ? "bg-emerald-500" : "bg-white/20"}`}
+      aria-pressed={enabled}
+    >
       <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${enabled ? "translate-x-5" : "translate-x-1"}`} />
     </button>
   );
