@@ -17,6 +17,10 @@ const APPEARANCE_MODES: { label: string; value: ThemeChoice }[] = [
   { label: "Dark", value: "dark" },
 ];
 
+const LANG_OPTIONS = ["English (US)", "Spanish (ES)", "French (FR)"];
+const TIMEZONE_OPTIONS = ["UTC -05:00", "UTC", "UTC +01:00", "UTC +05:30"];
+const CURRENCY_OPTIONS = ["USD ($)", "EUR (€)", "GBP (£)", "LKR (Rs)"];
+
 export default function BuyerSettingsPage() {
   const [theme, setTheme] = useState<ThemeChoice>("system");
   const [profileName, setProfileName] = useState("Alex Morgan");
@@ -28,6 +32,12 @@ export default function BuyerSettingsPage() {
     trustedDevices: true,
   });
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [localization, setLocalization] = useState({
+    language: LANG_OPTIONS[0],
+    timezone: TIMEZONE_OPTIONS[0],
+    currency: CURRENCY_OPTIONS[0],
+  });
+  const [localizationSaved, setLocalizationSaved] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [draftName, setDraftName] = useState(profileName);
@@ -108,6 +118,22 @@ export default function BuyerSettingsPage() {
     if (storedAvatar) {
       setProfileAvatar(storedAvatar);
       setDraftAvatar(storedAvatar);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("buyer-localization");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      setLocalization((prev) => ({
+        language: parsed.language || prev.language,
+        timezone: parsed.timezone || prev.timezone,
+        currency: parsed.currency || prev.currency,
+      }));
+    } catch {
+      // ignore malformed
     }
   }, []);
 
@@ -217,6 +243,14 @@ export default function BuyerSettingsPage() {
     });
   };
 
+  const handleLocalizationSave = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("buyer-localization", JSON.stringify(localization));
+    }
+    setLocalizationSaved("Localization saved");
+    setTimeout(() => setLocalizationSaved(null), 1500);
+  };
+
   return (
     <main className="theme-page min-h-screen px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-none space-y-8">
@@ -311,10 +345,52 @@ export default function BuyerSettingsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Localization" icon={<Globe2 className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3 text-sm text-theme-muted">
-              <Field label="Language" value="English (US)" />
-              <Field label="Time zone" value="UTC -05:00" />
-              <Field label="Currency" value="USD ($)" />
-              <button className="w-full rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">Save localization</button>
+              <label className="block space-y-1 text-sm">
+                <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">Language</span>
+                <select
+                  value={localization.language}
+                  onChange={(e) => setLocalization((prev) => ({ ...prev, language: e.target.value }))}
+                  className="w-full rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 font-semibold text-theme-strong outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  {LANG_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">Time zone</span>
+                <select
+                  value={localization.timezone}
+                  onChange={(e) => setLocalization((prev) => ({ ...prev, timezone: e.target.value }))}
+                  className="w-full rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 font-semibold text-theme-strong outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  {TIMEZONE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1 text-sm">
+                <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">Currency</span>
+                <select
+                  value={localization.currency}
+                  onChange={(e) => setLocalization((prev) => ({ ...prev, currency: e.target.value }))}
+                  className="w-full rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 font-semibold text-theme-strong outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                onClick={handleLocalizationSave}
+                className="w-full rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600"
+              >
+                Save localization
+              </button>
+              {localizationSaved && <p className="text-xs text-emerald-300">{localizationSaved}</p>}
             </div>
           </Card>
 
@@ -485,15 +561,6 @@ function Card({ title, icon, children }: { title: string; icon: React.ReactNode;
       </div>
       <div className="mt-4 flex-1 space-y-3">{children}</div>
     </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <label className="block space-y-1 text-sm">
-      <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">{label}</span>
-      <div className="rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 font-semibold text-theme-strong">{value}</div>
-    </label>
   );
 }
 
