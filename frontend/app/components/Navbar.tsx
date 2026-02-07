@@ -26,6 +26,12 @@ function Navbar() {
     ? "/seller/dashboard"
     : "/buyer/dashboard";
 
+  const settingsHref = user?.role?.toLowerCase() === "admin"
+    ? "/admin/settings"
+    : user?.role?.toLowerCase() === "seller"
+    ? "/seller/settings"
+    : "/buyer/settings";
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -197,7 +203,7 @@ function Navbar() {
                       <span className="text-lg">👤</span> Dashboard
                     </Link>
                     <Link
-                      href="/buyer/settings"
+                      href={settingsHref}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-slate-800"
                       onClick={() => setMenuOpen(false)}
                     >
