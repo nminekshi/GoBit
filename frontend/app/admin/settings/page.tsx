@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import { Settings, ShieldCheck, Bell, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 const PLATFORM_TOGGLES = [
@@ -27,6 +28,24 @@ const COMPLIANCE_BADGES = [
 ];
 
 export default function AdminSettingsPage() {
+  const [platform, setPlatform] = useState(PLATFORM_TOGGLES);
+  const [notifications, setNotifications] = useState(NOTIFICATION_TOGGLES);
+  const [security, setSecurity] = useState(SECURITY_TOGGLES);
+
+  const handleToggle = (groupSetter: React.Dispatch<React.SetStateAction<typeof PLATFORM_TOGGLES>>, label: string) => {
+    groupSetter((prev) => prev.map((item) => (item.label === label ? { ...item, on: !item.on } : item)));
+  };
+
+  const handleSave = () => {
+    const payload = {
+      platform,
+      notifications,
+      security,
+    };
+    console.log("Admin settings saved", payload);
+    alert("Settings saved (demo). Wire this to your API.");
+  };
+
   return (
     <main className="min-h-screen bg-[#050915] px-4 py-8 text-white sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-none space-y-6">
@@ -45,24 +64,42 @@ export default function AdminSettingsPage() {
         <div className="grid w-full gap-5 md:grid-cols-2">
           <SettingsCard title="Platform" icon={<Settings className="h-5 w-5 text-emerald-300" />}> 
             <div className="space-y-3">
-              {PLATFORM_TOGGLES.map((item) => (
-                <ToggleRow key={item.label} label={item.label} hint={item.hint} defaultOn={item.on} />
+              {platform.map((item) => (
+                <ToggleRow
+                  key={item.label}
+                  label={item.label}
+                  hint={item.hint}
+                  on={item.on}
+                  onToggle={() => handleToggle(setPlatform, item.label)}
+                />
               ))}
             </div>
           </SettingsCard>
 
           <SettingsCard title="Notifications" icon={<Bell className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3">
-              {NOTIFICATION_TOGGLES.map((item) => (
-                <ToggleRow key={item.label} label={item.label} hint={item.hint} defaultOn={item.on} />
+              {notifications.map((item) => (
+                <ToggleRow
+                  key={item.label}
+                  label={item.label}
+                  hint={item.hint}
+                  on={item.on}
+                  onToggle={() => handleToggle(setNotifications, item.label)}
+                />
               ))}
             </div>
           </SettingsCard>
 
           <SettingsCard title="Security" icon={<Lock className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3">
-              {SECURITY_TOGGLES.map((item) => (
-                <ToggleRow key={item.label} label={item.label} hint={item.hint} defaultOn={item.on} />
+              {security.map((item) => (
+                <ToggleRow
+                  key={item.label}
+                  label={item.label}
+                  hint={item.hint}
+                  on={item.on}
+                  onToggle={() => handleToggle(setSecurity, item.label)}
+                />
               ))}
               <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
                 <ShieldCheck className="h-4 w-4" /> 2FA enforced for admins
@@ -91,7 +128,10 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="flex justify-end">
-          <button className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400">
+          <button
+            onClick={handleSave}
+            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400"
+          >
             <CheckCircle2 className="h-4 w-4" /> Save Changes
           </button>
         </div>
@@ -112,32 +152,33 @@ function SettingsCard({ title, icon, children }: { title: string; icon: React.Re
   );
 }
 
-function ToggleRow({ label, hint, defaultOn }: { label: string; hint?: string; defaultOn?: boolean }) {
+function ToggleRow({ label, hint, on, onToggle }: { label: string; hint?: string; on?: boolean; onToggle: () => void }) {
   return (
     <div className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-3">
       <div className="flex-1">
         <p className="text-sm font-semibold text-white">{label}</p>
         {hint && <p className="text-xs text-white/60">{hint}</p>}
       </div>
-      <Toggle defaultOn={defaultOn} />
+      <Toggle on={on} onToggle={onToggle} />
     </div>
   );
 }
 
-function Toggle({ defaultOn }: { defaultOn?: boolean }) {
+function Toggle({ on, onToggle }: { on?: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
-      aria-pressed={defaultOn}
+      aria-pressed={on}
+      onClick={onToggle}
       className={`relative h-7 w-12 rounded-full border transition ${
-        defaultOn
+        on
           ? "border-emerald-400/60 bg-emerald-500/30"
           : "border-white/20 bg-white/10"
       }`}
     >
       <span
         className={`absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition ${
-          defaultOn ? "right-[4px]" : "left-[4px]"
+          on ? "right-[4px]" : "left-[4px]"
         }`}
       />
     </button>
