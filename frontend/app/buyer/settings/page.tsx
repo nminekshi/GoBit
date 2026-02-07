@@ -203,7 +203,7 @@ export default function BuyerSettingsPage() {
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-1">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card title="Localization" icon={<Globe2 className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3 text-sm text-theme-muted">
               <Field label="Language" value="English (US)" />
@@ -212,21 +212,21 @@ export default function BuyerSettingsPage() {
               <button className="w-full rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">Save localization</button>
             </div>
           </Card>
-        </div>
 
-        <Card title="Privacy" icon={<Shield className="h-5 w-5 text-emerald-300" />}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {["Hide username on bids", "Mask phone from sellers", "Anonymize analytics", "Share watchlist with team"].map((pref) => (
-              <div key={pref} className="flex items-center gap-2 rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-theme-muted">
-                <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                <span>{pref}</span>
-              </div>
-            ))}
-          </div>
-          <button className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">
-            Review privacy controls
-          </button>
-        </Card>
+          <Card title="Privacy" icon={<Shield className="h-5 w-5 text-emerald-300" />}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {["Hide username on bids", "Mask phone from sellers", "Anonymize analytics", "Share watchlist with team"].map((pref) => (
+                <div key={pref} className="flex items-center gap-2 rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-theme-muted">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                  <span>{pref}</span>
+                </div>
+              ))}
+            </div>
+            <button className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">
+              Review privacy controls
+            </button>
+          </Card>
+        </div>
       </div>
 
       {isProfileModalOpen && (
