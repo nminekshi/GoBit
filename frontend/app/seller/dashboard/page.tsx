@@ -108,6 +108,10 @@ export default function SellerDashboard() {
   const [myAuctions, setMyAuctions] = useState<Auction[]>(MOCK_SELLER_AUCTIONS);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileName, setProfileName] = useState("Seller");
+  const [profileEmail, setProfileEmail] = useState("seller@example.com");
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
 
   // Dashboard Filters
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "draft" | "sold">("all");
@@ -126,6 +130,7 @@ export default function SellerDashboard() {
       const username = parsed?.user?.username as string | undefined;
       if (username) {
         setDisplayName(username);
+        setProfileName(username);
       }
 
       // Load auctions from local storage
@@ -165,6 +170,25 @@ export default function SellerDashboard() {
     { label: "Settings", href: "/seller/settings", icon: Settings },
   ];
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = e.target?.result;
+      if (typeof result === "string") {
+        setProfileAvatar(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = () => {
+    const safeName = profileName.trim() || "Seller";
+    setDisplayName(safeName);
+    setIsProfileModalOpen(false);
+  };
+
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="w-full space-y-8">
@@ -202,9 +226,17 @@ export default function SellerDashboard() {
             <div className="flex h-full flex-col gap-3">
               <div className="flex items-center gap-3 pr-1">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
-                    {(displayName || "S").charAt(0).toUpperCase()}
-                  </div>
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt="Profile"
+                      className="h-10 w-10 rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
+                      {(displayName || "S").charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div
                     className={`flex flex-col transition-all duration-300 ${
                       isCollapsed
@@ -214,6 +246,14 @@ export default function SellerDashboard() {
                   >
                     <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
                     <p className="text-sm font-semibold text-white">{displayName || "Seller"}</p>
+                    {!isCollapsed && (
+                      <button
+                        onClick={() => setIsProfileModalOpen(true)}
+                        className="mt-1 w-fit rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/80 transition hover:border-emerald-400/60 hover:text-white"
+                      >
+                        Edit Profile
+                      </button>
+                    )}
                   </div>
                 </div>
                 <button
@@ -384,7 +424,71 @@ export default function SellerDashboard() {
         </div>
       </div>
 
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#141820] p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">Edit Profile</h3>
+                <p className="mt-1 text-sm text-white/60">Update your name, email, and profile picture.</p>
+              </div>
+              <button
+                aria-label="Close"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
 
+            <div className="mt-6 space-y-4">
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Name</span>
+                <input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="Your name"
+                />
+              </label>
+
+              <div className="space-y-2 text-sm font-semibold text-white/80">
+                <span>Profile Picture</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    {profileAvatar ? (
+                      <img src={profileAvatar} alt="Preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-white/60">No photo</span>
+                    )}
+                  </div>
+                  <label className="flex-1 cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white/80 transition hover:border-emerald-400/60 hover:text-white">
+                    Upload New Photo
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Email</span>
+                <input
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="you@example.com"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

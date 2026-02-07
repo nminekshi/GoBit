@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { User, Bell, Lock, Palette, CheckCircle2, Smartphone, Globe2, Shield } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { User, Bell, Lock, Palette, CheckCircle2, Globe2, Shield, LogOut, KeyRound } from "lucide-react";
 
 const NOTIFICATIONS = [
   { title: "Bid status", desc: "Alerts when you are outbid or win", enabled: true },
@@ -19,6 +19,10 @@ const APPEARANCE_MODES: { label: string; value: ThemeChoice }[] = [
 
 export default function BuyerSettingsPage() {
   const [theme, setTheme] = useState<ThemeChoice>("system");
+  const [profileName, setProfileName] = useState("Alex Morgan");
+  const [profileEmail, setProfileEmail] = useState("alex.morgan@example.com");
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -45,6 +49,21 @@ export default function BuyerSettingsPage() {
     return () => media.removeEventListener("change", handler);
   }, [theme]);
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = e.target?.result;
+      if (typeof result === "string") setProfileAvatar(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerAvatarUpload = () => {
+    avatarInputRef.current?.click();
+  };
+
   return (
     <main className="theme-page min-h-screen px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-none space-y-8">
@@ -54,19 +73,57 @@ export default function BuyerSettingsPage() {
           <p className="text-sm text-theme-muted">Profile, preferences, and security controls aligned with the buyer dashboard style.</p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <Card title="Profile" icon={<User className="h-5 w-5 text-emerald-300" />}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Full name" value="Alex Morgan" />
-              <Field label="Email" value="alex.morgan@example.com" />
-              <Field label="Phone" value="+1 (555) 210-8899" />
-              <Field label="Location" value="New York, USA" />
+        <div className="space-y-6">
+          <div className="flex flex-col gap-6 rounded-3xl border border-[color:var(--card-border)] bg-[var(--card-bg)] p-6 shadow-lg shadow-black/20 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-emerald-400 bg-black/40 text-3xl font-bold text-white">
+                {profileAvatar ? (
+                  <img src={profileAvatar} alt="Profile" className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  profileName.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold text-theme-strong">{profileName}</h2>
+                <p className="text-theme-muted">{profileEmail}</p>
+                <span className="inline-flex w-fit items-center rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">Seller</span>
+              </div>
             </div>
-            <button className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">
-              Save profile
-            </button>
-          </Card>
+            <div className="flex items-center gap-3">
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              <button
+                onClick={triggerAvatarUpload}
+                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600"
+              >
+                <User className="h-4 w-4" /> Edit Profile
+              </button>
+            </div>
+          </div>
 
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card title="Personal Information" icon={<User className="h-5 w-5 text-emerald-300" />}>
+              <div className="grid gap-3">
+                <ReadOnlyField label="Full Name" value={profileName} />
+                <ReadOnlyField label="Email Address" value={profileEmail} />
+              </div>
+            </Card>
+
+            <Card title="Account Settings" icon={<Lock className="h-5 w-5 text-emerald-300" />}>
+              <div className="space-y-3 text-theme-strong">
+                <button className="flex w-full items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3 text-left text-sm font-semibold transition hover:border-emerald-400/60">
+                  <span className="flex items-center gap-2"><KeyRound className="h-4 w-4 text-theme-muted" /> Change Password</span>
+                  <span className="text-theme-muted">••••••</span>
+                </button>
+                <button className="flex w-full items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3 text-left text-sm font-semibold text-red-400 transition hover:border-red-400/60">
+                  <span className="flex items-center gap-2"><LogOut className="h-4 w-4" /> Sign Out</span>
+                  <span className="text-red-300">→</span>
+                </button>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card title="Appearance" icon={<Palette className="h-5 w-5 text-emerald-300" />}>
             <div className="flex flex-wrap gap-3">
               {APPEARANCE_MODES.map((mode) => {
@@ -169,6 +226,17 @@ function Field({ label, value }: { label: string; value: string }) {
       <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">{label}</span>
       <div className="rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 font-semibold text-theme-strong">{value}</div>
     </label>
+  );
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1 text-sm">
+      <span className="text-xs uppercase tracking-[0.18em] text-theme-muted">{label}</span>
+      <div className="rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-3 text-base font-semibold text-theme-strong">
+        {value}
+      </div>
+    </div>
   );
 }
 
