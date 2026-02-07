@@ -2,16 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Eye, Bookmark, Wallet, Settings, Menu } from "lucide-react";
 
 // --- Types ---
 interface Auction {
   id: string;
   title: string;
   category: string;
-  imageUrl: string; // Using simple placeholders for now
+  imageUrl: string;
   currentBid: number;
-  myBid?: number; // The user's highest bid if any
-  endsIn: string; // content string like "2h 15m"
+  myBid?: number;
+  endsIn: string;
   bidsCount: number;
   isWatchlisted: boolean;
   status: "active" | "won" | "ended";
@@ -89,13 +91,22 @@ const MOCK_AUCTIONS: Auction[] = [
   },
 ];
 
+const NAV_ITEMS = [
+  { label: "Overview", icon: LayoutDashboard, tab: "all" as const },
+  { label: "Active Bids", icon: Eye, tab: "bidding" as const },
+  { label: "Watchlist", icon: Bookmark, tab: "watchlist" as const },
+  { label: "Payments", icon: Wallet, href: "/buyer/payments" },
+  { label: "Settings", icon: Settings, href: "/buyer/settings" },
+];
+
 export default function BuyerDashboard() {
   // --- State ---
   const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
   const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const pathname = usePathname();
 
   // --- Effects ---
   useEffect(() => {
@@ -109,44 +120,40 @@ export default function BuyerDashboard() {
         setDisplayName(username);
       }
 
-      // Load global auctions from local storage
       const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
       if (savedAuctionsRaw) {
         const savedAuctions = JSON.parse(savedAuctionsRaw);
-        // Convert seller auction format to buyer auction format if needed
         const formattedSavedAuctions = savedAuctions.map((a: any) => ({
           id: a.id,
           title: a.title,
           category: a.category,
           imageUrl: a.imageUrl,
           currentBid: a.currentBid,
-          // saved auctions don't have endsIn, mock it
           endsIn: "3d 5h",
           bidsCount: a.bidsCount,
           isWatchlisted: false,
           status: a.status,
-          seller: displayName || "Local Seller", // assume current user is seller for demo
-          trustScore: 5.0
+          seller: displayName || "Local Seller",
+          trustScore: 5.0,
         }));
 
         setAuctions((prev) => {
-          const existingIds = new Set(prev.map(p => p.id));
+          const existingIds = new Set(prev.map((p) => p.id));
           const uniqueNew = formattedSavedAuctions.filter((a: any) => !existingIds.has(a.id));
           return [...uniqueNew, ...prev];
         });
       }
-
     } catch {
       // ignore parse errors
     }
-  }, []);
+  }, [displayName]);
 
   // --- Handlers ---
   const handleBid = (id: string) => {
     setAuctions((prev) =>
       prev.map((auction) => {
         if (auction.id === id) {
-          const nextBid = auction.currentBid + 50; // Simple increment
+          const nextBid = auction.currentBid + 50;
           return { ...auction, currentBid: nextBid, myBid: nextBid, bidsCount: auction.bidsCount + 1 };
         }
         return auction;
@@ -157,50 +164,42 @@ export default function BuyerDashboard() {
 
   const toggleWatchlist = (id: string) => {
     setAuctions((prev) =>
-      prev.map((auction) => {
-        if (auction.id === id) {
-          return { ...auction, isWatchlisted: !auction.isWatchlisted };
-        }
-        return auction;
-      })
+      prev.map((auction) => (auction.id === id ? { ...auction, isWatchlisted: !auction.isWatchlisted } : auction))
     );
   };
 
   // --- Derived State ---
   const filteredAuctions = auctions.filter((auction) => {
-    // 1. Filter by Tab
     if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
     if (activeTab === "bidding" && auction.myBid === undefined) return false;
-
-    if (activeCategory !== "all" && auction.category.toLowerCase() !== activeCategory) {
-      return false;
-    }
-
-    // 2. Filter by Search
-    if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
+    if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  // Stats
   const activeBidsCount = auctions.filter((a) => a.myBid && a.status === "active").length;
   const watchlistCount = auctions.filter((a) => a.isWatchlisted).length;
   const auctionsWon = auctions.filter((a) => a.status === "won").length;
 
+  const isNavActive = (item: (typeof NAV_ITEMS)[number]) => {
+    if (item.tab) return activeTab === item.tab;
+    return pathname === item.href;
+  };
+
+  const handleNavClick = (item: (typeof NAV_ITEMS)[number]) => {
+    if (item.tab) {
+      setActiveTab(item.tab);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="w-full space-y-8">
-        {/* Header Section */}
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
               Hello, <span className="text-emerald-400">{displayName || "Buyer"}</span>
             </h1>
-            <p className="mt-2 text-slate-400">
-              Welcome to your auction command center. Find, bid, and win.
-            </p>
+            <p className="mt-2 text-slate-400">Welcome to your auction command center. Find, bid, and win.</p>
           </div>
           <div className="flex gap-3">
             <Link href="/categories">
@@ -214,7 +213,6 @@ export default function BuyerDashboard() {
           </div>
         </header>
 
-        {/* Stats Grid */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
             <p className="text-sm font-medium text-slate-400">Active Bids</p>
@@ -230,33 +228,110 @@ export default function BuyerDashboard() {
           </div>
         </section>
 
-        {/* Main Content Area */}
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <FiltersPanel
-            activeCategory={activeCategory}
-            onCategorySelect={setActiveCategory}
-          />
-          {/* Main Feed */}
+        <div className="flex w-full flex-col gap-6 lg:flex-row">
+          <aside
+            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${
+              isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
+            } min-h-[80vh]`}
+          >
+            <div className="flex h-full flex-col gap-3">
+              <div className="flex items-center gap-3 pr-1">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
+                    {(displayName || "B").charAt(0).toUpperCase()}
+                  </div>
+                  <div
+                    className={`flex flex-col transition-all duration-300 ${
+                      isCollapsed
+                        ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
+                        : "opacity-100 w-auto max-w-[180px]"
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
+                    <p className="text-sm font-semibold text-white">{displayName || "Buyer"}</p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Toggle sidebar"
+                  onClick={() => setIsCollapsed((prev) => !prev)}
+                  className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
+              </div>
+
+              <nav className="space-y-3">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const active = isNavActive(item);
+                  const body = (
+                    <div
+                      className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
+                        active
+                          ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                          : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span
+                        className={`transition-all duration-200 ${
+                          isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+
+                  if (item.tab) {
+                    return (
+                      <button
+                        key={item.label}
+                        onClick={() => handleNavClick(item)}
+                        className="w-full text-left"
+                      >
+                        {body}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <Link key={item.href} href={item.href!}>
+                      {body}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {!isCollapsed && (
+                <div className="mt-auto rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-cyan-500/15 to-indigo-500/20 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)]">
+                  <p className="text-xs uppercase tracking-wide text-emerald-50/80">Save more</p>
+                  <p className="mt-1 text-sm font-semibold text-white">Enable alerts</p>
+                  <p className="mt-1 text-emerald-50/80">Get notified when bids move or auctions end.</p>
+                  <button className="mt-3 w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
+                    Turn on alerts
+                  </button>
+                </div>
+              )}
+            </div>
+          </aside>
+
           <div className="flex-1 space-y-6">
-            {/* Controls */}
-            <div className="flex flex-col gap-4 sticky top-4 z-10 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
-              {/* Tabs */}
+            <div className="sticky top-4 z-10 flex flex-col gap-4 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
               <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
                 {(["all", "bidding", "watchlist"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab
-                      ? "bg-emerald-500 text-white shadow-sm"
-                      : "text-slate-400 hover:text-white"
-                      }`}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                      activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                    }`}
                   >
                     {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
                   </button>
                 ))}
               </div>
 
-              {/* Search */}
               <div className="relative">
                 <input
                   type="text"
@@ -281,7 +356,6 @@ export default function BuyerDashboard() {
               </div>
             </div>
 
-            {/* Auction Grid */}
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {filteredAuctions.length === 0 ? (
                 <div className="col-span-full py-20 text-center">
@@ -300,93 +374,12 @@ export default function BuyerDashboard() {
             </div>
           </div>
         </div>
-
       </div>
     </main>
   );
 }
 
 // --- Components ---
-
-type FiltersPanelProps = {
-  activeCategory: string;
-  onCategorySelect: (value: string) => void;
-};
-
-function FiltersPanel({ activeCategory, onCategorySelect }: FiltersPanelProps) {
-  const categories = [
-    { label: "All", value: "all" },
-    { label: "Watches", value: "watches" },
-    { label: "Electronics", value: "electronics" },
-    { label: "Computers", value: "computers" },
-    { label: "Vehicles", value: "vehicles" },
-    { label: "Real Estate", value: "real estate" },
-    { label: "Art", value: "art" },
-    { label: "Cameras", value: "cameras" },
-    { label: "Furniture", value: "furniture" },
-    { label: "Gaming", value: "gaming" },
-  ];
-
-  const inputClasses = "w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none";
-
-  return (
-    <aside className="w-full shrink-0 space-y-4 lg:w-80">
-      <div className="rounded-3xl border border-white/10 bg-[#0b1020] p-5 backdrop-blur">
-        <p className="text-sm uppercase tracking-wide text-white/60">Categories</p>
-        <div className="mt-4 space-y-2">
-          {categories.map((category) => {
-            const isActive = activeCategory === category.value;
-            return (
-              <button
-                key={category.value}
-                onClick={() => onCategorySelect(category.value)}
-                className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                  isActive
-                    ? "border-white bg-white text-gray-900 shadow"
-                    : "border-white/10 text-white/70 hover:border-white/30 hover:text-white"
-                }`}
-              >
-                <span>{category.label}</span>
-                {isActive && <span className="text-xs font-normal text-gray-700">Live</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-white/10 bg-[#0b1020] p-5 backdrop-blur">
-        <p className="text-sm uppercase tracking-wide text-white/60">Filters</p>
-        <div className="mt-4 space-y-4 text-sm text-white/80">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-white/60">Brand</p>
-            <input type="text" placeholder="Brand" className={inputClasses} />
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-white/60">Condition</p>
-            <select className={inputClasses}>
-              <option value="">All</option>
-              <option value="new" className="text-gray-900">New</option>
-              <option value="used" className="text-gray-900">Used</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-white/60">Price</p>
-            <div className="flex gap-2">
-              <input type="number" placeholder="Min" className={inputClasses} />
-              <input type="number" placeholder="Max" className={inputClasses} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wide text-white/60">Keywords</p>
-            <input type="text" placeholder="Enter keywords" className={inputClasses} />
-          </div>
-          <button className="w-full rounded-2xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white">Apply filters</button>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
 
 function AuctionCard({
   auction,
