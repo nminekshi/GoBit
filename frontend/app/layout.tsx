@@ -34,6 +34,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ConditionalChatbase />
+        <Navbar />
         {children}
         <footer className="w-full bg-linear-to-b from-[#020617] via-[#111827] to-[#4b5563] text-white mt-10">
           <div className="w-full py-10 px-4 md:px-8 lg:px-12">
