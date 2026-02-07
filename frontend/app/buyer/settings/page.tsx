@@ -130,6 +130,37 @@ export default function BuyerSettingsPage() {
     setIsProfileModalOpen(true);
   };
 
+  const persistProfile = (nextName: string, nextEmail: string, nextAvatar: string | null) => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem("profileName", nextName);
+    window.localStorage.setItem("profileEmail", nextEmail);
+    if (nextAvatar) {
+      window.localStorage.setItem("profileAvatar", nextAvatar);
+    } else {
+      window.localStorage.removeItem("profileAvatar");
+    }
+
+    const raw = window.localStorage.getItem("auth");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.user) {
+          parsed.user.username = nextName;
+          parsed.user.name = nextName;
+          parsed.user.email = nextEmail;
+          parsed.user.avatar = nextAvatar;
+          parsed.user.photoURL = nextAvatar;
+          window.localStorage.setItem("auth", JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore malformed auth
+      }
+    }
+
+    window.dispatchEvent(new Event("profile-updated"));
+  };
+
   const handleProfileSave = () => {
     const nextName = draftName.trim() || "Seller";
     const nextEmail = draftEmail.trim() || profileEmail;
@@ -139,16 +170,7 @@ export default function BuyerSettingsPage() {
     setProfileEmail(nextEmail);
     setProfileAvatar(nextAvatar);
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("profileName", nextName);
-      window.localStorage.setItem("profileEmail", nextEmail);
-      if (nextAvatar) {
-        window.localStorage.setItem("profileAvatar", nextAvatar);
-      } else {
-        window.localStorage.removeItem("profileAvatar");
-      }
-      window.dispatchEvent(new Event("profile-updated"));
-    }
+    persistProfile(nextName, nextEmail, nextAvatar);
     setIsProfileModalOpen(false);
   };
 
@@ -172,6 +194,9 @@ export default function BuyerSettingsPage() {
     // TODO: wire to API
     setPasswordError(null);
     setIsPasswordModalOpen(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("profile-updated"));
+    }
   };
 
   return (
