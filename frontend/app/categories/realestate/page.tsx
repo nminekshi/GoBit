@@ -54,6 +54,7 @@ const items = [
     endsIn: "12h 0m",
     watchers: 18,
     condition: "2BR loft · NOI $62k",
+    description: "New Listing"
   },
   {
     name: "Beach House",
@@ -62,6 +63,7 @@ const items = [
     endsIn: "8h 30m",
     watchers: 24,
     condition: "5BR · turnkey STR",
+    description: "Vacation Rental"
   },
   {
     name: "Luxury Penthouse",
@@ -70,6 +72,7 @@ const items = [
     endsIn: "15h 20m",
     watchers: 31,
     condition: "Skyline view · capex complete",
+    description: "Penthouse"
   },
   {
     name: "Country Villa",
@@ -78,6 +81,7 @@ const items = [
     endsIn: "11h 10m",
     watchers: 16,
     condition: "Organic vineyard tie-in",
+    description: "Rural Estate"
   },
   {
     name: "City Loft",
@@ -86,6 +90,7 @@ const items = [
     endsIn: "13h 45m",
     watchers: 19,
     condition: "Converted warehouse",
+    description: "New Listing"
   },
   {
     name: "Mountain Cabin",
@@ -94,6 +99,7 @@ const items = [
     endsIn: "14h 55m",
     watchers: 22,
     condition: "Dual revenue (ski + summer)",
+    description: "Cabin"
   },
   {
     name: "Harborfront Loft Stack",
@@ -102,6 +108,7 @@ const items = [
     endsIn: "9h 20m",
     watchers: 21,
     condition: "4-unit micro living",
+    description: "Multi-family"
   },
   {
     name: "Lakeside Villa Cluster",
@@ -110,6 +117,7 @@ const items = [
     endsIn: "10h 35m",
     watchers: 27,
     condition: "STR licenses grandfathered",
+    description: "New Listing"
   },
   {
     name: "Skyline Hospitality Floors",
@@ -118,6 +126,7 @@ const items = [
     endsIn: "16h 25m",
     watchers: 34,
     condition: "Boutique hotel conversion",
+    description: "Commercial"
   },
 ];
 

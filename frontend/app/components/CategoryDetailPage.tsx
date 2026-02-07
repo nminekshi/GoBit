@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CategorySidebar from "./CategorySidebar";
 
-type ActionVariant = "primary" | "secondary" | "ghost";
+export type ActionVariant = "primary" | "secondary" | "ghost";
 
-type CategoryHero = {
+export type CategoryHero = {
   eyebrow: string;
   title: string;
   subtitle: string;
@@ -48,6 +48,7 @@ type AuctionItem = {
   watchers: number;
   condition?: string;
   location?: string;
+  description?: string;
 };
 
 type CategoryDetailPageProps = {
@@ -80,6 +81,41 @@ export default function CategoryDetailPage({
   const [selectedItem, setSelectedItem] = useState<AuctionItem | null>(null);
   const [bid, setBid] = useState("");
   const [error, setError] = useState("");
+  const [mergedItems, setMergedItems] = useState<AuctionItem[]>(items);
+
+  // Load created auctions from LocalStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
+      if (savedAuctionsRaw) {
+        const savedAuctions = JSON.parse(savedAuctionsRaw);
+        // Filter by category (case-insensitive)
+        const relevantAuctions = savedAuctions.filter((a: any) =>
+          a.category.toLowerCase() === categoryKey.toLowerCase()
+        );
+
+        const formattedAuctions = relevantAuctions.map((a: any) => ({
+          name: a.title,
+          img: a.imageUrl,
+          currentBid: a.currentBid,
+          endsIn: "3d 5h", // mock
+          watchers: 0,
+          condition: "New Listing",
+          location: "Local",
+          description: a.description // map description from saved auction
+        }));
+
+        setMergedItems(prev => {
+          const existingNames = new Set(prev.map(p => p.name));
+          const uniqueNew = formattedAuctions.filter((a: any) => !existingNames.has(a.name));
+          return [...uniqueNew, ...prev];
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load local auctions", e);
+    }
+  }, [categoryKey]);
 
   const openModal = (item: AuctionItem) => {
     setSelectedItem(item);
@@ -166,7 +202,7 @@ export default function CategoryDetailPage({
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/0 px-5 py-4"
+                className="rounded-3xl border border-white/10 bg-linear-to-b from-white/10 to-white/0 px-5 py-4"
               >
                 <p className="text-xs uppercase tracking-wide text-white/60">
                   {metric.label}
@@ -185,22 +221,40 @@ export default function CategoryDetailPage({
                 </p>
                 <h2 className="text-2xl font-semibold">Active consignments</h2>
               </div>
-              <span className="text-sm text-white/60">{items.length} curated lots</span>
+              <span className="text-sm text-white/60">{mergedItems.length} curated lots</span>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {items.map((item) => (
+              {mergedItems.map((item) => (
                 <div
                   key={item.name}
                   className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
                 >
-                  <div className="relative h-56 w-full border-b border-white/10 bg-black/30">
-                    <img src={item.img} alt={item.name} className="h-full w-full object-cover" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openModal(item)}
+                    className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918] flex items-center justify-center"
+                    aria-label={`View details for ${item.name}`}
+                  >
+                    <img
+                      src={item.img}
+                      alt={item.name}
+                      className="h-full w-full object-cover object-center"
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
+                  </button>
                   <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <p className="mt-1 text-sm text-white/60">
-                      {item.condition || "Verified asset"}
+                    <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>
+                    <p className="mt-1 text-sm text-white/60 font-medium">
+                      {item.description || "New Listing"}
                     </p>
+                    {/* Optional: We can hide condition if description is present, or show both. 
+                        The prompt asks to 'add description section' 'like this'. 
+                        I'll keep condition below but maybe smaller or just let it stack. */}
+                    {item.condition && (
+                      <p className="mt-1 text-xs text-white/40">
+                        {item.condition}
+                      </p>
+                    )}
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                         <p className="text-xs uppercase tracking-wide text-white/50">
@@ -244,11 +298,14 @@ export default function CategoryDetailPage({
             </button>
             <div className="mt-2 text-center">
               <p className="text-xs uppercase tracking-wide text-white/50">
-                Bid submission
+                Lot details & bid
               </p>
               <h3 className="mt-2 text-2xl font-semibold">{selectedItem.name}</h3>
               <p className="mt-1 text-sm text-white/60">
                 Current bid ${selectedItem.currentBid.toLocaleString()} · {selectedItem.endsIn} remaining
+              </p>
+              <p className="mt-1 text-sm text-white/60">
+                {(selectedItem.condition || "Verified asset") + " · " + selectedItem.watchers + " watchers"}
               </p>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">

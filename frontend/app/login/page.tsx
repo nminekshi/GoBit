@@ -2,18 +2,61 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [form, setForm] = useState({ username: "", password: "", role: "buyer" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("auth", JSON.stringify(data));
+      }
+
+      const role = data?.user?.role;
+      if (role === "seller") {
+        router.push("/seller/dashboard");
+      } else if (role === "admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/buyer/dashboard");
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
+  };
   return (
-  <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#040918] via-[#101827] to-[#1e293b] px-4">
+  <div className="min-h-screen flex flex-col items-center justify-center bg-linear-to-br from-[#040918] via-[#101827] to-[#1e293b] px-4">
     <div className="w-full max-w-sm rounded-2xl bg-slate-900/90 border border-slate-700/70 shadow-2xl shadow-slate-900/60 p-8 flex flex-col items-center backdrop-blur">
       <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Log in</h1>
       <p className="text-sm text-slate-300 mb-8 text-center">
         Access your account to bid, watch items, and manage your details.
       </p>
-      <form className="w-full flex flex-col gap-5">
+      <form className="w-full flex flex-col gap-5" onSubmit={handleSubmit}>
           <div>
           <label className="block text-sm font-semibold text-slate-200 mb-1" htmlFor="username">Username</label>
             <input
@@ -25,6 +68,19 @@ export default function LoginPage() {
               onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
             placeholder="Enter your username"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-slate-200 mb-1" htmlFor="role">Login as</label>
+            <select
+              id="role"
+              className="w-full rounded-lg bg-slate-800/80 border border-slate-700 px-4 py-2.5 text-sm text-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400"
+              value={form.role}
+              onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+            >
+              <option value="buyer">Buyer</option>
+              <option value="seller">Seller</option>
+              <option value="admin">Admin</option>
+            </select>
           </div>
           <div className="relative">
           <label className="block text-sm font-semibold text-slate-200 mb-1" htmlFor="password">Password</label>
@@ -60,11 +116,15 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
+          {error && (
+            <p className="text-sm text-rose-400 text-center mt-1">{error}</p>
+          )}
           <button
             type="submit"
-            className="mx-auto mt-3 px-8 py-3 bg-emerald-500 text-slate-950 text-sm md:text-base rounded-xl font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-colors"
+            disabled={loading}
+            className="mx-auto mt-3 px-8 py-3 bg-emerald-500 text-slate-950 text-sm md:text-base rounded-xl font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>

@@ -1,6 +1,6 @@
-import CategoryDetailPage from "../../components/CategoryDetailPage";
+import CategoryDetailPage, { CategoryHero } from "../../components/CategoryDetailPage";
 
-const hero = {
+const hero: CategoryHero = {
   eyebrow: "Curated releases",
   title: "Gallery-ready canvases & sculptural statements",
   subtitle:
@@ -66,6 +66,7 @@ const items = [
     endsIn: "7h 40m",
     watchers: 42,
     condition: "Acrylic on canvas · signed verso",
+    description: "New Listing"
   },
   {
     name: "Sculpture",
@@ -74,6 +75,7 @@ const items = [
     endsIn: "9h 15m",
     watchers: 31,
     condition: "Carrara marble · edition 2/8",
+    description: "Gallery Exclusive"
   },
   {
     name: "Modern Art Canvas",
@@ -82,6 +84,7 @@ const items = [
     endsIn: "8h 20m",
     watchers: 55,
     condition: "Mixed media diptych",
+    description: "Trending"
   },
   {
     name: "Classic Oil Painting",
@@ -90,6 +93,7 @@ const items = [
     endsIn: "10h 10m",
     watchers: 63,
     condition: "Restored 1874 salon work",
+    description: "Rare Find"
   },
   {
     name: "Bronze Statue",
@@ -98,6 +102,7 @@ const items = [
     endsIn: "11h 30m",
     watchers: 24,
     condition: "Lost-wax bronze, artist proof",
+    description: "New Listing"
   },
   {
     name: "Street Art Mural",
@@ -106,6 +111,7 @@ const items = [
     endsIn: "12h 50m",
     watchers: 47,
     condition: "Panel-mounted aerosol",
+    description: "Urban Collection"
   },
   {
     name: "Immersive Light Installation",
@@ -114,6 +120,7 @@ const items = [
     endsIn: "6h 25m",
     watchers: 38,
     condition: "Projected neon field",
+    description: "Installation"
   },
   {
     name: "Gallery Sculpture Series",
@@ -122,6 +129,7 @@ const items = [
     endsIn: "9h 55m",
     watchers: 29,
     condition: "Polished steel trio",
+    description: "Set of 3"
   },
   {
     name: "Urban Fresco Diptych",
@@ -130,6 +138,7 @@ const items = [
     endsIn: "7h 5m",
     watchers: 33,
     condition: "Archival lacquer finish",
+    description: "New Listing"
   },
 ];
 
