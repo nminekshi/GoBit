@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import ChatbaseWidget from "./components/ChatbaseWidget";
+import ConditionalChatbase from "./components/ConditionalChatbase";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import Navbar from "./components/Navbar";
@@ -33,9 +33,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar />
+        <ConditionalChatbase />
         {children}
-        <ChatbaseWidget />
         <footer className="w-full bg-linear-to-b from-[#020617] via-[#111827] to-[#4b5563] text-white mt-10">
           <div className="w-full py-10 px-4 md:px-8 lg:px-12">
             <div className="w-full grid grid-cols-1 gap-10 md:grid-cols-4 md:items-start">
