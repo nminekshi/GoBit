@@ -61,8 +61,8 @@ export default function MessagesPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="grid w-full gap-4 lg:grid-cols-[320px_1fr]">
-        <aside className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+      <div className="grid w-full gap-4 min-h-[85vh] lg:grid-cols-[320px_1fr]">
+        <aside className="h-full min-h-[70vh] rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
             <Search className="h-4 w-4 text-white/50" />
             <input
@@ -118,7 +118,7 @@ export default function MessagesPage() {
           </div>
         </aside>
 
-        <section className="flex flex-col rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+        <section className="flex h-full min-h-[70vh] flex-col rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
             <UserCircle2 className="h-8 w-8 text-white/70" />
             <div className="flex-1 min-w-0">
@@ -128,7 +128,7 @@ export default function MessagesPage() {
             <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/70">Order #INV-2048</span>
           </div>
 
-          <div className="mt-4 flex-1 space-y-3 overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4">
+          <div className="mt-4 flex-1 space-y-3 overflow-hidden rounded-2xl border border-white/10 bg-black/20 p-4 min-h-[50vh]">
             {currentMessages.map((m, idx) => (
               <div key={idx} className={`flex ${m.from === "seller" ? "justify-end" : "justify-start"}`}>
                 <div
