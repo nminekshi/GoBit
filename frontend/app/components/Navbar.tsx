@@ -20,6 +20,12 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  const dashboardHref = user?.role?.toLowerCase() === "admin"
+    ? "/admin/dashboard"
+    : user?.role?.toLowerCase() === "seller"
+    ? "/seller/dashboard"
+    : "/buyer/dashboard";
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -184,7 +190,7 @@ function Navbar() {
                   </div>
                   <div className="mt-2 divide-y divide-slate-800 text-slate-100">
                     <Link
-                      href="/buyer/dashboard"
+                      href={dashboardHref}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-slate-800"
                       onClick={() => setMenuOpen(false)}
                     >
