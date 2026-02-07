@@ -202,7 +202,7 @@ export default function Home() {
 
   const renderStars = (count: number) => {
     return Array.from({ length: 5 }).map((_, idx) => (
-      <span key={idx} className={idx < count ? "text-amber-400" : "text-gray-500"}>★</span>
+      <span key={idx} className={idx < count ? "text-emerald-300" : "text-gray-500"}>★</span>
     ));
   };
 
@@ -496,20 +496,20 @@ export default function Home() {
       </section>
 
       {/* Reviews Section */}
-      <section className="bg-[#0c0c10] text-white px-4 py-20">
-        <div className="max-w-6xl mx-auto">
+      <section className="bg-gradient-to-b from-[#070d17] via-[#0b1220] to-[#0b1524] text-white px-4 py-20">
+        <div className="w-full max-w-none mx-auto">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.18em] text-gray-400">Share your experience</p>
+              <p className="text-sm uppercase tracking-[0.18em] text-emerald-300">Share your experience</p>
               <h2 className="text-3xl md:text-4xl font-bold">Latest Customer Stories</h2>
             </div>
-            <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm text-gray-200">
+            <span className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-200">
               {reviews.length} total
             </span>
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-3xl bg-[#0f131b] border border-white/10 p-6 shadow-xl">
+            <div className="rounded-3xl bg-[#0e1625] border border-emerald-400/20 p-6 shadow-xl shadow-emerald-500/10">
               <form className="space-y-5" onSubmit={handleReviewSubmit}>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-200">Your name *</label>
@@ -517,7 +517,7 @@ export default function Home() {
                     value={reviewName}
                     onChange={(e) => setReviewName(e.target.value)}
                     placeholder="Enter your name"
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-400 focus:outline-none"
+                    className="w-full rounded-2xl border border-emerald-400/20 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-400 focus:outline-none"
                   />
                 </div>
 
@@ -532,7 +532,7 @@ export default function Home() {
                           type="button"
                           key={star}
                           onClick={() => setReviewRating(star)}
-                          className={`h-10 w-10 rounded-xl border transition ${active ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-white/10 bg-white/5 text-gray-500"}`}
+                          className={`h-10 w-10 rounded-xl border transition ${active ? "border-emerald-400 bg-emerald-400/10 text-emerald-200" : "border-white/10 bg-white/5 text-gray-500"}`}
                           aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
                         >
                           <span className="text-xl">★</span>
@@ -548,7 +548,7 @@ export default function Home() {
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
                     placeholder="Tell us about your visit..."
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 min-h-[140px] focus:border-emerald-400 focus:outline-none resize-none"
+                    className="w-full rounded-2xl border border-emerald-400/20 bg-white/5 px-4 py-3 text-white placeholder-gray-500 min-h-[140px] focus:border-emerald-400 focus:outline-none resize-none"
                   />
                 </div>
 
@@ -557,7 +557,7 @@ export default function Home() {
 
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-600 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-amber-500/30 transition hover:bg-amber-500"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400"
                 >
                   Submit Review
                 </button>
@@ -576,9 +576,9 @@ export default function Home() {
                   .join("") || "?";
 
                 return (
-                  <div key={review.id} className="rounded-3xl bg-[#1d1a1a] border border-white/10 p-5 shadow-lg">
+                  <div key={review.id} className="rounded-3xl bg-[#0f1729] border border-emerald-400/15 p-5 shadow-lg shadow-emerald-500/10">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-400/80 text-base font-bold text-[#1b1207]">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-400/80 text-base font-bold text-[#0a1510]">
                         {initials}
                       </div>
                       <div className="flex flex-col gap-0.5">
