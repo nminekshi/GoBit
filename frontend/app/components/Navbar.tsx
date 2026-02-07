@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 type AuthUser = {
   username: string;
   role?: string;
+  avatar?: string | null;
 };
 
 function Navbar() {
@@ -24,7 +25,8 @@ function Navbar() {
       }
       const parsed = JSON.parse(raw);
       if (parsed?.user?.username) {
-        setUser({ username: parsed.user.username, role: parsed.user.role });
+        const avatar = parsed.user.avatar || parsed.user.photoURL || window.localStorage.getItem("profileAvatar");
+        setUser({ username: parsed.user.username, role: parsed.user.role, avatar });
       } else {
         setUser(null);
       }
@@ -91,6 +93,13 @@ function Navbar() {
         <div className="flex items-center gap-3 md:gap-4 mt-3 md:mt-0">
           {user ? (
             <>
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-semibold text-slate-100 md:h-11 md:w-11">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  (user.username?.charAt(0) || "U").toUpperCase()
+                )}
+              </div>
               <div className="flex flex-col items-end mr-1">
                 <span className="text-sm md:text-base font-semibold text-slate-50">
                   Hi, {user.username}
