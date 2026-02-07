@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, PlusCircle, Wallet, MessageCircle, Settings, ArrowLeftRight } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -105,9 +107,12 @@ export default function SellerDashboard() {
   // --- State ---
   const [myAuctions, setMyAuctions] = useState<Auction[]>(MOCK_SELLER_AUCTIONS);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Dashboard Filters
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "draft" | "sold">("all");
+
+  const pathname = usePathname();
 
 
 
@@ -152,6 +157,14 @@ export default function SellerDashboard() {
   const activeListings = myAuctions.filter(a => a.status === 'active').length;
   const totalViews = myAuctions.reduce((sum, a) => sum + (Number(a.views) || 0), 0);
 
+  const navItems = [
+    { label: "Overview", href: "/seller/dashboard", icon: LayoutDashboard },
+    { label: "Create Auction", href: "/seller/create-auction", icon: PlusCircle },
+    { label: "Orders & Payouts", href: "/seller/orders", icon: Wallet },
+    { label: "Messages", href: "/seller/messages", icon: MessageCircle },
+    { label: "Settings", href: "/seller/settings", icon: Settings },
+  ];
+
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="w-full space-y-8">
@@ -181,29 +194,72 @@ export default function SellerDashboard() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Sidebar */}
-          <aside className="w-full shrink-0 space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur lg:w-72">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-white/60">Navigation</p>
-              <div className="mt-3 space-y-2">
-                {[{ label: "Overview", href: "/seller/dashboard" }, { label: "Create Auction", href: "/seller/create-auction" }, { label: "Orders & Payouts", href: "/seller/orders" }, { label: "Messages", href: "/seller/messages" }, { label: "Settings", href: "/seller/settings" }].map((item) => (
-                  <Link key={item.href} href={item.href}>
-                    <div className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-emerald-400/50 hover:text-white">
-                      <span>{item.label}</span>
-                      <span className="text-xs text-white/50">→</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-              <p className="font-semibold text-white">Boost your visibility</p>
-              <p className="mt-1 text-emerald-100/80">Promote a listing to appear in trending auctions.</p>
-              <Link href="/seller/create-auction">
-                <button className="mt-3 w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400">
-                  Promote now
+          <aside
+            className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-4 backdrop-blur transition-all duration-300 ${
+              isCollapsed ? "lg:w-20" : "lg:w-72"
+            }`}
+          >
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
+                    {(displayName || "S").charAt(0).toUpperCase()}
+                  </div>
+                  <div className={`flex flex-col transition-all duration-300 ${isCollapsed ? "pointer-events-none opacity-0 translate-x-1" : "opacity-100"}`}>
+                    <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
+                    <p className="text-sm font-semibold text-white">{displayName || "Seller"}</p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Toggle sidebar"
+                  onClick={() => setIsCollapsed((prev) => !prev)}
+                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
                 </button>
-              </Link>
+              </div>
+
+              <div className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname?.startsWith(item.href);
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div
+                        className={`group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
+                          isActive
+                            ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                            : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                        }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span
+                          className={`transition-all duration-200 ${
+                            isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div
+                className={`mt-auto overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/25 via-cyan-500/20 to-indigo-500/25 p-4 text-sm text-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.18)] transition-all duration-300 ${
+                  isCollapsed ? "pointer-events-none h-0 border-0 p-0 opacity-0" : "opacity-100"
+                }`}
+              >
+                <p className="text-xs uppercase tracking-wide text-emerald-50/80">Boost reach</p>
+                <p className="mt-1 text-base font-semibold text-white">Promote a listing</p>
+                <p className="mt-1 text-emerald-50/80">Feature your auction to appear in trending spots and get more bids.</p>
+                <Link href="/seller/create-auction">
+                  <button className="mt-4 w-full rounded-xl bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
+                    Promote now
+                  </button>
+                </Link>
+              </div>
             </div>
           </aside>
 
