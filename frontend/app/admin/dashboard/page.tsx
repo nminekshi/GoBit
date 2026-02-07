@@ -83,13 +83,13 @@ export default function AdminDashboard() {
   }, [activeAuctions]);
 
   return (
-    <main className="relative flex min-h-screen bg-[#050915] text-white">
+    <main className="relative flex min-h-screen items-start gap-6 bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
       <aside
-        className={`sticky top-0 z-20 flex h-screen shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${
+        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${
           isCollapsed ? "w-20" : "w-72"
         }`}
       >
-        <div className="flex items-center gap-2 pb-4">
+        <div className="flex items-center gap-2 pb-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
           {!isCollapsed && (
             <div>
@@ -106,14 +106,14 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        <nav className="space-y-2 overflow-y-auto pb-4">
+        <nav className="space-y-3 overflow-y-auto pb-4">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = pathname?.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href}>
                 <div
-                  className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm font-semibold transition ${
+                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
                     active
                       ? "border-emerald-400/70 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
                       : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
@@ -140,8 +140,8 @@ export default function AdminDashboard() {
         )}
       </aside>
 
-      <section className="flex-1 overflow-x-hidden w-full">
-        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10">
+      <section className="flex-1 w-full overflow-x-hidden">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-2 py-4 sm:px-4 lg:px-6">
           <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">Overview</p>
