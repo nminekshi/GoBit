@@ -12,7 +12,7 @@ const NOTIFICATIONS = [
 export default function BuyerSettingsPage() {
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-8">
+      <div className="mx-auto w-full max-w-none space-y-8">
         <header className="flex flex-col gap-3">
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-400">Buyer</p>
           <h1 className="text-3xl font-bold">Settings</h1>
