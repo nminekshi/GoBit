@@ -140,8 +140,8 @@ export default function AdminDashboard() {
         )}
       </aside>
 
-      <section className="flex-1 overflow-x-hidden">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10">
+      <section className="flex-1 overflow-x-hidden w-full">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10">
           <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">Overview</p>
@@ -158,14 +158,14 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {kpis.map((card) => (
               <KpiCard key={card.label} card={card} />
             ))}
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="space-y-6">
+          <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="space-y-6 w-full">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold">Revenue & Traffic</h2>
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid w-full gap-4 lg:grid-cols-2">
                 <CardPanel title="Live Activity" actionLabel="View stream">
                   <ul className="space-y-3 text-sm">
                     {LIVE_ACTIVITY.map((item, idx) => (
@@ -230,7 +230,7 @@ export default function AdminDashboard() {
               </CardPanel>
             </div>
 
-            <aside className="space-y-6">
+            <aside className="space-y-6 w-full">
               <CardPanel title="Notifications" actionLabel="Manage">
                 <div className="space-y-3 text-sm">
                   {NOTIFICATIONS.map((n, idx) => (

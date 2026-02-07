@@ -192,7 +192,7 @@ export default function SellerDashboard() {
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 lg:flex-row">
+        <div className="flex w-full flex-col gap-6 items-start lg:flex-row">
           {/* Sidebar */}
           <aside
             className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-3 backdrop-blur transition-all duration-300 ${
@@ -264,9 +264,9 @@ export default function SellerDashboard() {
           </aside>
 
           {/* Main Column */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 space-y-6 w-full">
             {/* Stats Section */}
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
                 <p className="text-sm font-medium text-slate-400">Total Earnings</p>
                 <p className="mt-2 text-3xl font-bold text-emerald-400">${totalEarnings.toLocaleString()}</p>
@@ -301,7 +301,7 @@ export default function SellerDashboard() {
                 </div>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid w-full gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredAuctions.length === 0 ? (
                   <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-white/10 bg-white/5">
                     <p className="text-slate-500">No auctions found in this category.</p>
@@ -317,7 +317,7 @@ export default function SellerDashboard() {
                     const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
 
                     return (
-                      <div key={auction.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
+                      <div key={auction.id} className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
                         {/* Image */}
                         <div className="relative w-full overflow-hidden border-b border-white/10 bg-black/30 aspect-[4/3]">
                           <img
