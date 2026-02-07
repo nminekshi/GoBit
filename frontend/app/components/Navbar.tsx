@@ -9,6 +9,7 @@ type AuthUser = {
   username: string;
   role?: string;
   avatar?: string | null;
+  email?: string | null;
 };
 
 function Navbar() {
@@ -28,9 +29,13 @@ function Navbar() {
         return;
       }
       const parsed = JSON.parse(raw);
-      if (parsed?.user?.username) {
-        const avatar = parsed.user.avatar || parsed.user.photoURL || window.localStorage.getItem("profileAvatar");
-        setUser({ username: parsed.user.username, role: parsed.user.role, avatar });
+      const storedName = window.localStorage.getItem("profileName");
+      const storedEmail = window.localStorage.getItem("profileEmail");
+      if (parsed?.user?.username || storedName) {
+        const username = parsed?.user?.username || storedName || "User";
+        const email = parsed?.user?.email || storedEmail || null;
+        const avatar = parsed?.user?.avatar || parsed?.user?.photoURL || window.localStorage.getItem("profileAvatar");
+        setUser({ username, role: parsed?.user?.role, avatar, email });
       } else {
         setUser(null);
         setMenuOpen(false);
@@ -40,6 +45,39 @@ function Navbar() {
       setMenuOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key) return;
+      if (!"profileAvatar,profileName,profileEmail".includes(event.key)) return;
+      setUser((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          avatar: window.localStorage.getItem("profileAvatar"),
+          username: window.localStorage.getItem("profileName") || prev.username,
+          email: window.localStorage.getItem("profileEmail") || prev.email,
+        };
+      });
+    };
+    const onProfileUpdate = () => {
+      setUser((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          avatar: window.localStorage.getItem("profileAvatar"),
+          username: window.localStorage.getItem("profileName") || prev.username,
+          email: window.localStorage.getItem("profileEmail") || prev.email,
+        };
+      });
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("profile-updated", onProfileUpdate);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("profile-updated", onProfileUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -135,7 +173,7 @@ function Navbar() {
                 <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-800 bg-[#0f1729] p-3 shadow-xl shadow-black/40">
                   <div className="rounded-xl bg-slate-900/70 p-3 text-slate-50">
                     <p className="text-base font-semibold">{user.username}</p>
-                    <p className="text-sm text-slate-300">{user.username}@gmail.com</p>
+                        <p className="text-sm text-slate-300">{user.email || `${user.username}@gmail.com`}</p>
                   </div>
                   <div className="mt-2 divide-y divide-slate-800 text-slate-100">
                     <Link

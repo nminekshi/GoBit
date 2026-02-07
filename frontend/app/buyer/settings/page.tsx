@@ -85,6 +85,26 @@ export default function BuyerSettingsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedName = window.localStorage.getItem("profileName");
+    const storedEmail = window.localStorage.getItem("profileEmail");
+    const storedAvatar = window.localStorage.getItem("profileAvatar");
+
+    if (storedName) {
+      setProfileName(storedName);
+      setDraftName(storedName);
+    }
+    if (storedEmail) {
+      setProfileEmail(storedEmail);
+      setDraftEmail(storedEmail);
+    }
+    if (storedAvatar) {
+      setProfileAvatar(storedAvatar);
+      setDraftAvatar(storedAvatar);
+    }
+  }, []);
+
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -111,9 +131,24 @@ export default function BuyerSettingsPage() {
   };
 
   const handleProfileSave = () => {
-    setProfileName(draftName.trim() || "Seller");
-    setProfileEmail(draftEmail.trim() || profileEmail);
-    if (draftAvatar) setProfileAvatar(draftAvatar);
+    const nextName = draftName.trim() || "Seller";
+    const nextEmail = draftEmail.trim() || profileEmail;
+    const nextAvatar = draftAvatar || profileAvatar || null;
+
+    setProfileName(nextName);
+    setProfileEmail(nextEmail);
+    setProfileAvatar(nextAvatar);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("profileName", nextName);
+      window.localStorage.setItem("profileEmail", nextEmail);
+      if (nextAvatar) {
+        window.localStorage.setItem("profileAvatar", nextAvatar);
+      } else {
+        window.localStorage.removeItem("profileAvatar");
+      }
+      window.dispatchEvent(new Event("profile-updated"));
+    }
     setIsProfileModalOpen(false);
   };
 
