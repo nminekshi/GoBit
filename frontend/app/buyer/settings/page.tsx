@@ -20,6 +20,12 @@ const APPEARANCE_MODES: { label: string; value: ThemeChoice }[] = [
 const LANG_OPTIONS = ["English (US)", "Spanish (ES)", "French (FR)"];
 const TIMEZONE_OPTIONS = ["UTC -05:00", "UTC", "UTC +01:00", "UTC +05:30"];
 const CURRENCY_OPTIONS = ["USD ($)", "EUR (€)", "GBP (£)", "LKR (Rs)"];
+const PRIVACY_DEFAULTS = [
+  { label: "Hide username on bids", enabled: true },
+  { label: "Mask phone from sellers", enabled: true },
+  { label: "Anonymize analytics", enabled: true },
+  { label: "Share watchlist with team", enabled: true },
+];
 
 export default function BuyerSettingsPage() {
   const [theme, setTheme] = useState<ThemeChoice>("system");
@@ -38,6 +44,7 @@ export default function BuyerSettingsPage() {
     currency: CURRENCY_OPTIONS[0],
   });
   const [localizationSaved, setLocalizationSaved] = useState<string | null>(null);
+  const [privacyPrefs, setPrivacyPrefs] = useState(PRIVACY_DEFAULTS);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [draftName, setDraftName] = useState(profileName);
@@ -132,6 +139,23 @@ export default function BuyerSettingsPage() {
         timezone: parsed.timezone || prev.timezone,
         currency: parsed.currency || prev.currency,
       }));
+    } catch {
+      // ignore malformed
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("buyer-privacy");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setPrivacyPrefs((prev) => parsed.map((item: any, idx: number) => ({
+          label: item.label || prev[idx]?.label || PRIVACY_DEFAULTS[idx]?.label,
+          enabled: typeof item.enabled === "boolean" ? item.enabled : prev[idx]?.enabled ?? true,
+        })));
+      }
     } catch {
       // ignore malformed
     }
@@ -249,6 +273,17 @@ export default function BuyerSettingsPage() {
     }
     setLocalizationSaved("Localization saved");
     setTimeout(() => setLocalizationSaved(null), 1500);
+  };
+
+  const togglePrivacy = (index: number) => {
+    setPrivacyPrefs((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], enabled: !next[index].enabled };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("buyer-privacy", JSON.stringify(next));
+      }
+      return next;
+    });
   };
 
   return (
@@ -396,11 +431,21 @@ export default function BuyerSettingsPage() {
 
           <Card title="Privacy" icon={<Shield className="h-5 w-5 text-emerald-300" />}>
             <div className="grid gap-3 sm:grid-cols-2">
-              {["Hide username on bids", "Mask phone from sellers", "Anonymize analytics", "Share watchlist with team"].map((pref) => (
-                <div key={pref} className="flex items-center gap-2 rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-3 py-2 text-sm text-theme-muted">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                  <span>{pref}</span>
-                </div>
+              {privacyPrefs.map((pref, idx) => (
+                <button
+                  key={pref.label}
+                  type="button"
+                  onClick={() => togglePrivacy(idx)}
+                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm transition ${
+                    pref.enabled
+                      ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-100"
+                      : "border-[color:var(--card-border)] bg-[var(--card-bg)] text-theme-muted"
+                  }`}
+                  aria-pressed={pref.enabled}
+                >
+                  <CheckCircle2 className={`h-4 w-4 ${pref.enabled ? "text-emerald-300" : "text-theme-muted"}`} />
+                  <span>{pref.label}</span>
+                </button>
               ))}
             </div>
             <button className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">
