@@ -588,15 +588,6 @@ export default function Home() {
                       </div>
                     </div>
                     <p className="mt-3 text-sm leading-relaxed text-gray-100">{review.text}</p>
-                    {isOwner && (
-                      <button
-                        type="button"
-                        onClick={() => handleReviewDelete(review.id)}
-                        className="mt-3 inline-flex text-sm font-semibold text-red-300 hover:text-red-200"
-                      >
-                        Delete review
-                      </button>
-                    )}
                   </div>
                 );
               })}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Eye, Bookmark, Wallet, Settings, Menu } from "lucide-react";
+import { LayoutDashboard, Eye, Bookmark, Wallet, Settings, Menu, Star } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -20,6 +20,15 @@ interface Auction {
   seller: string;
   trustScore: number;
 }
+
+type Review = {
+  id: string;
+  name: string;
+  rating: number;
+  text: string;
+  date: string;
+  userId: string | null;
+};
 
 // --- Mock Data ---
 const MOCK_AUCTIONS: Auction[] = [
@@ -95,6 +104,7 @@ const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, tab: "all" as const },
   { label: "Active Bids", icon: Eye, tab: "bidding" as const },
   { label: "Watchlist", icon: Bookmark, tab: "watchlist" as const },
+  { label: "My Reviews", icon: Star, tab: "reviews" as const },
   { label: "Payments", icon: Wallet, href: "/buyer/payments" },
   { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
@@ -102,11 +112,29 @@ const NAV_ITEMS = [
 export default function BuyerDashboard() {
   // --- State ---
   const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
-  const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist" | "reviews">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string | null; name: string | null; role: string | null } | null>(null);
+  const [buyerReviews, setBuyerReviews] = useState<Review[]>([]);
   const pathname = usePathname();
+
+  // --- Load user ---
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("auth");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const id = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
+      const name = parsed?.user?.username || parsed?.user?.name || parsed?.user?.email || null;
+      const role = parsed?.user?.role || null;
+      setCurrentUser({ id, name, role });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // --- Effects ---
   useEffect(() => {
@@ -148,6 +176,25 @@ export default function BuyerDashboard() {
     }
   }, [displayName]);
 
+  // --- Load buyer reviews ---
+  useEffect(() => {
+    if (typeof window === "undefined" || !currentUser?.id) return;
+    try {
+      const raw = window.localStorage.getItem("buyer-reviews");
+      if (!raw) {
+        setBuyerReviews([]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Review[];
+      const mine = Array.isArray(parsed)
+        ? parsed.filter((r) => r.userId === currentUser.id)
+        : [];
+      setBuyerReviews(mine);
+    } catch {
+      setBuyerReviews([]);
+    }
+  }, [currentUser]);
+
   // --- Handlers ---
   const handleBid = (id: string) => {
     setAuctions((prev) =>
@@ -169,12 +216,14 @@ export default function BuyerDashboard() {
   };
 
   // --- Derived State ---
-  const filteredAuctions = auctions.filter((auction) => {
-    if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
-    if (activeTab === "bidding" && auction.myBid === undefined) return false;
-    if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const filteredAuctions = activeTab === "reviews"
+    ? []
+    : auctions.filter((auction) => {
+        if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
+        if (activeTab === "bidding" && auction.myBid === undefined) return false;
+        if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        return true;
+      });
 
   const activeBidsCount = auctions.filter((a) => a.myBid && a.status === "active").length;
   const watchlistCount = auctions.filter((a) => a.isWatchlisted).length;
@@ -190,6 +239,28 @@ export default function BuyerDashboard() {
       setActiveTab(item.tab);
     }
   };
+
+  const handleDeleteReview = (id: string) => {
+    if (!currentUser?.id || typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("buyer-reviews");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Review[];
+      const nextAll = parsed.filter((r) => !(r.id === id && r.userId === currentUser.id));
+      window.localStorage.setItem("buyer-reviews", JSON.stringify(nextAll));
+      setBuyerReviews(nextAll.filter((r) => r.userId === currentUser.id));
+    } catch {
+      // ignore
+    }
+  };
+
+  const renderStars = (count: number) => (
+    <div className="flex items-center gap-1 text-lg text-emerald-300">
+      {Array.from({ length: 5 }).map((_, idx) => (
+        <span key={idx} className={idx < count ? "text-emerald-300" : "text-slate-600"}>★</span>
+      ))}
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
@@ -317,61 +388,121 @@ export default function BuyerDashboard() {
           </aside>
 
           <div className="flex-1 space-y-6">
-            <div className="sticky top-4 z-10 flex flex-col gap-4 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
-              <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
-                {(["all", "bidding", "watchlist"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                      activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search current auctions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 pl-10 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:w-64"
-                />
-                <svg
-                  className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredAuctions.length === 0 ? (
-                <div className="col-span-full py-20 text-center">
-                  <p className="text-slate-500">No auctions found matching your criteria.</p>
+            {activeTab === "reviews" ? (
+              <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-emerald-300">Your reviews</p>
+                    <h2 className="text-2xl font-bold text-white">Buyer feedback you shared</h2>
+                    <p className="text-sm text-slate-400">Only your reviews appear here. You can delete them anytime.</p>
+                  </div>
+                  <span className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-200">
+                    {buyerReviews.length} total
+                  </span>
                 </div>
-              ) : (
-                filteredAuctions.map((auction) => (
-                  <AuctionCard
-                    key={auction.id}
-                    auction={auction}
-                    onBid={handleBid}
-                    onWatchlist={toggleWatchlist}
-                  />
-                ))
-              )}
-            </div>
+
+                {buyerReviews.length === 0 ? (
+                  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-400">
+                    No reviews yet. Share feedback from the homepage review form—your entries will show here.
+                  </div>
+                ) : (
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {buyerReviews.map((review) => {
+                      const formattedDate = review.date
+                        ? new Date(review.date).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
+                        : "";
+                      const initials = review.name
+                        .split(" ")
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part) => part[0]?.toUpperCase())
+                        .join("") || "?";
+
+                      return (
+                        <div key={review.id} className="rounded-2xl border border-emerald-400/20 bg-[#0b1220] p-4 shadow-lg shadow-emerald-500/10">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/90 text-sm font-bold text-[#0b1220]">
+                              {initials}
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-base font-semibold text-white">{review.name}</p>
+                              <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Buyer{formattedDate ? ` • ${formattedDate}` : ""}</p>
+                              {renderStars(review.rating)}
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm leading-relaxed text-slate-200">{review.text}</p>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="mt-3 inline-flex text-sm font-semibold text-red-300 hover:text-red-200"
+                          >
+                            Delete review
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            ) : (
+              <>
+                <div className="sticky top-4 z-10 flex flex-col gap-4 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
+                  <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
+                    {(["all", "bidding", "watchlist"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                          activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search current auctions..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 pl-10 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:w-64"
+                    />
+                    <svg
+                      className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {filteredAuctions.length === 0 ? (
+                    <div className="col-span-full py-20 text-center">
+                      <p className="text-slate-500">No auctions found matching your criteria.</p>
+                    </div>
+                  ) : (
+                    filteredAuctions.map((auction) => (
+                      <AuctionCard
+                        key={auction.id}
+                        auction={auction}
+                        onBid={handleBid}
+                        onWatchlist={toggleWatchlist}
+                      />
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
