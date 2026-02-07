@@ -27,6 +27,11 @@ export default function BuyerSettingsPage() {
   const [draftName, setDraftName] = useState(profileName);
   const [draftEmail, setDraftEmail] = useState(profileEmail);
   const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -85,6 +90,28 @@ export default function BuyerSettingsPage() {
     setIsProfileModalOpen(false);
   };
 
+  const openPasswordModal = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+    setIsPasswordModalOpen(true);
+  };
+
+  const handlePasswordSave = () => {
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+    // TODO: wire to API
+    setPasswordError(null);
+    setIsPasswordModalOpen(false);
+  };
+
   return (
     <main className="theme-page min-h-screen px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto w-full max-w-none space-y-8">
@@ -131,7 +158,10 @@ export default function BuyerSettingsPage() {
 
             <Card title="Account Settings" icon={<Lock className="h-5 w-5 text-emerald-300" />}>
               <div className="space-y-3 text-theme-strong">
-                <button className="flex w-full items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3 text-left text-sm font-semibold transition hover:border-emerald-400/60">
+                <button
+                  onClick={openPasswordModal}
+                  className="flex w-full items-center justify-between rounded-2xl border border-[color:var(--card-border)] bg-[var(--card-bg)] px-4 py-3 text-left text-sm font-semibold transition hover:border-emerald-400/60"
+                >
                   <span className="flex items-center gap-2"><KeyRound className="h-4 w-4 text-theme-muted" /> Change Password</span>
                   <span className="text-theme-muted">••••••</span>
                 </button>
@@ -296,6 +326,70 @@ export default function BuyerSettingsPage() {
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
             >
               Save Changes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-[color:var(--card-border)] bg-[#1a1f2b] p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">Change Password</h3>
+                <p className="mt-1 text-sm text-theme-muted">Set a new password for your account.</p>
+              </div>
+              <button
+                aria-label="Close"
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Current Password</span>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="••••••"
+                />
+              </label>
+
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>New Password</span>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="At least 8 characters"
+                />
+              </label>
+
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Confirm Password</span>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="Re-enter new password"
+                />
+              </label>
+
+              {passwordError && <p className="text-sm text-red-400">{passwordError}</p>}
+            </div>
+
+            <button
+              onClick={handlePasswordSave}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+            >
+              Save Password
             </button>
           </div>
         </div>
