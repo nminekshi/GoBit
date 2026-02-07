@@ -11,7 +11,7 @@ export default function SettingsPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="flex w-full flex-col gap-6 min-h-[90vh]">
+      <div className="flex w-full flex-col gap-6 min-h-[100vh] pb-10">
         <header className="flex flex-wrap items-center gap-3 justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">Seller</p>
@@ -37,10 +37,12 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        {activeTab === "Profile" && <ProfilePanel />}
-        {activeTab === "Payouts" && <PayoutPanel />}
-        {activeTab === "Notifications" && <NotificationsPanel />}
-        {activeTab === "Security" && <SecurityPanel />}
+        <div className="grid gap-4 lg:grid-cols-1 min-h-[60vh]">
+          {activeTab === "Profile" && <ProfilePanel />}
+          {activeTab === "Payouts" && <PayoutPanel />}
+          {activeTab === "Notifications" && <NotificationsPanel />}
+          {activeTab === "Security" && <SecurityPanel />}
+        </div>
       </div>
     </main>
   );
