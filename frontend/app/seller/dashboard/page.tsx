@@ -195,12 +195,12 @@ export default function SellerDashboard() {
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Sidebar */}
           <aside
-            className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-4 backdrop-blur transition-all duration-300 ${
+            className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-3 backdrop-blur transition-all duration-300 ${
               isCollapsed ? "lg:w-20" : "lg:w-72"
             }`}
           >
-            <div className="flex h-full flex-col gap-4">
-              <div className="flex items-center justify-between">
+            <div className="flex h-full flex-col gap-3">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
                     {(displayName || "S").charAt(0).toUpperCase()}
@@ -213,20 +213,20 @@ export default function SellerDashboard() {
                 <button
                   aria-label="Toggle sidebar"
                   onClick={() => setIsCollapsed((prev) => !prev)}
-                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                  className="ml-auto rounded-lg border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
                 >
                   <ArrowLeftRight className="h-4 w-4" />
                 </button>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname?.startsWith(item.href);
                   return (
                     <Link key={item.href} href={item.href}>
                       <div
-                        className={`group flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
+                        className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
                           isActive
                             ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
                             : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
@@ -247,15 +247,15 @@ export default function SellerDashboard() {
               </div>
 
               <div
-                className={`mt-auto overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/25 via-cyan-500/20 to-indigo-500/25 p-4 text-sm text-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.18)] transition-all duration-300 ${
+                className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/25 via-cyan-500/20 to-indigo-500/25 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)] transition-all duration-300 ${
                   isCollapsed ? "pointer-events-none h-0 border-0 p-0 opacity-0" : "opacity-100"
                 }`}
               >
                 <p className="text-xs uppercase tracking-wide text-emerald-50/80">Boost reach</p>
-                <p className="mt-1 text-base font-semibold text-white">Promote a listing</p>
+                <p className="mt-1 text-sm font-semibold text-white">Promote a listing</p>
                 <p className="mt-1 text-emerald-50/80">Feature your auction to appear in trending spots and get more bids.</p>
                 <Link href="/seller/create-auction">
-                  <button className="mt-4 w-full rounded-xl bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
+                  <button className="mt-3 w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
                     Promote now
                   </button>
                 </Link>
