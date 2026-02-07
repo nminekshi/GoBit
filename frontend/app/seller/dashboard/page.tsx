@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, PlusCircle, Wallet, MessageCircle, Settings, ArrowLeftRight } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Wallet, MessageCircle, Settings, Menu } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -195,17 +195,23 @@ export default function SellerDashboard() {
         <div className="flex w-full flex-col gap-6 items-start lg:flex-row">
           {/* Sidebar */}
           <aside
-            className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-3 backdrop-blur transition-all duration-300 ${
-              isCollapsed ? "lg:w-20" : "lg:w-72"
+            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${
+              isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
             } min-h-[80vh]`}
           >
             <div className="flex h-full flex-col gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 pr-1">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
                     {(displayName || "S").charAt(0).toUpperCase()}
                   </div>
-                  <div className={`flex flex-col transition-all duration-300 ${isCollapsed ? "pointer-events-none opacity-0 translate-x-1" : "opacity-100"}`}>
+                  <div
+                    className={`flex flex-col transition-all duration-300 ${
+                      isCollapsed
+                        ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
+                        : "opacity-100 w-auto max-w-[180px]"
+                    }`}
+                  >
                     <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
                     <p className="text-sm font-semibold text-white">{displayName || "Seller"}</p>
                   </div>
@@ -213,9 +219,9 @@ export default function SellerDashboard() {
                 <button
                   aria-label="Toggle sidebar"
                   onClick={() => setIsCollapsed((prev) => !prev)}
-                  className="ml-auto rounded-lg border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                  className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
                 >
-                  <ArrowLeftRight className="h-4 w-4" />
+                  <Menu className="h-4 w-4" />
                 </button>
               </div>
 
