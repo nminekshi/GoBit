@@ -175,33 +175,6 @@ export default function BuyerSettingsPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <Card title="Appearance" icon={<Palette className="h-5 w-5 text-emerald-300" />}>
-            <div className="flex flex-wrap gap-3">
-              {APPEARANCE_MODES.map((mode) => {
-                const isActive = theme === mode.value;
-                return (
-                  <button
-                    key={mode.value}
-                    onClick={() => setTheme(mode.value)}
-                    className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                      isActive
-                        ? "border-emerald-400/60 bg-[var(--card-bg)] text-theme-strong shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
-                        : "border-[color:var(--card-border)] bg-[var(--card-bg)] text-theme-muted hover:border-emerald-300/60 hover:text-theme-strong"
-                    }`}
-                  >
-                    {mode.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex items-center gap-3 text-sm text-theme-muted">
-              <Palette className="h-4 w-4 text-emerald-300" />
-              <span>Matches the modern buyer dashboard visuals; uses System, Light, or Dark.</span>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card title="Security" icon={<Lock className="h-5 w-5 text-emerald-300" />}>
             <div className="space-y-3 text-sm text-theme-muted">
               <Toggle label="Two-factor authentication" enabled />
