@@ -53,12 +53,6 @@ export default function AdminSettingsPage() {
           <p className="text-xs uppercase tracking-[0.25em] text-emerald-400">Admin</p>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-sm text-white/60">Configure platform preferences, notifications, security, and compliance.</p>
-          <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 text-sm font-semibold text-white/70">
-            <span className="rounded-xl bg-emerald-500/15 px-3 py-1 text-emerald-200">Platform</span>
-            <span className="rounded-xl bg-white/5 px-3 py-1">Notifications</span>
-            <span className="rounded-xl bg-white/5 px-3 py-1">Security</span>
-            <span className="rounded-xl bg-white/5 px-3 py-1">Compliance</span>
-          </div>
         </header>
 
         <div className="grid w-full gap-5 md:grid-cols-2">
@@ -135,6 +129,7 @@ export default function AdminSettingsPage() {
             <CheckCircle2 className="h-4 w-4" /> Save Changes
           </button>
         </div>
+
       </div>
     </main>
   );
