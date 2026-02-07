@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -14,6 +15,8 @@ function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -21,6 +24,7 @@ function Navbar() {
       const raw = window.localStorage.getItem("auth");
       if (!raw) {
         setUser(null);
+        setMenuOpen(false);
         return;
       }
       const parsed = JSON.parse(raw);
@@ -29,17 +33,31 @@ function Navbar() {
         setUser({ username: parsed.user.username, role: parsed.user.role, avatar });
       } else {
         setUser(null);
+        setMenuOpen(false);
       }
     } catch {
       setUser(null);
+      setMenuOpen(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("auth");
     }
     setUser(null);
+    setMenuOpen(false);
     router.push("/");
   };
 
@@ -90,33 +108,59 @@ function Navbar() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-4 mt-3 md:mt-0">
+        <div className="relative flex items-center gap-3 md:gap-4 mt-3 md:mt-0" ref={menuRef}>
           {user ? (
             <>
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-semibold text-slate-100 md:h-11 md:w-11">
-                {user.avatar ? (
-                  <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  (user.username?.charAt(0) || "U").toUpperCase()
-                )}
-              </div>
-              <div className="flex flex-col items-end mr-1">
-                <span className="text-sm md:text-base font-semibold text-slate-50">
-                  Hi, {user.username}
-                </span>
-                {user.role && (
-                  <span className="text-xs md:text-sm text-emerald-300 capitalize">
-                    {user.role} account
-                  </span>
-                )}
-              </div>
               <button
                 type="button"
-                onClick={handleLogout}
-                className="px-4 md:px-5 py-2 bg-slate-800 text-slate-100 text-sm md:text-base rounded-xl font-medium border border-slate-600 hover:bg-slate-700 transition-colors"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-full bg-transparent px-2 py-1 pr-2 transition hover:bg-slate-800/60"
               >
-                Log out
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-900 text-sm font-semibold text-slate-100 md:h-11 md:w-11">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                  ) : (
+                    (user.username?.charAt(0) || "U").toUpperCase()
+                  )}
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm md:text-base font-semibold text-slate-50">{user.username}</span>
+                  {user.role && (
+                    <span className="text-xs md:text-sm text-emerald-300 capitalize">{user.role} account</span>
+                  )}
+                </div>
+                <ChevronDown className={`h-4 w-4 text-slate-200 transition ${menuOpen ? "rotate-180" : "rotate-0"}`} />
               </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-800 bg-[#0f1729] p-3 shadow-xl shadow-black/40">
+                  <div className="rounded-xl bg-slate-900/70 p-3 text-slate-50">
+                    <p className="text-base font-semibold">{user.username}</p>
+                    <p className="text-sm text-slate-300">{user.username}@gmail.com</p>
+                  </div>
+                  <div className="mt-2 divide-y divide-slate-800 text-slate-100">
+                    <Link
+                      href="/buyer/dashboard"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-slate-800"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <span className="text-lg">👤</span> Dashboard
+                    </Link>
+                    <Link
+                      href="/buyer/settings"
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition hover:bg-slate-800"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      <span className="text-lg">🛠️</span> Account Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-400 transition hover:bg-slate-800"
+                    >
+                      <span className="text-lg">↩️</span> Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
