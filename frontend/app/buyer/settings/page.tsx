@@ -23,6 +23,10 @@ export default function BuyerSettingsPage() {
   const [profileEmail, setProfileEmail] = useState("alex.morgan@example.com");
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [draftName, setDraftName] = useState(profileName);
+  const [draftEmail, setDraftEmail] = useState(profileEmail);
+  const [draftAvatar, setDraftAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -55,13 +59,30 @@ export default function BuyerSettingsPage() {
     const reader = new FileReader();
     reader.onload = e => {
       const result = e.target?.result;
-      if (typeof result === "string") setProfileAvatar(result);
+      if (typeof result === "string") {
+        setProfileAvatar(result);
+        setDraftAvatar(result);
+      }
     };
     reader.readAsDataURL(file);
   };
 
   const triggerAvatarUpload = () => {
     avatarInputRef.current?.click();
+  };
+
+  const openProfileModal = () => {
+    setDraftName(profileName);
+    setDraftEmail(profileEmail);
+    setDraftAvatar(profileAvatar);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleProfileSave = () => {
+    setProfileName(draftName.trim() || "Seller");
+    setProfileEmail(draftEmail.trim() || profileEmail);
+    if (draftAvatar) setProfileAvatar(draftAvatar);
+    setIsProfileModalOpen(false);
   };
 
   return (
@@ -92,7 +113,7 @@ export default function BuyerSettingsPage() {
             <div className="flex items-center gap-3">
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
               <button
-                onClick={triggerAvatarUpload}
+                onClick={openProfileModal}
                 className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600"
               >
                 <User className="h-4 w-4" /> Edit Profile
@@ -204,6 +225,81 @@ export default function BuyerSettingsPage() {
           </button>
         </Card>
       </div>
+
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-xl rounded-3xl border border-[color:var(--card-border)] bg-[#1a1f2b] p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">Edit Profile</h3>
+                <p className="mt-1 text-sm text-theme-muted">Update your name, email, and profile photo.</p>
+              </div>
+              <button
+                aria-label="Close"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Name</span>
+                <input
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="Your name"
+                />
+              </label>
+
+              <div className="space-y-2 text-sm font-semibold text-white/80">
+                <span>Profile Picture</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    {draftAvatar || profileAvatar ? (
+                      <img src={draftAvatar || profileAvatar || ""} alt="Preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-white/60">No photo</span>
+                    )}
+                  </div>
+                  <label className="flex-1 cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white/80 transition hover:border-emerald-400/60 hover:text-white">
+                    Upload New Photo
+                    <input type="file" accept="image/*" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        const result = ev.target?.result;
+                        if (typeof result === "string") setDraftAvatar(result);
+                      };
+                      reader.readAsDataURL(file);
+                    }} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Email</span>
+                <input
+                  value={draftEmail}
+                  onChange={(e) => setDraftEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="you@example.com"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={handleProfileSave}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
