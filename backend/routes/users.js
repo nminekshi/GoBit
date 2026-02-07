@@ -39,4 +39,37 @@ router.get("/", requireAdmin, async (_req, res) => {
   }
 });
 
+// GET /users/:id - fetch a single user (admin only)
+router.get("/:id", requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id, "username email mobile role createdAt updatedAt");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.json({ user });
+  } catch (err) {
+    console.error("Error fetching user", err);
+    return res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
+
+// DELETE /users/:id - delete a user (admin only)
+router.delete("/:id", requireAdmin, async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ message: "You cannot delete your own admin account" });
+    }
+
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ message: "User deleted" });
+  } catch (err) {
+    console.error("Error deleting user", err);
+    return res.status(500).json({ message: "Failed to delete user" });
+  }
+});
+
 module.exports = router;

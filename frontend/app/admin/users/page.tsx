@@ -24,10 +24,28 @@ export default function AdminUsersPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const [banLoadingId, setBanLoadingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  const parseJsonSafe = async (res: Response) => {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      return res.json();
+    }
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      return { message: text || "Unexpected response from server" };
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
       const parsed = rawAuth ? JSON.parse(rawAuth) : null;
       const token = parsed?.token;
@@ -44,10 +62,11 @@ export default function AdminUsersPage() {
         },
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
 
       if (!res.ok) {
         setError(data?.message || "Failed to fetch users");
+        setUsers([]);
         setLoading(false);
         return;
       }
@@ -68,6 +87,7 @@ export default function AdminUsersPage() {
     } catch (err) {
       console.error("Error loading users", err);
       setError("Unable to load users right now.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -118,7 +138,7 @@ export default function AdminUsersPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
       if (!res.ok) {
         setInviteError(data?.message || "Failed to invite user.");
         return;
@@ -132,6 +152,46 @@ export default function AdminUsersPage() {
       setInviteError("Unable to invite user right now.");
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  const handleBan = async (user: AdminUser) => {
+    const confirm = window.confirm(`Delete user ${user.username}? This cannot be undone.`);
+    if (!confirm) return;
+    try {
+      setBanLoadingId(user.id);
+      setActionMessage(null);
+      setError(null);
+      const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
+      const parsed = rawAuth ? JSON.parse(rawAuth) : null;
+      const token = parsed?.token;
+
+      if (!token) {
+        setError("Please login as an admin to manage users.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/users/${user.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await parseJsonSafe(res);
+      if (!res.ok) {
+        setError(data?.message || "Failed to delete user");
+        setActionMessage(null);
+        return;
+      }
+      setError(null);
+      setActionMessage("User deleted.");
+      await fetchUsers();
+    } catch (err) {
+      console.error("Error deleting user", err);
+      setError("Unable to delete user right now.");
+    } finally {
+      setBanLoadingId(null);
     }
   };
 
@@ -170,6 +230,8 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </header>
+
+        {actionMessage && <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{actionMessage}</div>}
 
         {showInvite && (
           <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
@@ -278,11 +340,21 @@ export default function AdminUsersPage() {
                     <div className="text-white/80 capitalize">{u.role}</div>
                     <div className="text-white/80">{formatDate(u.createdAt)}</div>
                     <div className="flex justify-end gap-2">
-                      <button className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:border-emerald-400/60">
+                      <button
+                        className="rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:border-emerald-400/60"
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setShowReview(true);
+                        }}
+                      >
                         Review
                       </button>
-                      <button className="rounded-lg bg-rose-500/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500">
-                        <Ban className="h-4 w-4" />
+                      <button
+                        className="rounded-lg bg-rose-500/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-60"
+                        onClick={() => handleBan(u)}
+                        disabled={banLoadingId === u.id}
+                      >
+                        {banLoadingId === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
@@ -296,6 +368,49 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      {showReview && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0b1326] p-6 text-white shadow-2xl shadow-black/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-emerald-400">User</p>
+                <h2 className="text-xl font-bold">{selectedUser.username}</h2>
+              </div>
+              <button
+                onClick={() => setShowReview(false)}
+                className="rounded-lg border border-white/10 bg-white/5 p-2 text-white hover:border-emerald-400/60"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-white/80">
+              <div className="flex justify-between"><span>Email</span><span className="text-white">{selectedUser.email}</span></div>
+              <div className="flex justify-between"><span>Role</span><span className="capitalize text-white">{selectedUser.role}</span></div>
+              <div className="flex justify-between"><span>Mobile</span><span className="text-white">{selectedUser.mobile || "-"}</span></div>
+              <div className="flex justify-between"><span>Joined</span><span className="text-white">{formatDate(selectedUser.createdAt)}</span></div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:border-emerald-400/60"
+                onClick={() => setShowReview(false)}
+              >
+                Close
+              </button>
+              <button
+                className="rounded-lg bg-rose-500/80 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-60"
+                onClick={() => {
+                  setShowReview(false);
+                  handleBan(selectedUser);
+                }}
+                disabled={banLoadingId === selectedUser.id}
+              >
+                {banLoadingId === selectedUser.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete user"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
