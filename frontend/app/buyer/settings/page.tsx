@@ -32,6 +32,7 @@ export default function BuyerSettingsPage() {
   const [profileName, setProfileName] = useState("Alex Morgan");
   const [profileEmail, setProfileEmail] = useState("alex.morgan@example.com");
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [securityPrefs, setSecurityPrefs] = useState({
     twoFactor: true,
     biometric: true,
@@ -87,6 +88,8 @@ export default function BuyerSettingsPage() {
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw);
+      const id = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
+      setUserId(id || null);
       const user = parsed?.user || {};
       const name = user.username || user.name;
       const email = user.email;
@@ -110,9 +113,10 @@ export default function BuyerSettingsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedName = window.localStorage.getItem("profileName");
-    const storedEmail = window.localStorage.getItem("profileEmail");
-    const storedAvatar = window.localStorage.getItem("profileAvatar");
+    const key = (suffix: string) => (userId ? `${userId}_${suffix}` : suffix);
+    const storedName = window.localStorage.getItem(key("profileName"));
+    const storedEmail = window.localStorage.getItem(key("profileEmail"));
+    const storedAvatar = window.localStorage.getItem(key("profileAvatar"));
 
     if (storedName) {
       setProfileName(storedName);
@@ -189,12 +193,14 @@ export default function BuyerSettingsPage() {
   const persistProfile = (nextName: string, nextEmail: string, nextAvatar: string | null) => {
     if (typeof window === "undefined") return;
 
-    window.localStorage.setItem("profileName", nextName);
-    window.localStorage.setItem("profileEmail", nextEmail);
+    const key = (suffix: string) => (userId ? `${userId}_${suffix}` : suffix);
+
+    window.localStorage.setItem(key("profileName"), nextName);
+    window.localStorage.setItem(key("profileEmail"), nextEmail);
     if (nextAvatar) {
-      window.localStorage.setItem("profileAvatar", nextAvatar);
+      window.localStorage.setItem(key("profileAvatar"), nextAvatar);
     } else {
-      window.localStorage.removeItem("profileAvatar");
+      window.localStorage.removeItem(key("profileAvatar"));
     }
 
     const raw = window.localStorage.getItem("auth");

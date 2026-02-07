@@ -20,63 +20,6 @@ type Review = {
   role?: string | null;
 };
 
-const SEED_REVIEWS: Review[] = [
-  {
-    id: "seed-1",
-    name: "Min Lee",
-    rating: 5,
-    text: "Bidding felt smooth and transparent—won my item without surprises.",
-    date: "2026-01-22",
-    userId: null,
-    role: "guest",
-  },
-  {
-    id: "seed-2",
-    name: "Nim Jay",
-    rating: 5,
-    text: "Highly recommended. Listings were clear and support was responsive.",
-    date: "2026-01-21",
-    userId: null,
-    role: "guest",
-  },
-  {
-    id: "seed-3",
-    name: "Riya Das",
-    rating: 5,
-    text: "Great experience—felt safe paying and the delivery updates were solid.",
-    date: "2026-01-20",
-    userId: null,
-    role: "guest",
-  },
-  {
-    id: "seed-4",
-    name: "Kushani Perera",
-    rating: 4,
-    text: "Loved the vibe and the watch I won arrived exactly as described.",
-    date: "2026-01-18",
-    userId: null,
-    role: "guest",
-  },
-  {
-    id: "seed-5",
-    name: "Min Silva",
-    rating: 4,
-    text: "Clear bidding steps and fair closing times—would bid again soon.",
-    date: "2026-01-16",
-    userId: null,
-    role: "guest",
-  },
-  {
-    id: "seed-6",
-    name: "Riya Fernando",
-    rating: 5,
-    text: "Yummy experience all around—great finds and quick confirmations!",
-    date: "2026-01-15",
-    userId: null,
-    role: "guest",
-  },
-];
-
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<HomeAuctionBid | null>(null);
@@ -95,14 +38,18 @@ export default function Home() {
     if (saved) {
       try {
         const parsed: Review[] = JSON.parse(saved);
-        setReviews(parsed);
+        const filtered = Array.isArray(parsed) ? parsed.filter((r) => !!r.userId) : [];
+        setReviews(filtered);
+        if (filtered.length !== parsed.length) {
+          window.localStorage.setItem("buyer-reviews", JSON.stringify(filtered));
+        }
       } catch {
-        setReviews(SEED_REVIEWS);
-        window.localStorage.setItem("buyer-reviews", JSON.stringify(SEED_REVIEWS));
+        setReviews([]);
+        window.localStorage.setItem("buyer-reviews", JSON.stringify([]));
       }
     } else {
-      setReviews(SEED_REVIEWS);
-      window.localStorage.setItem("buyer-reviews", JSON.stringify(SEED_REVIEWS));
+      setReviews([]);
+      window.localStorage.setItem("buyer-reviews", JSON.stringify([]));
     }
   }, []);
 

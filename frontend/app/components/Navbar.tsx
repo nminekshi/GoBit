@@ -10,6 +10,7 @@ type AuthUser = {
   role?: string;
   avatar?: string | null;
   email?: string | null;
+  id?: string | null;
 };
 
 function Navbar() {
@@ -29,13 +30,16 @@ function Navbar() {
         return;
       }
       const parsed = JSON.parse(raw);
-      const storedName = window.localStorage.getItem("profileName");
-      const storedEmail = window.localStorage.getItem("profileEmail");
+      const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
+      const key = (suffix: string) => (userId ? `${userId}_${suffix}` : suffix);
+      const storedName = window.localStorage.getItem(key("profileName"));
+      const storedEmail = window.localStorage.getItem(key("profileEmail"));
+      const storedAvatar = window.localStorage.getItem(key("profileAvatar"));
       if (parsed?.user?.username || storedName) {
         const username = parsed?.user?.username || storedName || "User";
         const email = parsed?.user?.email || storedEmail || null;
-        const avatar = parsed?.user?.avatar || parsed?.user?.photoURL || window.localStorage.getItem("profileAvatar");
-        setUser({ username, role: parsed?.user?.role, avatar, email });
+        const avatar = parsed?.user?.avatar || parsed?.user?.photoURL || storedAvatar;
+        setUser({ username, role: parsed?.user?.role, avatar, email, id: userId });
       } else {
         setUser(null);
         setMenuOpen(false);
@@ -49,25 +53,28 @@ function Navbar() {
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (!event.key) return;
-      if (!"profileAvatar,profileName,profileEmail".includes(event.key)) return;
       setUser((prev) => {
-        if (!prev) return prev;
+        if (!prev?.id) return prev;
+        const key = (suffix: string) => `${prev.id}_${suffix}`;
+        const watchedKeys = [key("profileAvatar"), key("profileName"), key("profileEmail")];
+        if (!watchedKeys.includes(event.key)) return prev;
         return {
           ...prev,
-          avatar: window.localStorage.getItem("profileAvatar"),
-          username: window.localStorage.getItem("profileName") || prev.username,
-          email: window.localStorage.getItem("profileEmail") || prev.email,
+          avatar: window.localStorage.getItem(key("profileAvatar")),
+          username: window.localStorage.getItem(key("profileName")) || prev.username,
+          email: window.localStorage.getItem(key("profileEmail")) || prev.email,
         };
       });
     };
     const onProfileUpdate = () => {
       setUser((prev) => {
-        if (!prev) return prev;
+        if (!prev?.id) return prev;
+        const key = (suffix: string) => `${prev.id}_${suffix}`;
         return {
           ...prev,
-          avatar: window.localStorage.getItem("profileAvatar"),
-          username: window.localStorage.getItem("profileName") || prev.username,
-          email: window.localStorage.getItem("profileEmail") || prev.email,
+          avatar: window.localStorage.getItem(key("profileAvatar")),
+          username: window.localStorage.getItem(key("profileName")) || prev.username,
+          email: window.localStorage.getItem(key("profileEmail")) || prev.email,
         };
       });
     };
