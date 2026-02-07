@@ -179,113 +179,145 @@ export default function SellerDashboard() {
           </div>
         </header>
 
-        {/* Stats Section */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-            <p className="text-sm font-medium text-slate-400">Total Earnings</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-400">${totalEarnings.toLocaleString()}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-            <p className="text-sm font-medium text-slate-400">Active Listings</p>
-            <p className="mt-2 text-3xl font-bold text-white">{activeListings}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-            <p className="text-sm font-medium text-slate-400">Total Views</p>
-            <p className="mt-2 text-3xl font-bold text-blue-400">{totalViews}</p>
-          </div>
-        </section>
-
-        {/* Content Area */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">My Listings</h2>
-            <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
-              {(['all', 'active', 'sold', 'draft'] as const).map(status => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
-                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${filterStatus === status
-                    ? "bg-emerald-500 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                    }`}
-                >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredAuctions.length === 0 ? (
-              <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-white/10 bg-white/5">
-                <p className="text-slate-500">No auctions found in this category.</p>
-                <Link href="/seller/create-auction">
-                  <button className="mt-4 text-emerald-400 hover:underline">
-                    Create your first auction
-                  </button>
-                </Link>
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {/* Sidebar */}
+          <aside className="w-full shrink-0 space-y-4 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur lg:w-72">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-white/60">Navigation</p>
+              <div className="mt-3 space-y-2">
+                {[{ label: "Overview", href: "/seller/dashboard" }, { label: "Create Auction", href: "/seller/create-auction" }, { label: "Orders & Payouts", href: "/seller/orders" }, { label: "Messages", href: "/seller/messages" }, { label: "Settings", href: "/seller/settings" }].map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <div className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/80 transition hover:border-emerald-400/50 hover:text-white">
+                      <span>{item.label}</span>
+                      <span className="text-xs text-white/50">→</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            ) : (
-              filteredAuctions.map(auction => {
-                // Calculate time left (mock logic for demo, real would differ)
-                const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
+            </div>
 
-                return (
-                  <div key={auction.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
-                    {/* Image */}
-                    <div className="relative w-full overflow-hidden border-b border-white/10 bg-black/30 aspect-[4/3]">
-                      <img
-                        src={auction.imageUrl}
-                        alt={auction.title}
-                        className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 hover:scale-105"
-                      />
-                      <div className="absolute top-3 right-3">
-                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
-                          auction.status === 'sold' ? 'bg-blue-500 text-white' :
-                            'bg-slate-500 text-white'
-                          }`}>
-                          {auction.status}
-                        </span>
-                      </div>
-                    </div>
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+              <p className="font-semibold text-white">Boost your visibility</p>
+              <p className="mt-1 text-emerald-100/80">Promote a listing to appear in trending auctions.</p>
+              <Link href="/seller/create-auction">
+                <button className="mt-3 w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400">
+                  Promote now
+                </button>
+              </Link>
+            </div>
+          </aside>
 
-                    {/* Content Body */}
-                    <div className="flex flex-1 flex-col p-5">
-                      <h3 className="text-xl font-semibold text-white leading-tight line-clamp-1">{auction.title}</h3>
-                      <p className="mt-1 text-sm text-white/60">
-                        {auction.category}
-                      </p>
+          {/* Main Column */}
+          <div className="flex-1 space-y-6">
+            {/* Stats Section */}
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Total Earnings</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-400">${totalEarnings.toLocaleString()}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Active Listings</p>
+                <p className="mt-2 text-3xl font-bold text-white">{activeListings}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Total Views</p>
+                <p className="mt-2 text-3xl font-bold text-blue-400">{totalViews}</p>
+              </div>
+            </section>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                          <p className="text-xs uppercase tracking-wide text-white/50">
-                            Current bid
-                          </p>
-                          <p className="text-lg font-semibold text-white">${auction.currentBid.toLocaleString()}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                          <p className="text-xs uppercase tracking-wide text-white/50">
-                            Ends in
-                          </p>
-                          <p className="text-lg font-semibold text-white">{timeLeft}</p>
-                        </div>
-                      </div>
+            {/* Content Area */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">My Listings</h2>
+                <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
+                  {(['all', 'active', 'sold', 'draft'] as const).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${filterStatus === status
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                        }`}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                      <div className="mt-4 flex items-center justify-between text-sm">
-                        <span className="text-white/60">{auction.views} views</span>
-                        <span className="text-emerald-300">Bid ready</span>
-                      </div>
-
-                      <Link href={`/seller/edit-auction/${auction.id}`}>
-                        <button className="mt-5 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
-                          Manage Listing
-                        </button>
-                      </Link>
-                    </div>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredAuctions.length === 0 ? (
+                  <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-white/10 bg-white/5">
+                    <p className="text-slate-500">No auctions found in this category.</p>
+                    <Link href="/seller/create-auction">
+                      <button className="mt-4 text-emerald-400 hover:underline">
+                        Create your first auction
+                      </button>
+                    </Link>
                   </div>
-                )
-              })
-            )}
+                ) : (
+                  filteredAuctions.map(auction => {
+                    // Calculate time left (mock logic for demo, real would differ)
+                    const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
+
+                    return (
+                      <div key={auction.id} className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
+                        {/* Image */}
+                        <div className="relative w-full overflow-hidden border-b border-white/10 bg-black/30 aspect-[4/3]">
+                          <img
+                            src={auction.imageUrl}
+                            alt={auction.title}
+                            className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 hover:scale-105"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
+                              auction.status === 'sold' ? 'bg-blue-500 text-white' :
+                                'bg-slate-500 text-white'
+                              }`}>
+                              {auction.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Content Body */}
+                        <div className="flex flex-1 flex-col p-5">
+                          <h3 className="text-xl font-semibold text-white leading-tight line-clamp-1">{auction.title}</h3>
+                          <p className="mt-1 text-sm text-white/60">
+                            {auction.category}
+                          </p>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                              <p className="text-xs uppercase tracking-wide text-white/50">
+                                Current bid
+                              </p>
+                              <p className="text-lg font-semibold text-white">${auction.currentBid.toLocaleString()}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                              <p className="text-xs uppercase tracking-wide text-white/50">
+                                Ends in
+                              </p>
+                              <p className="text-lg font-semibold text-white">{timeLeft}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between text-sm">
+                            <span className="text-white/60">{auction.views} views</span>
+                            <span className="text-emerald-300">Bid ready</span>
+                          </div>
+
+                          <Link href={`/seller/edit-auction/${auction.id}`}>
+                            <button className="mt-5 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
+                              Manage Listing
+                            </button>
+                          </Link>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
