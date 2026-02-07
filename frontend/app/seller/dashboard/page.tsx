@@ -197,7 +197,7 @@ export default function SellerDashboard() {
           <aside
             className={`relative w-full shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] p-3 backdrop-blur transition-all duration-300 ${
               isCollapsed ? "lg:w-20" : "lg:w-72"
-            }`}
+            } min-h-[80vh]`}
           >
             <div className="flex h-full flex-col gap-3">
               <div className="flex items-center gap-2">
@@ -219,14 +219,14 @@ export default function SellerDashboard() {
                 </button>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname?.startsWith(item.href);
                   return (
                     <Link key={item.href} href={item.href}>
                       <div
-                        className={`group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                        className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
                           isActive
                             ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
                             : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
