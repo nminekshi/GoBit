@@ -33,6 +33,7 @@ export default function BuyerSettingsPage() {
   const [profileEmail, setProfileEmail] = useState("alex.morgan@example.com");
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [authSnapshot, setAuthSnapshot] = useState<{ name?: string; email?: string; avatar?: string | null } | null>(null);
   const [securityPrefs, setSecurityPrefs] = useState({
     twoFactor: true,
     biometric: true,
@@ -94,6 +95,7 @@ export default function BuyerSettingsPage() {
       const name = user.username || user.name;
       const email = user.email;
       const avatar = user.avatar || user.photoURL;
+      setAuthSnapshot({ name, email, avatar });
       if (name) {
         setProfileName(name);
         setDraftName(name);
@@ -113,24 +115,33 @@ export default function BuyerSettingsPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const key = (suffix: string) => (userId ? `${userId}_${suffix}` : suffix);
+    if (!userId) {
+      // If no user, reset to defaults and auth snapshot (if any)
+      setProfileName(authSnapshot?.name || "Alex Morgan");
+      setProfileEmail(authSnapshot?.email || "alex.morgan@example.com");
+      setProfileAvatar(authSnapshot?.avatar || null);
+      setDraftName(authSnapshot?.name || "Alex Morgan");
+      setDraftEmail(authSnapshot?.email || "alex.morgan@example.com");
+      setDraftAvatar(authSnapshot?.avatar || null);
+      return;
+    }
+
+    const key = (suffix: string) => `${userId}_${suffix}`;
     const storedName = window.localStorage.getItem(key("profileName"));
     const storedEmail = window.localStorage.getItem(key("profileEmail"));
     const storedAvatar = window.localStorage.getItem(key("profileAvatar"));
 
-    if (storedName) {
-      setProfileName(storedName);
-      setDraftName(storedName);
-    }
-    if (storedEmail) {
-      setProfileEmail(storedEmail);
-      setDraftEmail(storedEmail);
-    }
-    if (storedAvatar) {
-      setProfileAvatar(storedAvatar);
-      setDraftAvatar(storedAvatar);
-    }
-  }, []);
+    const nextName = storedName || authSnapshot?.name || profileName;
+    const nextEmail = storedEmail || authSnapshot?.email || profileEmail;
+    const nextAvatar = storedAvatar || authSnapshot?.avatar || profileAvatar;
+
+    setProfileName(nextName);
+    setDraftName(nextName);
+    setProfileEmail(nextEmail);
+    setDraftEmail(nextEmail);
+    setProfileAvatar(nextAvatar || null);
+    setDraftAvatar(nextAvatar || null);
+  }, [userId, authSnapshot?.name, authSnapshot?.email, authSnapshot?.avatar]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -192,8 +203,9 @@ export default function BuyerSettingsPage() {
 
   const persistProfile = (nextName: string, nextEmail: string, nextAvatar: string | null) => {
     if (typeof window === "undefined") return;
+    if (!userId) return;
 
-    const key = (suffix: string) => (userId ? `${userId}_${suffix}` : suffix);
+    const key = (suffix: string) => `${userId}_${suffix}`;
 
     window.localStorage.setItem(key("profileName"), nextName);
     window.localStorage.setItem(key("profileEmail"), nextEmail);
