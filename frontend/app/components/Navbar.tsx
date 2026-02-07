@@ -123,6 +123,8 @@ function Navbar() {
   const activeLink = "text-emerald-400 border-b-2 border-emerald-400 pb-1";
   const inactiveLink = "text-slate-100 hover:text-emerald-300";
 
+  const hidePublicLinks = user?.role?.toLowerCase() === "admin" || user?.role?.toLowerCase() === "seller";
+
   return (
     <header className="w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur sticky top-0 z-20">
       <nav className="max-w-full mx-auto flex flex-col md:flex-row items-center justify-between py-3 md:py-4 px-4 md:px-8">
@@ -130,40 +132,42 @@ function Navbar() {
           <img src="/logo.png" alt="GoBit Logo" className="h-17 md:h-20 w-auto" />
         </div>
 
-        <div className="flex-1 flex items-center justify-center gap-6 md:gap-8 mt-3 md:mt-0 ml-0 md:ml-8">
-          <Link
-            href="/"
-            className={`${linkBase} ${
-              pathname === "/" ? activeLink : inactiveLink
-            }`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/ongoing-auctions"
-            className={`${linkBase} ${
-              pathname === "/ongoing-auctions" ? activeLink : inactiveLink
-            }`}
-          >
-            On-going auctions
-          </Link>
-          <Link
-            href="/trending-auctions"
-            className={`${linkBase} ${
-              pathname === "/trending-auctions" ? activeLink : inactiveLink
-            }`}
-          >
-            Trending auction
-          </Link>
-          <Link
-            href="/categories"
-            className={`${linkBase} ${
-              pathname?.startsWith("/categories") ? activeLink : inactiveLink
-            }`}
-          >
-            Categories
-          </Link>
-        </div>
+        {!hidePublicLinks && (
+          <div className="flex-1 flex items-center justify-center gap-6 md:gap-8 mt-3 md:mt-0 ml-0 md:ml-8">
+            <Link
+              href="/"
+              className={`${linkBase} ${
+                pathname === "/" ? activeLink : inactiveLink
+              }`}
+            >
+              Home
+            </Link>
+            <Link
+              href="/ongoing-auctions"
+              className={`${linkBase} ${
+                pathname === "/ongoing-auctions" ? activeLink : inactiveLink
+              }`}
+            >
+              On-going auctions
+            </Link>
+            <Link
+              href="/trending-auctions"
+              className={`${linkBase} ${
+                pathname === "/trending-auctions" ? activeLink : inactiveLink
+              }`}
+            >
+              Trending auction
+            </Link>
+            <Link
+              href="/categories"
+              className={`${linkBase} ${
+                pathname?.startsWith("/categories") ? activeLink : inactiveLink
+              }`}
+            >
+              Categories
+            </Link>
+          </div>
+        )}
 
         <div className="relative flex items-center gap-3 md:gap-4 mt-3 md:mt-0" ref={menuRef}>
           {user ? (
