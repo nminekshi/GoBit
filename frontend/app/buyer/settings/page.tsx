@@ -58,6 +58,33 @@ export default function BuyerSettingsPage() {
     return () => media.removeEventListener("change", handler);
   }, [theme]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem("auth");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const user = parsed?.user || {};
+      const name = user.username || user.name;
+      const email = user.email;
+      const avatar = user.avatar || user.photoURL;
+      if (name) {
+        setProfileName(name);
+        setDraftName(name);
+      }
+      if (email) {
+        setProfileEmail(email);
+        setDraftEmail(email);
+      }
+      if (avatar && typeof avatar === "string") {
+        setProfileAvatar(avatar);
+        setDraftAvatar(avatar);
+      }
+    } catch {
+      // ignore malformed auth
+    }
+  }, []);
+
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
