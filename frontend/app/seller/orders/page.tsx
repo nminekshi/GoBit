@@ -45,7 +45,7 @@ export default function OrdersPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#050914] px-4 py-8 text-white sm:px-6 lg:px-10">
-      <div className="flex w-full flex-col gap-6 min-h-[85vh]">
+      <div className="flex w-full flex-col gap-6 min-h-[90vh]">
         <header className="flex flex-wrap items-center gap-3 justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/50">Seller</p>
@@ -69,7 +69,7 @@ export default function OrdersPage() {
           <StatCard icon={Package} label="Orders this week" value="18" accent="indigo" sub="3 awaiting dispatch" />
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur min-h-[60vh]">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex gap-1 rounded-xl bg-white/5 p-1">
               {TABS.map((tab) => (
