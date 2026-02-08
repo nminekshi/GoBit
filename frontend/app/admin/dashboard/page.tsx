@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   BarChart3,
@@ -62,8 +62,12 @@ const NOTIFICATIONS = [
 
 export default function AdminDashboard() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [activeAuctions, setActiveAuctions] = useState(0);
+
+  const goToCreateAuction = () => router.push("/seller/create-auction");
+  const goToInviteAdmin = () => router.push("/admin/users");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -130,10 +134,10 @@ export default function AdminDashboard() {
         {!isCollapsed && (
           <div className="mt-auto space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
             <p className="text-xs uppercase tracking-wide text-white/60">Quick actions</p>
-            <button className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-black hover:bg-emerald-400">
+            <button onClick={goToCreateAuction} className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-black hover:bg-emerald-400">
               Create auction
             </button>
-            <button className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/60">
+            <button onClick={goToInviteAdmin} className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/60">
               Invite admin
             </button>
           </div>
@@ -247,7 +251,7 @@ export default function AdminDashboard() {
 
               <CardPanel title="Quick Actions" actionLabel="All actions">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <ActionButton label="Create auction" icon={Layers} />
+                  <ActionButton label="Create auction" icon={Layers} onClick={goToCreateAuction} />
                   <ActionButton label="Issue payout" icon={Wallet} />
                   <ActionButton label="Send notice" icon={Bell} />
                   <ActionButton label="Export report" icon={BarChart3} />
@@ -324,9 +328,12 @@ function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose" }) {
   return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${colors[tone]}`}>{label}</span>;
 }
 
-function ActionButton({ label, icon: Icon }: { label: string; icon: React.ComponentType<{ className?: string }> }) {
+function ActionButton({ label, icon: Icon, onClick }: { label: string; icon: React.ComponentType<{ className?: string }>; onClick?: () => void }) {
   return (
-    <button className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-white hover:border-emerald-400/60">
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-white hover:border-emerald-400/60"
+    >
       <Icon className="h-4 w-4 text-emerald-300" />
       <span>{label}</span>
     </button>
