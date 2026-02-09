@@ -9,10 +9,7 @@ const hero = {
   statLabel: "Avg. recon cost",
   statValue: "$1.8K",
   statDetail: "based on last 20 closings",
-  actions: [
-    { label: "Schedule inspection", href: "/inquiry-form" },
-    { label: "Open fleet desk", href: "/admin/dashboard", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
