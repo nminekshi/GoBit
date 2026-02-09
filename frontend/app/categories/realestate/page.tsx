@@ -9,10 +9,7 @@ const hero = {
   statLabel: "Cap rate ceiling",
   statValue: "12.1%",
   statDetail: "Mountain cabin micro-fund",
-  actions: [
-    { label: "Book diligence call", href: "/inquiry-form" },
-    { label: "Download sample PSA", href: "/company-profile", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
