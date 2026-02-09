@@ -10,10 +10,7 @@ const hero = {
   statLabel: "Fastest turnover",
   statValue: "2.4h",
   statDetail: "Ultrabook clusters this week",
-  actions: [
-    { label: "Book pallet pickup", href: "/inquiry-form" },
-    { label: "Compare financing", href: "/how-to-pay", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
