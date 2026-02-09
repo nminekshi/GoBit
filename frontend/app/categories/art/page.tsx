@@ -9,10 +9,7 @@ const hero: CategoryHero = {
   statLabel: "Highest active bid",
   statValue: "$18K",
   statDetail: "Classic oil reserve met",
-  actions: [
-    { label: "Request curator set", href: "/inquiry-form" },
-    { label: "Preview upcoming fair", href: "/explore-auctions", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
