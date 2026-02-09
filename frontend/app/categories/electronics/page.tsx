@@ -9,10 +9,7 @@ const hero: CategoryHero = {
   statLabel: "Median hammer",
   statValue: "$1.2K",
   statDetail: "Premium phones this cycle",
-  actions: [
-    { label: "Automate alerts", href: "/login" },
-    { label: "View bulk lots", href: "/ongoing-auctions", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
