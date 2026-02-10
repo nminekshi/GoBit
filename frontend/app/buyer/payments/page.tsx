@@ -31,12 +31,17 @@ type WalletState = {
 const STORAGE_KEY = "buyer-wallet";
 
 export default function BuyerPaymentsPage() {
+  const [hydrated, setHydrated] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string | null; name: string | null } | null>(null);
-  const [wallet, setWallet] = useState<WalletState>({ balance: 0, holds: 0, lastSync: new Date().toISOString(), transactions: [], paymentMethods: [] });
+  const [wallet, setWallet] = useState<WalletState>({ balance: 0, holds: 0, lastSync: "", transactions: [], paymentMethods: [] });
   const [depositAmount, setDepositAmount] = useState("");
   const [cardBrand, setCardBrand] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardTag, setCardTag] = useState("Primary");
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   // Load user and wallet from storage
   useEffect(() => {
@@ -138,6 +143,7 @@ export default function BuyerPaymentsPage() {
   const transactions = useMemo(() => wallet.transactions || [], [wallet.transactions]);
 
   const availableBalance = Math.max(wallet.balance - wallet.holds, 0);
+  const lastSyncLabel = hydrated && wallet.lastSync ? new Date(wallet.lastSync).toLocaleString() : "Syncing...";
 
   return (
     <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-10">
@@ -264,7 +270,7 @@ export default function BuyerPaymentsPage() {
                   <span>2FA for payments</span>
                   <span className="text-emerald-300">Enabled</span>
                 </div>
-                <div className="text-xs text-white/50">Last sync: {new Date(wallet.lastSync).toLocaleString()}</div>
+                <div className="text-xs text-white/50">Last sync: {lastSyncLabel}</div>
               </div>
             </Card>
 
