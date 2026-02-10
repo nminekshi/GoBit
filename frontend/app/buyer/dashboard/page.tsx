@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutDashboard, Eye, Bookmark, Wallet, Settings, Menu, Star } from "lucide-react";
 
 // --- Types ---
@@ -123,6 +123,7 @@ const NAV_ITEMS = [
 
 export default function BuyerDashboard() {
   // --- State ---
+  const router = useRouter();
   const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
   const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist" | "reviews">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -261,6 +262,17 @@ export default function BuyerDashboard() {
     alert("Bid placed successfully!");
   };
 
+  const handleClaim = (id: string) => {
+    setAuctions((prev) =>
+      prev.map((auction) =>
+        auction.id === id
+          ? { ...auction, status: "won", endsIn: "Ended" }
+          : auction
+      )
+    );
+    alert("Item claimed successfully!");
+  };
+
   const toggleWatchlist = (id: string) => {
     setAuctions((prev) =>
       prev.map((auction) => (auction.id === id ? { ...auction, isWatchlisted: !auction.isWatchlisted } : auction))
@@ -330,7 +342,10 @@ export default function BuyerDashboard() {
                 Browse Categories
               </button>
             </Link>
-            <button className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600">
+            <button
+              onClick={() => router.push("/buyer/payments")}
+              className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600"
+            >
               Deposit Funds
             </button>
           </div>
@@ -548,6 +563,7 @@ export default function BuyerDashboard() {
                         key={auction.id}
                         auction={auction}
                         onBid={handleBid}
+                        onClaim={handleClaim}
                         onWatchlist={toggleWatchlist}
                       />
                     ))
@@ -567,10 +583,12 @@ export default function BuyerDashboard() {
 function AuctionCard({
   auction,
   onBid,
+  onClaim,
   onWatchlist,
 }: {
   auction: Auction;
   onBid: (id: string) => void;
+  onClaim: (id: string) => void;
   onWatchlist: (id: string) => void;
 }) {
   const statusTone = auction.status === "won"
@@ -578,6 +596,8 @@ function AuctionCard({
     : auction.status === "active"
       ? "bg-emerald-500/15 text-emerald-200"
       : "bg-white/10 text-white/70";
+
+  const shouldShowClaim = auction.status === "won" || auction.myBid !== undefined;
 
   return (
     <div className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-white transition hover:border-white/30 hover:shadow-[0_18px_40px_rgba(16,185,129,0.2)]">
@@ -655,8 +675,11 @@ function AuctionCard({
       </div>
 
       <div className="flex gap-3">
-        {auction.status === "won" ? (
-          <button className="flex-1 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-amber-400">
+        {shouldShowClaim ? (
+          <button
+            onClick={() => onClaim(auction.id)}
+            className="flex-1 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-amber-400"
+          >
             Claim item
           </button>
         ) : (
