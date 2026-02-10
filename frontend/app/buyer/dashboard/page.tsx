@@ -30,6 +30,18 @@ type Review = {
   userId: string | null;
 };
 
+type StoredBid = {
+  id?: string;
+  title?: string;
+  category?: string;
+  amount?: number;
+  imageUrl?: string;
+  placedAt?: string;
+  userId?: string;
+};
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1506765515384-028b60a970df?auto=format&fit=crop&q=80&w=260&h=200";
+
 // --- Mock Data ---
 const MOCK_AUCTIONS: Auction[] = [
   {
@@ -192,6 +204,46 @@ export default function BuyerDashboard() {
       setBuyerReviews(mine);
     } catch {
       setBuyerReviews([]);
+    }
+  }, [currentUser]);
+
+  // --- Load buyer bids into dashboard ---
+  useEffect(() => {
+    if (typeof window === "undefined" || !currentUser?.id) return;
+    try {
+      const raw = window.localStorage.getItem("buyer-bids");
+      const parsed = raw ? JSON.parse(raw) : [];
+      const mine = Array.isArray(parsed)
+        ? parsed.filter((b: StoredBid) => b.userId === currentUser.id)
+        : [];
+
+      if (mine.length === 0) return;
+
+      const mapped: Auction[] = mine.map((b) => {
+        const amount = Number(b.amount) || 0;
+        return {
+          id: b.id || `${b.title || "auction"}-${b.placedAt || b.userId || "bid"}`,
+          title: b.title || "Auction",
+          category: b.category || "General",
+          imageUrl: b.imageUrl || FALLBACK_IMAGE,
+          currentBid: amount || 100,
+          myBid: amount || 100,
+          endsIn: "Ends soon",
+          bidsCount: 1,
+          isWatchlisted: false,
+          status: "active",
+          seller: "Local Seller",
+          trustScore: 4.8,
+        };
+      });
+
+      setAuctions((prev) => {
+        const mappedIds = new Set(mapped.map((m) => m.id));
+        const remaining = prev.filter((a) => !mappedIds.has(a.id));
+        return [...mapped, ...remaining];
+      });
+    } catch {
+      // ignore parse/storage errors
     }
   }, [currentUser]);
 

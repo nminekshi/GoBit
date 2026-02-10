@@ -140,6 +140,34 @@ export default function CategoryDetailPage({
       return;
     }
 
+    // persist bid to buyer dashboard storage (per-user)
+    try {
+      const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
+      const parsed = rawAuth ? JSON.parse(rawAuth) : null;
+      const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
+      const role = parsed?.user?.role?.toLowerCase();
+      if (userId && role === "buyer") {
+        const bidValue = Number(bid);
+        const storedRaw = window.localStorage.getItem("buyer-bids");
+        const existing = storedRaw ? JSON.parse(storedRaw) : [];
+        const bidEntry = {
+          id: `cat-${categoryKey}-${selectedItem.name}`,
+          title: selectedItem.name,
+          category: categoryKey,
+          amount: bidValue,
+          imageUrl: selectedItem.img,
+          placedAt: new Date().toISOString(),
+          userId,
+        };
+        const deduped = Array.isArray(existing)
+          ? [bidEntry, ...existing.filter((b: any) => !(b.id === bidEntry.id && b.userId === userId))]
+          : [bidEntry];
+        window.localStorage.setItem("buyer-bids", JSON.stringify(deduped));
+      }
+    } catch {
+      // swallow storage issues
+    }
+
     closeModal();
     alert("Your bid has been placed!");
   };
