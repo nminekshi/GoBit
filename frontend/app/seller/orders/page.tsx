@@ -106,6 +106,23 @@ export default function OrdersPage() {
     }
   };
 
+  const handleExport = (rows: Order[]) => {
+    if (!rows.length) {
+      alert("No orders to export for this view.");
+      return;
+    }
+    const header = ["Invoice","Item","Buyer","Method","Date","Amount","Status"];
+    const csvRows = rows.map((o) => [o.id, o.item, o.buyer, o.method, o.date, o.amount.toString(), o.status]);
+    const csv = [header, ...csvRows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "orders.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filtered = useMemo(() => {
     if (activeTab === "All") return orders;
     return orders.filter((o) => o.status === activeTab);
@@ -139,7 +156,10 @@ export default function OrdersPage() {
             >
               <RefreshCw className="h-4 w-4" /> Refresh
             </button>
-            <button className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-emerald-400/60">
+            <button
+              onClick={() => handleExport(filtered)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-emerald-400/60"
+            >
               <Download className="h-4 w-4" /> Export CSV
             </button>
           </div>
