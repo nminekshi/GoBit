@@ -312,7 +312,7 @@ export default function CategoryDetailPage({
                       <img
                         src={item.img}
                         alt={item.name}
-                        className="absolute inset-0 h-full w-full object-cover object-center"
+                        className="absolute inset-0 h-full w-full object-contain object-center"
                       />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
                     </button>

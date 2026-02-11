@@ -2,16 +2,37 @@ const express = require("express");
 const router = express.Router();
 const Auction = require("../models/Auction");
 
+const mongoose = require("mongoose");
+const User = require("../models/User");
+
 // Middleware to verify authentication (simple version - you may want to enhance this)
-const authenticate = (req, res, next) => {
-    // For now, we'll accept a userId in the request body or headers
-    // In production, you'd verify a JWT token here
-    const userId = req.headers["x-user-id"] || req.body.userId;
-    if (!userId) {
-        return res.status(401).json({ error: "Authentication required" });
+const authenticate = async (req, res, next) => {
+    try {
+        // For now, we'll accept a userId in the request body or headers
+        // In production, you'd verify a JWT token here
+        const userId = req.headers["x-user-id"] || req.body.userId;
+
+        if (!userId) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+
+        // Validate ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "Invalid user ID format" });
+        }
+
+        // Optionally verify user exists (recommended for production)
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        req.userId = userId;
+        next();
+    } catch (error) {
+        console.error("Authentication error:", error);
+        return res.status(500).json({ error: "Authentication failed" });
     }
-    req.userId = userId;
-    next();
 };
 
 // GET /auctions - Get all auctions (with optional category filter)

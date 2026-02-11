@@ -283,11 +283,11 @@ export default function BuyerDashboard() {
   const filteredAuctions = activeTab === "reviews"
     ? []
     : auctions.filter((auction) => {
-        if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
-        if (activeTab === "bidding" && auction.myBid === undefined) return false;
-        if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-        return true;
-      });
+      if (activeTab === "watchlist" && !auction.isWatchlisted) return false;
+      if (activeTab === "bidding" && auction.myBid === undefined) return false;
+      if (searchQuery && !auction.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
 
   const activeBidsCount = auctions.filter((a) => a.myBid && a.status === "active").length;
   const watchlistCount = auctions.filter((a) => a.isWatchlisted).length;
@@ -368,9 +368,8 @@ export default function BuyerDashboard() {
 
         <div className="flex w-full flex-col gap-6 lg:flex-row">
           <aside
-            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${
-              isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
-            } min-h-[80vh]`}
+            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
+              } min-h-[80vh]`}
           >
             <div className="flex h-full flex-col gap-3">
               <div className="flex items-center gap-3 pr-1">
@@ -379,11 +378,10 @@ export default function BuyerDashboard() {
                     {(displayName || "B").charAt(0).toUpperCase()}
                   </div>
                   <div
-                    className={`flex flex-col transition-all duration-300 ${
-                      isCollapsed
+                    className={`flex flex-col transition-all duration-300 ${isCollapsed
                         ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
                         : "opacity-100 w-auto max-w-[180px]"
-                    }`}
+                      }`}
                   >
                     <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
                     <p className="text-sm font-semibold text-white">{displayName || "Buyer"}</p>
@@ -404,17 +402,15 @@ export default function BuyerDashboard() {
                   const active = isNavActive(item);
                   const body = (
                     <div
-                      className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${
-                        active
+                      className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${active
                           ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
                           : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
-                      }`}
+                        }`}
                     >
                       <Icon className="h-5 w-5" />
                       <span
-                        className={`transition-all duration-200 ${
-                          isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
-                        }`}
+                        className={`transition-all duration-200 ${isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
+                          }`}
                       >
                         {item.label}
                       </span>
@@ -519,9 +515,8 @@ export default function BuyerDashboard() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                          activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
-                        }`}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                          }`}
                       >
                         {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
                       </button>
@@ -635,7 +630,7 @@ function AuctionCard({
         <img
           src={auction.imageUrl}
           alt={auction.title}
-          className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-hover:scale-105"
+          className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
       </div>

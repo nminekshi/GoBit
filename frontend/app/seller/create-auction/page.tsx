@@ -152,8 +152,8 @@ export default function CreateAuctionPage() {
 
                             <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 py-12 text-center transition hover:border-emerald-500/50 hover:bg-white/10">
                                 {previewUrl ? (
-                                    <div className="relative w-64 h-48 overflow-hidden rounded-lg shadow-md group">
-                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <div className="relative w-full max-w-xl aspect-video overflow-hidden rounded-xl shadow-2xl border border-white/10 bg-black/40 group">
+                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                             <button
                                                 type="button"
