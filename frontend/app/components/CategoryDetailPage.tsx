@@ -82,40 +82,58 @@ export default function CategoryDetailPage({
   const [bid, setBid] = useState("");
   const [error, setError] = useState("");
   const [mergedItems, setMergedItems] = useState<AuctionItem[]>(items);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
 
-  // Load created auctions from LocalStorage
+  // Load auctions from API
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-      if (savedAuctionsRaw) {
-        const savedAuctions = JSON.parse(savedAuctionsRaw);
-        // Filter by category (case-insensitive)
-        const relevantAuctions = savedAuctions.filter((a: any) =>
-          a.category.toLowerCase() === categoryKey.toLowerCase()
+    const loadAuctions = async () => {
+      setLoading(true);
+      setApiError("");
+      try {
+        const { auctionAPI } = await import("../lib/api");
+        const apiAuctions = await auctionAPI.fetchAuctionsByCategory(categoryKey);
+
+        // Format API auctions to match AuctionItem structure
+        const formattedApiAuctions = apiAuctions.map((a: any) => {
+          const endTime = new Date(a.endTime);
+          const now = new Date();
+          const diffMs = endTime.getTime() - now.getTime();
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const endsIn = diffMs > 0 ? `${diffDays}d ${diffHours}h` : "Ended";
+
+          return {
+            name: a.title,
+            img: a.imageUrl,
+            currentBid: a.currentBid,
+            endsIn,
+            watchers: a.watchers || 0,
+            condition: a.status === "active" ? "Active" : "Completed",
+            location: "Online",
+            description: a.description || "No description available",
+          };
+        });
+
+        // Merge with initial items (if any)
+        const existingNames = new Set(items.map(i => i.name));
+        const uniqueApiAuctions = formattedApiAuctions.filter(
+          (a: any) => !existingNames.has(a.name)
         );
 
-        const formattedAuctions = relevantAuctions.map((a: any) => ({
-          name: a.title,
-          img: a.imageUrl,
-          currentBid: a.currentBid,
-          endsIn: "3d 5h", // mock
-          watchers: 0,
-          condition: "New Listing",
-          location: "Local",
-          description: a.description // map description from saved auction
-        }));
-
-        setMergedItems(prev => {
-          const existingNames = new Set(prev.map(p => p.name));
-          const uniqueNew = formattedAuctions.filter((a: any) => !existingNames.has(a.name));
-          return [...uniqueNew, ...prev];
-        });
+        setMergedItems([...uniqueApiAuctions, ...items]);
+      } catch (e) {
+        console.error("Failed to load auctions from API:", e);
+        setApiError("Failed to load auctions. Please try again later.");
+        // Fallback to initial items
+        setMergedItems(items);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to load local auctions", e);
-    }
-  }, [categoryKey]);
+    };
+
+    loadAuctions();
+  }, [categoryKey, items]);
 
   const openModal = (item: AuctionItem) => {
     setSelectedItem(item);
@@ -251,66 +269,95 @@ export default function CategoryDetailPage({
               </div>
               <span className="text-sm text-white/60">{mergedItems.length} curated lots</span>
             </div>
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {mergedItems.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
-                >
-                  <button
-                    type="button"
-                    onClick={() => openModal(item)}
-                    className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
-                    aria-label={`View details for ${item.name}`}
+
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center space-y-3">
+                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-emerald-500 border-r-transparent"></div>
+                  <p className="text-sm text-white/60">Loading auctions...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Error State */}
+            {!loading && apiError && (
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-6 text-center">
+                <p className="text-rose-300">{apiError}</p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !apiError && mergedItems.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
+                <p className="text-lg text-white/60">No active auctions in this category yet.</p>
+                <p className="mt-2 text-sm text-white/40">Check back soon for new listings!</p>
+              </div>
+            )}
+
+            {/* Auction Grid */}
+            {!loading && mergedItems.length > 0 && (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {mergedItems.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
                   >
-                    <img
-                      src={item.img}
-                      alt={item.name}
-                      className="absolute inset-0 h-full w-full object-cover object-center"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
-                  </button>
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>
-                    <p className="mt-1 text-sm text-white/60 font-medium">
-                      {item.description || "New Listing"}
-                    </p>
-                    {/* Optional: We can hide condition if description is present, or show both. 
+                    <button
+                      type="button"
+                      onClick={() => openModal(item)}
+                      className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
+                      aria-label={`View details for ${item.name}`}
+                    >
+                      <img
+                        src={item.img}
+                        alt={item.name}
+                        className="absolute inset-0 h-full w-full object-cover object-center"
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
+                    </button>
+                    <div className="flex flex-1 flex-col p-5">
+                      <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>
+                      <p className="mt-1 text-sm text-white/60 font-medium">
+                        {item.description || "New Listing"}
+                      </p>
+                      {/* Optional: We can hide condition if description is present, or show both. 
                         The prompt asks to 'add description section' 'like this'. 
                         I'll keep condition below but maybe smaller or just let it stack. */}
-                    {item.condition && (
-                      <p className="mt-1 text-xs text-white/40">
-                        {item.condition}
-                      </p>
-                    )}
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                        <p className="text-xs uppercase tracking-wide text-white/50">
-                          Current bid
+                      {item.condition && (
+                        <p className="mt-1 text-xs text-white/40">
+                          {item.condition}
                         </p>
-                        <p className="text-lg font-semibold">${item.currentBid.toLocaleString()}</p>
+                      )}
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                          <p className="text-xs uppercase tracking-wide text-white/50">
+                            Current bid
+                          </p>
+                          <p className="text-lg font-semibold">${item.currentBid.toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                          <p className="text-xs uppercase tracking-wide text-white/50">
+                            Ends in
+                          </p>
+                          <p className="text-lg font-semibold">{item.endsIn}</p>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-                        <p className="text-xs uppercase tracking-wide text-white/50">
-                          Ends in
-                        </p>
-                        <p className="text-lg font-semibold">{item.endsIn}</p>
+                      <div className="mt-4 flex items-center justify-between text-sm">
+                        <span className="text-white/60">{item.watchers} watchers</span>
+                        <span className="text-emerald-300">Bid ready</span>
                       </div>
+                      <button
+                        onClick={() => openModal(item)}
+                        className="mt-5 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
+                      >
+                        Place bid
+                      </button>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-sm">
-                      <span className="text-white/60">{item.watchers} watchers</span>
-                      <span className="text-emerald-300">Bid ready</span>
-                    </div>
-                    <button
-                      onClick={() => openModal(item)}
-                      className="mt-5 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
-                    >
-                      Place bid
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </div>

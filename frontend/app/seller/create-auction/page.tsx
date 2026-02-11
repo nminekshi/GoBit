@@ -32,36 +32,27 @@ export default function CreateAuctionPage() {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Mimic API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const newAuction = {
-            id: Math.random().toString(36).substr(2, 9),
-            title: formData.title,
-            category: formData.category,
-            description: formData.description || "No description provided.",
-            startPrice: Number(formData.startPrice),
-            currentBid: Number(formData.startPrice),
-            status: "active",
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
-            bidsCount: 0,
-            imageUrl: previewUrl || "https://images.unsplash.com/photo-1550259114-ad7188f0a967?auto=format&fit=crop&q=80&w=260&h=200",
-            views: 0,
-            createdAt: new Date(),
-        };
-
-        // Save to LocalStorage
         try {
-            const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-            const savedAuctions = savedAuctionsRaw ? JSON.parse(savedAuctionsRaw) : [];
-            const newGlobalAuctions = [newAuction, ...savedAuctions];
-            window.localStorage.setItem("global_auctions", JSON.stringify(newGlobalAuctions));
+            const { auctionAPI, categoryNameToSlug } = await import("../../lib/api");
+
+            // Convert category display name to slug
+            const categorySlug = categoryNameToSlug(formData.category);
+
+            // Create auction via API
+            const newAuction = await auctionAPI.createAuction({
+                title: formData.title,
+                description: formData.description || "No description provided.",
+                category: categorySlug,
+                startPrice: Number(formData.startPrice),
+                imageUrl: previewUrl || undefined,
+                endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
+            });
 
             alert("Auction item added successfully!");
             router.push("/seller/dashboard");
-        } catch (err) {
-            console.error("Failed to save auction locally:", err);
+        } catch (err: any) {
+            console.error("Failed to create auction:", err);
+            alert(err.message || "Failed to create auction. Please try again.");
             setIsSubmitting(false);
         }
     };
