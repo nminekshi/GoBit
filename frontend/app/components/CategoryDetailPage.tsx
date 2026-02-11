@@ -260,13 +260,13 @@ export default function CategoryDetailPage({
                   <button
                     type="button"
                     onClick={() => openModal(item)}
-                    className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918] flex items-center justify-center"
+                    className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
                     aria-label={`View details for ${item.name}`}
                   >
                     <img
                       src={item.img}
                       alt={item.name}
-                      className="h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-cover object-center"
                     />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
                   </button>

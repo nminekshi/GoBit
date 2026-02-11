@@ -265,7 +265,9 @@ export default function AdminDashboard() {
   );
 }
 
-function KpiCard({ card }: { card: typeof KPI_CARDS[number] }) {
+type Kpi = { label: string; value: string | number; delta: string; accent: "emerald" | "blue" | "purple" | "amber"; icon: React.ComponentType<{ className?: string }> };
+
+function KpiCard({ card }: { card: Kpi }) {
   const tones: Record<string, { bg: string; text: string }> = {
     emerald: { bg: "from-emerald-500/25", text: "text-emerald-200" },
     blue: { bg: "from-blue-500/25", text: "text-blue-200" },
