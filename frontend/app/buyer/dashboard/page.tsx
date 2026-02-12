@@ -151,43 +151,36 @@ export default function BuyerDashboard() {
 
   // --- Effects ---
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("auth");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const username = parsed?.user?.username as string | undefined;
-      if (username) {
-        setDisplayName(username);
-      }
+    const loadAuctions = async () => {
+      try {
+        const { auctionAPI } = await import("../../lib/api");
+        const apiAuctions = await auctionAPI.fetchAuctions();
 
-      const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-      if (savedAuctionsRaw) {
-        const savedAuctions = JSON.parse(savedAuctionsRaw);
-        const formattedSavedAuctions = savedAuctions.map((a: any) => ({
-          id: a.id,
+        const formattedApiAuctions = apiAuctions.map((a: any) => ({
+          id: a._id || a.id || `api-${Math.random()}`,
           title: a.title,
           category: a.category,
-          imageUrl: a.imageUrl,
-          currentBid: a.currentBid,
-          endsIn: "3d 5h",
-          bidsCount: a.bidsCount,
+          imageUrl: a.imageUrl || FALLBACK_IMAGE,
+          currentBid: a.currentBid || a.startPrice || 0,
+          endsIn: "3d 5h", // Placeholder for actual time left logic
+          bidsCount: a.bidsCount || 0,
           isWatchlisted: false,
-          status: a.status,
-          seller: displayName || "Local Seller",
-          trustScore: 5.0,
+          status: (a.status as "active" | "won" | "ended") || "active",
+          seller: a.seller?.username || "Verified Seller",
+          trustScore: 4.8,
         }));
 
         setAuctions((prev) => {
           const existingIds = new Set(prev.map((p) => p.id));
-          const uniqueNew = formattedSavedAuctions.filter((a: any) => !existingIds.has(a.id));
+          const uniqueNew = formattedApiAuctions.filter((a: any) => a.id && !existingIds.has(a.id));
           return [...uniqueNew, ...prev];
         });
+      } catch (err) {
+        console.error("Failed to load auctions for buyer:", err);
       }
-    } catch {
-      // ignore parse errors
-    }
-  }, [displayName]);
+    };
+    loadAuctions();
+  }, []);
 
   // --- Load buyer reviews ---
   useEffect(() => {
@@ -240,7 +233,7 @@ export default function BuyerDashboard() {
 
       setAuctions((prev) => {
         const mappedIds = new Set(mapped.map((m) => m.id));
-        const remaining = prev.filter((a) => !mappedIds.has(a.id));
+        const remaining = prev.filter((a) => a.id && !mappedIds.has(a.id));
         return [...mapped, ...remaining];
       });
     } catch {
@@ -379,8 +372,8 @@ export default function BuyerDashboard() {
                   </div>
                   <div
                     className={`flex flex-col transition-all duration-300 ${isCollapsed
-                        ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
-                        : "opacity-100 w-auto max-w-[180px]"
+                      ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
+                      : "opacity-100 w-auto max-w-[180px]"
                       }`}
                   >
                     <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
@@ -403,8 +396,8 @@ export default function BuyerDashboard() {
                   const body = (
                     <div
                       className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${active
-                          ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
-                          : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                        ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                        : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
                         }`}
                     >
                       <Icon className="h-5 w-5" />

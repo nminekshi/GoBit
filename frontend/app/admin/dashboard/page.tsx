@@ -27,7 +27,7 @@ const NAV_ITEMS = [
   { label: "Security", icon: ShieldCheck, href: "/admin/security" },
 ];
 
-const KPI_CARDS = [
+const KPI_CARDS: Kpi[] = [
   { label: "Active auctions", value: 126, delta: "+12%", accent: "emerald", icon: Activity },
   { label: "GMV (24h)", value: "$842k", delta: "+6.1%", accent: "blue", icon: Wallet },
   { label: "New users", value: 384, delta: "+9%", accent: "purple", icon: Users },
@@ -70,14 +70,16 @@ export default function AdminDashboard() {
   const goToInviteAdmin = () => router.push("/admin/users");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedRaw = window.localStorage.getItem("global_auctions");
-    const deletedRaw = window.localStorage.getItem("deleted_auctions");
-    if (savedRaw) {
-      const saved = JSON.parse(savedRaw);
-      const deleted = new Set(deletedRaw ? JSON.parse(deletedRaw) : []);
-      setActiveAuctions(saved.filter((a: any) => !deleted.has(a.id)).length);
-    }
+    const loadStats = async () => {
+      try {
+        const { auctionAPI } = await import("../../lib/api");
+        const auctions = await auctionAPI.fetchAuctions();
+        setActiveAuctions(auctions.filter((a: any) => a.status === "active").length);
+      } catch (err) {
+        console.error("Failed to load admin stats:", err);
+      }
+    };
+    loadStats();
   }, []);
 
   const kpis = useMemo(() => {
@@ -89,9 +91,8 @@ export default function AdminDashboard() {
   return (
     <main className="relative flex min-h-screen items-start gap-6 bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
       <aside
-        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${
-          isCollapsed ? "w-20" : "w-72"
-        }`}
+        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"
+          }`}
       >
         <div className="flex items-center gap-2 pb-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
@@ -117,11 +118,10 @@ export default function AdminDashboard() {
             return (
               <Link key={item.href} href={item.href}>
                 <div
-                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${
-                    active
-                      ? "border-emerald-400/70 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
-                      : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
-                  }`}
+                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${active
+                    ? "border-emerald-400/70 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                    : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                    }`}
                 >
                   <Icon className="h-5 w-5" />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -321,7 +321,7 @@ function CardPanel({ title, actionLabel, children }: { title: string; actionLabe
   );
 }
 
-function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose" }) {
+function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose"; label: string }) {
   const colors: Record<typeof tone, string> = {
     emerald: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
     amber: "text-amber-300 bg-amber-500/10 border-amber-500/30",

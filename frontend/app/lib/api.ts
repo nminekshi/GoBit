@@ -104,6 +104,8 @@ export const auctionAPI = {
         data: {
             title?: string;
             description?: string;
+            category?: string;
+            startPrice?: number;
             imageUrl?: string;
             status?: string;
             endTime?: Date;

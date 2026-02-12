@@ -162,10 +162,16 @@ router.put("/:id", authenticate, async (req, res) => {
         }
 
         // Update allowed fields
-        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime"];
+        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime", "category", "startPrice"];
         Object.keys(req.body).forEach((key) => {
             if (allowedUpdates.includes(key)) {
-                auction[key] = req.body[key];
+                if (key === "category" && typeof req.body[key] === "string") {
+                    auction[key] = req.body[key].toLowerCase();
+                } else if (key === "startPrice") {
+                    auction[key] = Number(req.body[key]);
+                } else {
+                    auction[key] = req.body[key];
+                }
             }
         });
 

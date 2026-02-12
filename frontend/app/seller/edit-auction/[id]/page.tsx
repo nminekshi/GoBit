@@ -3,74 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-
-// Mimic the type from dashboard
-interface Auction {
-    id: string;
-    title: string;
-    category: string;
-    description: string;
-    startPrice: number;
-    currentBid: number;
-    status: "active" | "draft" | "sold";
-    startTime: Date;
-    endTime: Date;
-    winner?: string;
-    bidsCount: number;
-    imageUrl: string;
-    views: number;
-    createdAt: Date;
-}
-
-// Mock data to fallback if not in local storage (sync with dashboard mock)
-const MOCK_SELLER_AUCTIONS: Auction[] = [
-    {
-        id: "s1",
-        title: "2021 Tesla Model 3 Long Range",
-        category: "Electronics",
-        description: "All-Wheel Drive, 28,000 miles. Autopilot enabled. Includes Wall Connector and...",
-        startPrice: 32500,
-        currentBid: 32500,
-        status: "active",
-        startTime: new Date("2026-02-01T13:47:00"),
-        endTime: new Date("2026-02-05T13:50:00"),
-        bidsCount: 8,
-        imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
-        views: 124,
-        createdAt: new Date(),
-    },
-    {
-        id: "s2",
-        title: "Eames Lounge Chair Replica",
-        category: "Art & Editions",
-        description: "High-quality reproduction with premium Italian leather and walnut veneer finish.",
-        startPrice: 500,
-        currentBid: 500,
-        status: "draft",
-        startTime: new Date("2026-02-10T09:00:00"),
-        endTime: new Date("2026-02-15T18:00:00"),
-        bidsCount: 0,
-        imageUrl: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=260&h=200",
-        views: 0,
-        createdAt: new Date(),
-    },
-    {
-        id: "s3",
-        title: "Signed Basketball Jersey",
-        category: "Art & Editions",
-        description: "Authentic signed jersey from the 2024 championship game. COA included.",
-        startPrice: 200,
-        currentBid: 52000,
-        status: "sold",
-        startTime: new Date("2026-01-20T10:00:00"),
-        endTime: new Date("2026-02-01T13:50:00"),
-        winner: "Dili@gmail.com",
-        bidsCount: 15,
-        imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=260&h=200",
-        views: 340,
-        createdAt: new Date(),
-    },
-];
+import { auctionAPI, categorySlugToName, categoryNameToSlug } from "../../../lib/api";
 
 export default function EditAuctionPage() {
     const router = useRouter();
@@ -85,39 +18,36 @@ export default function EditAuctionPage() {
     });
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [originalAuction, setOriginalAuction] = useState<any>(null); // Store full object to preserve other fields
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!auctionId || typeof window === "undefined") return;
+        if (!auctionId) return;
 
-        // 1. Try LocalStorage
-        const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-        let foundAuction = null;
+        const loadAuction = async () => {
+            setIsLoading(true);
+            try {
+                const auction = await auctionAPI.fetchAuctionById(auctionId);
+                if (auction) {
+                    setFormData({
+                        title: auction.title,
+                        category: categorySlugToName(auction.category),
+                        description: auction.description || "",
+                        startPrice: auction.startPrice.toString(),
+                    });
+                    setPreviewUrl(auction.imageUrl);
+                } else {
+                    setError("Auction not found.");
+                }
+            } catch (err) {
+                console.error("Error loading auction:", err);
+                setError("Failed to load auction data.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        if (savedAuctionsRaw) {
-            const savedAuctions = JSON.parse(savedAuctionsRaw);
-            foundAuction = savedAuctions.find((a: any) => a.id === auctionId);
-        }
-
-        // 2. Try Mock Data if not found
-        if (!foundAuction) {
-            foundAuction = MOCK_SELLER_AUCTIONS.find((a) => a.id === auctionId);
-        }
-
-        if (foundAuction) {
-            setFormData({
-                title: foundAuction.title,
-                category: foundAuction.category,
-                description: foundAuction.description,
-                startPrice: foundAuction.startPrice.toString(),
-            });
-            setPreviewUrl(foundAuction.imageUrl);
-            setOriginalAuction(foundAuction);
-        } else {
-            // Handle Not Found?
-            console.error("Auction not found");
-        }
-
+        loadAuction();
     }, [auctionId]);
 
     // Handle file selection
@@ -136,96 +66,69 @@ export default function EditAuctionPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setError(null);
 
-        // Mimic API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const updatedAuction = {
-            ...originalAuction, // keep existing fields like status, views, etc.
-            title: formData.title,
-            category: formData.category,
-            description: formData.description || "No description provided.",
-            startPrice: Number(formData.startPrice),
-            imageUrl: previewUrl || originalAuction?.imageUrl,
-            // Note: In a real app we might not update 'currentBid' if it already has bids, 
-            // but for simplicity we'll assume startPrice update might affect it if no bids, 
-            // or just leave currentBid alone. Let's leave currentBid alone unless it's strictly equal to old startPrice?
-            // Actually, safe to just update metadata.
-        };
-
-        // Save to LocalStorage
         try {
-            const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-            let savedAuctions = savedAuctionsRaw ? JSON.parse(savedAuctionsRaw) : [];
-
-            // Logic: 
-            // If it exists in savedAuctions, update it.
-            // If it DOESN'T exist (it was a mock), add it to savedAuctions (so it overrides mock in dashboard).
-
-            const index = savedAuctions.findIndex((a: any) => a.id === auctionId);
-
-            if (index !== -1) {
-                savedAuctions[index] = updatedAuction;
-            } else {
-                savedAuctions = [updatedAuction, ...savedAuctions];
-            }
-
-            window.localStorage.setItem("global_auctions", JSON.stringify(savedAuctions));
+            await auctionAPI.updateAuction(auctionId, {
+                title: formData.title,
+                category: categoryNameToSlug(formData.category),
+                description: formData.description,
+                startPrice: Number(formData.startPrice),
+                imageUrl: previewUrl || undefined,
+            });
 
             alert("Auction updated successfully!");
             router.push("/seller/dashboard");
-        } catch (err) {
-            console.error("Failed to save auction locally:", err);
+        } catch (err: any) {
+            console.error("Failed to update auction:", err);
+            setError(err.message || "Failed to update auction. Please try again.");
             setIsSubmitting(false);
         }
     };
 
     // Handle delete
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!confirm("Are you sure you want to delete this listing? This action cannot be undone.")) {
             return;
         }
 
+        setIsSubmitting(true);
         try {
-            const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-            if (savedAuctionsRaw) {
-                const savedAuctions = JSON.parse(savedAuctionsRaw);
-                const newAuctions = savedAuctions.filter((a: any) => a.id !== auctionId);
-
-                // If it was a mock auction that hadn't been saved yet, we just ensure it's "deleted" 
-                // by adding it to a "deletedIds" list OR just not showing it if we were fully using LS.
-                // But for this hybrid approach, if it's not in LS, we can't "delete" it from the hardcoded mocks 
-                // without persisting a "deleted" state. 
-                // SIMPLIFICATION: We will save the filtered list back. 
-                // If the user tries to delete a MOCK that hasn't been edited (so not in LS), 
-                // we technically need to add it to a "deleted_auctions" list in LS to filter it out from Dashboard.
-                // allow me to implement that robustness:
-
-                window.localStorage.setItem("global_auctions", JSON.stringify(newAuctions));
-
-                // Track deleted mock IDs
-                const deletedRaw = window.localStorage.getItem("deleted_auctions");
-                const deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
-                if (!deletedIds.includes(auctionId)) {
-                    deletedIds.push(auctionId);
-                    window.localStorage.setItem("deleted_auctions", JSON.stringify(deletedIds));
-                }
-            } else {
-                // No global auctions yet, so it must be a mock or fresh.
-                // Just track as deleted
-                const deletedRaw = window.localStorage.getItem("deleted_auctions");
-                const deletedIds = deletedRaw ? JSON.parse(deletedRaw) : [];
-                deletedIds.push(auctionId);
-                window.localStorage.setItem("deleted_auctions", JSON.stringify(deletedIds));
-            }
-
+            await auctionAPI.deleteAuction(auctionId);
             alert("Auction deleted successfully.");
             router.push("/seller/dashboard");
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to delete auction:", err);
-            alert("Failed to delete auction. Please try again.");
+            alert(err.message || "Failed to delete auction. Please try again.");
+            setIsSubmitting(false);
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-[#040918]">
+                <div className="text-center">
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent mx-auto"></div>
+                    <p className="mt-4 text-white/60">Loading auction details...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error && !isSubmitting) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-[#040918] px-4">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center max-w-md">
+                    <p className="text-rose-400 mb-6">{error}</p>
+                    <Link href="/seller/dashboard">
+                        <button className="rounded-xl bg-white/10 px-6 py-2 text-sm font-semibold text-white hover:bg-white/20 transition">
+                            Return to Dashboard
+                        </button>
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8 flex items-center justify-center relative overflow-hidden">
@@ -322,8 +225,8 @@ export default function EditAuctionPage() {
 
                             <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 py-12 text-center transition hover:border-emerald-500/50 hover:bg-white/10">
                                 {previewUrl ? (
-                                    <div className="relative w-64 h-48 overflow-hidden rounded-lg shadow-md group">
-                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <div className="relative w-full max-w-xl aspect-video overflow-hidden rounded-xl shadow-2xl border border-white/10 bg-black/40 group">
+                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                             <button
                                                 type="button"
@@ -366,7 +269,8 @@ export default function EditAuctionPage() {
                                 <button
                                     type="button"
                                     onClick={handleDelete}
-                                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-bold text-red-500 hover:bg-red-500 hover:text-white transition"
+                                    disabled={isSubmitting}
+                                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-bold text-red-500 hover:bg-red-500 hover:text-white transition disabled:opacity-50"
                                 >
                                     DELETE LISTING
                                 </button>
