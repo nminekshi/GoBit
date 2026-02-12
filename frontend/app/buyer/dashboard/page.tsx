@@ -18,7 +18,6 @@ interface Auction {
   isWatchlisted: boolean;
   status: "active" | "won" | "ended";
   seller: string;
-  trustScore: number;
 }
 
 type Review = {
@@ -42,75 +41,24 @@ type StoredBid = {
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1506765515384-028b60a970df?auto=format&fit=crop&q=80&w=260&h=200";
 
-// --- Mock Data ---
-const MOCK_AUCTIONS: Auction[] = [
-  {
-    id: "1",
-    title: "Vintage Rolex Datejust",
-    category: "Watches",
-    imageUrl: "https://images.unsplash.com/photo-1587839600078-450eb93895e6?auto=format&fit=crop&q=80&w=260&h=200",
-    currentBid: 5430,
-    endsIn: "2h 15m",
-    bidsCount: 12,
-    isWatchlisted: false,
-    status: "active",
-    seller: "LuxuryTime",
-    trustScore: 4.9,
-  },
-  {
-    id: "2",
-    title: "Sony PlayStation 5 Digital",
-    category: "Gaming",
-    imageUrl: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?auto=format&fit=crop&q=80&w=260&h=200",
-    currentBid: 320,
-    endsIn: "45m",
-    bidsCount: 28,
-    isWatchlisted: true,
-    status: "active",
-    seller: "GameHub",
-    trustScore: 4.7,
-  },
-  {
-    id: "3",
-    title: "MacBook Pro M3 Max",
-    category: "Computers",
-    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=260&h=200",
-    currentBid: 2900,
-    endsIn: "1d 4h",
-    bidsCount: 5,
-    isWatchlisted: false,
-    status: "active",
-    seller: "AppleReseller",
-    trustScore: 5.0,
-  },
-  {
-    id: "4",
-    title: "Herman Miller Aeron Chair",
-    category: "Furniture",
-    imageUrl: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=260&h=200",
-    currentBid: 650,
-    endsIn: "5h 30m",
-    bidsCount: 8,
-    isWatchlisted: false,
-    status: "active",
-    seller: "OfficeComfort",
-    trustScore: 4.5,
-  },
-  {
-    id: "5",
-    title: "Nikon Z6 II Body",
-    category: "Cameras",
-    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
-    currentBid: 1400,
-    endsIn: "Ended",
-    bidsCount: 15,
-    isWatchlisted: false,
-    status: "won",
-    seller: "CamWorld",
-    trustScore: 4.8,
-    myBid: 1400,
-  },
-];
+// --- Helpers ---
+const getTimeRemaining = (endTime: string | Date) => {
+  const end = new Date(endTime).getTime();
+  const now = new Date().getTime();
+  const diff = end - now;
+
+  if (diff <= 0) return "Ended";
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+};
+
+// --- Mock Data --- (REMOVED)
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, tab: "all" as const },
@@ -124,13 +72,16 @@ const NAV_ITEMS = [
 export default function BuyerDashboard() {
   // --- State ---
   const router = useRouter();
-  const [auctions, setAuctions] = useState<Auction[]>(MOCK_AUCTIONS);
+  const [auctions, setAuctions] = useState<Auction[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "bidding" | "watchlist" | "reviews">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [summary, setSummary] = useState({ activeBidsCount: 0, watchlistCount: 0, wonCount: 0 });
   const [currentUser, setCurrentUser] = useState<{ id: string | null; name: string | null; role: string | null } | null>(null);
   const [buyerReviews, setBuyerReviews] = useState<Review[]>([]);
+  const [watchedIds, setWatchedIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
 
   // --- Load user ---
@@ -140,136 +91,141 @@ export default function BuyerDashboard() {
       const raw = window.localStorage.getItem("auth");
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      const id = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
-      const name = parsed?.user?.username || parsed?.user?.name || parsed?.user?.email || null;
+      const id = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || null;
+      const name = parsed?.user?.username || parsed?.user?.name || null;
       const role = parsed?.user?.role || null;
       setCurrentUser({ id, name, role });
-    } catch {
-      // ignore
-    }
+      setDisplayName(name);
+    } catch { /* ignore */ }
   }, []);
 
-  // --- Effects ---
+  // --- Load Data based on Current Context ---
   useEffect(() => {
-    const loadAuctions = async () => {
+    const loadData = async () => {
+      setIsLoading(true);
       try {
         const { auctionAPI } = await import("../../lib/api");
-        const apiAuctions = await auctionAPI.fetchAuctions();
+        let data: any[] = [];
 
-        const formattedApiAuctions = apiAuctions.map((a: any) => ({
-          id: a._id || a.id || `api-${Math.random()}`,
-          title: a.title,
-          category: a.category,
-          imageUrl: a.imageUrl || FALLBACK_IMAGE,
-          currentBid: a.currentBid || a.startPrice || 0,
-          endsIn: "3d 5h", // Placeholder for actual time left logic
-          bidsCount: a.bidsCount || 0,
-          isWatchlisted: false,
-          status: (a.status as "active" | "won" | "ended") || "active",
-          seller: a.seller?.username || "Verified Seller",
-          trustScore: 4.8,
-        }));
+        if (activeTab === "all") {
+          data = await auctionAPI.fetchAuctions();
+        } else if (activeTab === "bidding") {
+          data = await auctionAPI.fetchMyBids();
+        } else if (activeTab === "watchlist") {
+          data = await auctionAPI.fetchMyWatchlist();
+        }
 
-        setAuctions((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const uniqueNew = formattedApiAuctions.filter((a: any) => a.id && !existingIds.has(a.id));
-          return [...uniqueNew, ...prev];
+        const stats = await auctionAPI.fetchBuyerSummary();
+        setSummary(stats);
+
+        // Fetch watchlist separately if we have a user
+        let currentWatchedIds = new Set<string>();
+        if (currentUser?.id) {
+          const watchlist = await auctionAPI.fetchMyWatchlist();
+          currentWatchedIds = new Set(watchlist.map((a: any) => a._id || a.id));
+          setWatchedIds(currentWatchedIds);
+        }
+
+        const formatted = data.map((a: any) => {
+          // Find user's highest bid in this auction
+          const myBids = a.bids?.filter((b: any) => b.bidderId === currentUser?.id) || [];
+          const myHighestBid = myBids.length > 0 ? Math.max(...myBids.map((b: any) => b.bidAmount)) : undefined;
+
+          return {
+            id: a._id || a.id,
+            title: a.title,
+            category: a.category,
+            imageUrl: a.imageUrl || FALLBACK_IMAGE,
+            currentBid: a.currentBid || a.startPrice || 0,
+            myBid: myHighestBid,
+            endsIn: a.endTime ? getTimeRemaining(a.endTime) : "N/A",
+            bidsCount: a.bidsCount || 0,
+            isWatchlisted: activeTab === "watchlist" || currentWatchedIds.has(a._id || a.id),
+            status: a.status as "active" | "won" | "ended",
+            seller: a.sellerId?.username || "Verified Seller",
+          };
         });
+
+        setAuctions(formatted);
       } catch (err) {
-        console.error("Failed to load auctions for buyer:", err);
+        console.error("Failed to load dashboard data:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadAuctions();
-  }, []);
 
-  // --- Load buyer reviews ---
+    if (currentUser?.id || activeTab === "all") {
+      loadData();
+    }
+  }, [activeTab, currentUser?.id]);
+
+  // --- Load buyer reviews (keep for now) ---
   useEffect(() => {
-    if (typeof window === "undefined" || !currentUser?.id) return;
+    if (typeof window === "undefined") return;
     try {
       const raw = window.localStorage.getItem("buyer-reviews");
-      if (!raw) {
-        setBuyerReviews([]);
-        return;
-      }
+      if (!raw) return;
       const parsed = JSON.parse(raw) as Review[];
-      const mine = Array.isArray(parsed)
+      const mine = Array.isArray(parsed) && currentUser?.id
         ? parsed.filter((r) => r.userId === currentUser.id)
         : [];
       setBuyerReviews(mine);
-    } catch {
-      setBuyerReviews([]);
-    }
-  }, [currentUser]);
-
-  // --- Load buyer bids into dashboard ---
-  useEffect(() => {
-    if (typeof window === "undefined" || !currentUser?.id) return;
-    try {
-      const raw = window.localStorage.getItem("buyer-bids");
-      const parsed = raw ? JSON.parse(raw) : [];
-      const mine = Array.isArray(parsed)
-        ? parsed.filter((b: StoredBid) => b.userId === currentUser.id)
-        : [];
-
-      if (mine.length === 0) return;
-
-      const mapped: Auction[] = mine.map((b) => {
-        const amount = Number(b.amount) || 0;
-        return {
-          id: b.id || `${b.title || "auction"}-${b.placedAt || b.userId || "bid"}`,
-          title: b.title || "Auction",
-          category: b.category || "General",
-          imageUrl: b.imageUrl || FALLBACK_IMAGE,
-          currentBid: amount || 100,
-          myBid: amount || 100,
-          endsIn: "Ends soon",
-          bidsCount: 1,
-          isWatchlisted: false,
-          status: "active",
-          seller: "Local Seller",
-          trustScore: 4.8,
-        };
-      });
-
-      setAuctions((prev) => {
-        const mappedIds = new Set(mapped.map((m) => m.id));
-        const remaining = prev.filter((a) => a.id && !mappedIds.has(a.id));
-        return [...mapped, ...remaining];
-      });
-    } catch {
-      // ignore parse/storage errors
-    }
+    } catch { /* ignore */ }
   }, [currentUser]);
 
   // --- Handlers ---
-  const handleBid = (id: string) => {
-    setAuctions((prev) =>
-      prev.map((auction) => {
-        if (auction.id === id) {
-          const nextBid = auction.currentBid + 50;
-          return { ...auction, currentBid: nextBid, myBid: nextBid, bidsCount: auction.bidsCount + 1 };
-        }
-        return auction;
-      })
-    );
-    alert("Bid placed successfully!");
+  const handleBid = async (id: string) => {
+    try {
+      const { auctionAPI } = await import("../../lib/api");
+      const auction = auctions.find(a => a.id === id);
+      if (!auction) return;
+
+      const nextBid = auction.currentBid + 50;
+      await auctionAPI.placeBid(id, nextBid);
+
+      // Update local state for immediate feedback
+      setAuctions(prev => prev.map(a => a.id === id ? {
+        ...a,
+        currentBid: nextBid,
+        myBid: nextBid,
+        bidsCount: a.bidsCount + 1
+      } : a));
+
+      // Refresh summary
+      const stats = await auctionAPI.fetchBuyerSummary();
+      setSummary(stats);
+
+      alert("Bid placed successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to place bid");
+    }
   };
 
   const handleClaim = (id: string) => {
-    setAuctions((prev) =>
-      prev.map((auction) =>
-        auction.id === id
-          ? { ...auction, status: "won", endsIn: "Ended" }
-          : auction
-      )
-    );
-    alert("Item claimed successfully!");
+    alert("Payment and delivery flow would start here.");
   };
 
-  const toggleWatchlist = (id: string) => {
-    setAuctions((prev) =>
-      prev.map((auction) => (auction.id === id ? { ...auction, isWatchlisted: !auction.isWatchlisted } : auction))
-    );
+  const toggleWatchlist = async (id: string) => {
+    try {
+      const { auctionAPI } = await import("../../lib/api");
+      const res = await auctionAPI.toggleWatchlist(id);
+
+      setAuctions(prev => prev.map(a => a.id === id ? { ...a, isWatchlisted: res.isWatched } : a));
+
+      // Update watchedIds set locally
+      setWatchedIds(prev => {
+        const next = new Set(prev);
+        if (res.isWatched) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+
+      // Refresh summary
+      const stats = await auctionAPI.fetchBuyerSummary();
+      setSummary(stats);
+    } catch (err: any) {
+      alert("Failed to update watchlist");
+    }
   };
 
   // --- Derived State ---
@@ -282,9 +238,7 @@ export default function BuyerDashboard() {
       return true;
     });
 
-  const activeBidsCount = auctions.filter((a) => a.myBid && a.status === "active").length;
-  const watchlistCount = auctions.filter((a) => a.isWatchlisted).length;
-  const auctionsWon = auctions.filter((a) => a.status === "won").length;
+
 
   const isNavActive = (item: (typeof NAV_ITEMS)[number]) => {
     if (item.tab) return activeTab === item.tab;
@@ -347,220 +301,226 @@ export default function BuyerDashboard() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
             <p className="text-sm font-medium text-slate-400">Active Bids</p>
-            <p className="mt-2 text-3xl font-bold text-white">{activeBidsCount}</p>
+            <p className="mt-2 text-3xl font-bold text-white">{summary.activeBidsCount}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
             <p className="text-sm font-medium text-slate-400">Watchlist</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-400">{watchlistCount}</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-400">{summary.watchlistCount}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
             <p className="text-sm font-medium text-slate-400">Auctions Won</p>
-            <p className="mt-2 text-3xl font-bold text-amber-400">{auctionsWon}</p>
+            <p className="mt-2 text-3xl font-bold text-amber-400">{summary.wonCount}</p>
           </div>
         </section>
 
-        <div className="flex w-full flex-col gap-6 lg:flex-row">
-          <aside
-            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
-              } min-h-[80vh]`}
-          >
-            <div className="flex h-full flex-col gap-3">
-              <div className="flex items-center gap-3 pr-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
-                    {(displayName || "B").charAt(0).toUpperCase()}
-                  </div>
-                  <div
-                    className={`flex flex-col transition-all duration-300 ${isCollapsed
-                      ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
-                      : "opacity-100 w-auto max-w-[180px]"
-                      }`}
-                  >
-                    <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
-                    <p className="text-sm font-semibold text-white">{displayName || "Buyer"}</p>
-                  </div>
-                </div>
-                <button
-                  aria-label="Toggle sidebar"
-                  onClick={() => setIsCollapsed((prev) => !prev)}
-                  className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
-                >
-                  <Menu className="h-4 w-4" />
-                </button>
-              </div>
-
-              <nav className="space-y-3">
-                {NAV_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  const active = isNavActive(item);
-                  const body = (
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+          </div>
+        ) : (
+          <div className="flex w-full flex-col gap-6 lg:flex-row">
+            <aside
+              className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
+                } min-h-[80vh]`}
+            >
+              <div className="flex h-full flex-col gap-3">
+                <div className="flex items-center gap-3 pr-1">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
+                      {(displayName || "B").charAt(0).toUpperCase()}
+                    </div>
                     <div
-                      className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${active
-                        ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
-                        : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                      className={`flex flex-col transition-all duration-300 ${isCollapsed
+                        ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
+                        : "opacity-100 w-auto max-w-[180px]"
                         }`}
                     >
-                      <Icon className="h-5 w-5" />
-                      <span
-                        className={`transition-all duration-200 ${isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
-                          }`}
-                      >
-                        {item.label}
-                      </span>
+                      <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
+                      <p className="text-sm font-semibold text-white">{displayName || "Buyer"}</p>
                     </div>
-                  );
-
-                  if (item.tab) {
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => handleNavClick(item)}
-                        className="w-full text-left"
-                      >
-                        {body}
-                      </button>
-                    );
-                  }
-
-                  return (
-                    <Link key={item.href} href={item.href!}>
-                      {body}
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              {!isCollapsed && (
-                <div className="mt-auto rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-cyan-500/15 to-indigo-500/20 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)]">
-                  <p className="text-xs uppercase tracking-wide text-emerald-50/80">Save more</p>
-                  <p className="mt-1 text-sm font-semibold text-white">Enable alerts</p>
-                  <p className="mt-1 text-emerald-50/80">Get notified when bids move or auctions end.</p>
-                  <button className="mt-3 w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
-                    Turn on alerts
+                  </div>
+                  <button
+                    aria-label="Toggle sidebar"
+                    onClick={() => setIsCollapsed((prev) => !prev)}
+                    className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                  >
+                    <Menu className="h-4 w-4" />
                   </button>
                 </div>
-              )}
-            </div>
-          </aside>
 
-          <div className="flex-1 space-y-6">
-            {activeTab === "reviews" ? (
-              <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-emerald-300">Your reviews</p>
-                    <h2 className="text-2xl font-bold text-white">Buyer feedback you shared</h2>
-                    <p className="text-sm text-slate-400">Only your reviews appear here. You can delete them anytime.</p>
-                  </div>
-                  <span className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-200">
-                    {buyerReviews.length} total
-                  </span>
-                </div>
-
-                {buyerReviews.length === 0 ? (
-                  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-400">
-                    No reviews yet. Share feedback from the homepage review form—your entries will show here.
-                  </div>
-                ) : (
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {buyerReviews.map((review) => {
-                      const formattedDate = review.date
-                        ? new Date(review.date).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
-                        : "";
-                      const initials = review.name
-                        .split(" ")
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map((part) => part[0]?.toUpperCase())
-                        .join("") || "?";
-
-                      return (
-                        <div key={review.id} className="rounded-2xl border border-emerald-400/20 bg-[#0b1220] p-4 shadow-lg shadow-emerald-500/10">
-                          <div className="flex items-start gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/90 text-sm font-bold text-[#0b1220]">
-                              {initials}
-                            </div>
-                            <div className="flex flex-col gap-0.5">
-                              <p className="text-base font-semibold text-white">{review.name}</p>
-                              <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Buyer{formattedDate ? ` • ${formattedDate}` : ""}</p>
-                              {renderStars(review.rating)}
-                            </div>
-                          </div>
-                          <p className="mt-3 text-sm leading-relaxed text-slate-200">{review.text}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteReview(review.id)}
-                            className="mt-3 inline-flex text-sm font-semibold text-red-300 hover:text-red-200"
-                          >
-                            Delete review
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-            ) : (
-              <>
-                <div className="sticky top-4 z-10 flex flex-col gap-4 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
-                  <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
-                    {(["all", "bidding", "watchlist"] as const).map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                <nav className="space-y-3">
+                  {NAV_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    const active = isNavActive(item);
+                    const body = (
+                      <div
+                        className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${active
+                          ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                          : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
                           }`}
                       >
-                        {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
-                      </button>
-                    ))}
+                        <Icon className="h-5 w-5" />
+                        <span
+                          className={`transition-all duration-200 ${isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
+                            }`}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                    );
+
+                    if (item.tab) {
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={() => handleNavClick(item)}
+                          className="w-full text-left"
+                        >
+                          {body}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <Link key={item.href} href={item.href!}>
+                        {body}
+                      </Link>
+                    );
+                  })}
+                </nav>
+
+                {!isCollapsed && (
+                  <div className="mt-auto rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-cyan-500/15 to-indigo-500/20 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)]">
+                    <p className="text-xs uppercase tracking-wide text-emerald-50/80">Save more</p>
+                    <p className="mt-1 text-sm font-semibold text-white">Enable alerts</p>
+                    <p className="mt-1 text-emerald-50/80">Get notified when bids move or auctions end.</p>
+                    <button className="mt-3 w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
+                      Turn on alerts
+                    </button>
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            <div className="flex-1 space-y-6">
+              {activeTab === "reviews" ? (
+                <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.18em] text-emerald-300">Your reviews</p>
+                      <h2 className="text-2xl font-bold text-white">Buyer feedback you shared</h2>
+                      <p className="text-sm text-slate-400">Only your reviews appear here. You can delete them anytime.</p>
+                    </div>
+                    <span className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-200">
+                      {buyerReviews.length} total
+                    </span>
                   </div>
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search current auctions..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 pl-10 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:w-64"
-                    />
-                    <svg
-                      className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredAuctions.length === 0 ? (
-                    <div className="col-span-full py-20 text-center">
-                      <p className="text-slate-500">No auctions found matching your criteria.</p>
+                  {buyerReviews.length === 0 ? (
+                    <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-400">
+                      No reviews yet. Share feedback from the homepage review form—your entries will show here.
                     </div>
                   ) : (
-                    filteredAuctions.map((auction) => (
-                      <AuctionCard
-                        key={auction.id}
-                        auction={auction}
-                        onBid={handleBid}
-                        onClaim={handleClaim}
-                        onWatchlist={toggleWatchlist}
-                      />
-                    ))
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {buyerReviews.map((review) => {
+                        const formattedDate = review.date
+                          ? new Date(review.date).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" })
+                          : "";
+                        const initials = review.name
+                          .split(" ")
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((part) => part[0]?.toUpperCase())
+                          .join("") || "?";
+
+                        return (
+                          <div key={review.id} className="rounded-2xl border border-emerald-400/20 bg-[#0b1220] p-4 shadow-lg shadow-emerald-500/10">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/90 text-sm font-bold text-[#0b1220]">
+                                {initials}
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                <p className="text-base font-semibold text-white">{review.name}</p>
+                                <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Buyer{formattedDate ? ` • ${formattedDate}` : ""}</p>
+                                {renderStars(review.rating)}
+                              </div>
+                            </div>
+                            <p className="mt-3 text-sm leading-relaxed text-slate-200">{review.text}</p>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteReview(review.id)}
+                              className="mt-3 inline-flex text-sm font-semibold text-red-300 hover:text-red-200"
+                            >
+                              Delete review
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                </div>
-              </>
-            )}
+                </section>
+              ) : (
+                <>
+                  <div className="sticky top-4 z-10 flex flex-col gap-4 bg-[#040918]/90 py-2 backdrop-blur md:flex-row md:items-center md:justify-between">
+                    <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
+                      {(["all", "bidding", "watchlist"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab ? "bg-emerald-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
+                            }`}
+                        >
+                          {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search current auctions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 pl-10 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 md:w-64"
+                      />
+                      <svg
+                        className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                    {filteredAuctions.length === 0 ? (
+                      <div className="col-span-full py-20 text-center">
+                        <p className="text-slate-500">No auctions found matching your criteria.</p>
+                      </div>
+                    ) : (
+                      filteredAuctions.map((auction) => (
+                        <AuctionCard
+                          key={auction.id}
+                          auction={auction}
+                          onBid={handleBid}
+                          onClaim={handleClaim}
+                          onWatchlist={toggleWatchlist}
+                        />
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </main>
   );
@@ -633,7 +593,7 @@ function AuctionCard({
           {auction.title}
         </h3>
         <p className="text-sm text-white/60">
-          Sold by <span className="text-white/80">{auction.seller}</span> · ★ {auction.trustScore}
+          Sold by <span className="text-white/80">{auction.seller}</span>
         </p>
         {auction.myBid && (
           <p className="text-xs font-semibold text-emerald-300">Your bid ${auction.myBid.toLocaleString()}</p>

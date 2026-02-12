@@ -178,6 +178,107 @@ export const auctionAPI = {
             return [];
         }
     },
+
+    // Place a bid on an auction
+    async placeBid(id: string, bidAmount: number): Promise<any> {
+        try {
+            const userId = getUserId();
+            if (!userId) throw new Error("User not authenticated");
+
+            const response = await fetch(`${API_BASE_URL}/auctions/${id}/bid`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": userId,
+                },
+                body: JSON.stringify({ bidAmount }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to place bid");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error placing bid:", error);
+            throw error;
+        }
+    },
+
+    // Toggle watchlist for an auction
+    async toggleWatchlist(id: string): Promise<{ message: string; isWatched: boolean }> {
+        try {
+            const userId = getUserId();
+            if (!userId) throw new Error("User not authenticated");
+
+            const response = await fetch(`${API_BASE_URL}/auctions/${id}/watch`, {
+                method: "POST",
+                headers: {
+                    "x-user-id": userId,
+                },
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || "Failed to update watchlist");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error toggling watchlist:", error);
+            throw error;
+        }
+    },
+
+    // Fetch auctions where user has bid
+    async fetchMyBids(): Promise<any[]> {
+        try {
+            const userId = getUserId();
+            if (!userId) return [];
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/bids`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch your bids");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching my bids:", error);
+            return [];
+        }
+    },
+
+    // Fetch user's watchlist
+    async fetchMyWatchlist(): Promise<any[]> {
+        try {
+            const userId = getUserId();
+            if (!userId) return [];
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/watchlist`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch watchlist");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching my watchlist:", error);
+            return [];
+        }
+    },
+
+    // Fetch buyer summary stats
+    async fetchBuyerSummary(): Promise<{ activeBidsCount: number; watchlistCount: number; wonCount: number }> {
+        try {
+            const userId = getUserId();
+            if (!userId) return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/summary`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch summary");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching buyer summary:", error);
+            return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
+        }
+    },
 };
 
 // Helper function to map category display names to slugs

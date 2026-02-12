@@ -81,6 +81,70 @@ router.get("/category/:category", async (req, res) => {
     }
 });
 
+// GET /auctions/my/summary - Get summary stats for buyer dashboard
+router.get("/my/summary", authenticate, async (req, res) => {
+    try {
+        const userId = new mongoose.Types.ObjectId(req.userId);
+
+        const activeBidsCount = await Auction.countDocuments({
+            "bids.bidderId": userId,
+            status: "active"
+        });
+
+        const user = await User.findById(req.userId);
+        const watchlistCount = user ? user.watchlist.length : 0;
+
+        const wonCount = await Auction.countDocuments({
+            "bids.0.bidderId": userId,
+            status: "completed"
+        });
+
+        res.json({
+            activeBidsCount,
+            watchlistCount,
+            wonCount
+        });
+    } catch (error) {
+        console.error("Error fetching buyer summary:", error);
+        res.status(500).json({ error: "Failed to fetch summary" });
+    }
+});
+
+// GET /auctions/my/bids - Get auctions where the user has placed bids
+router.get("/my/bids", authenticate, async (req, res) => {
+    try {
+        const auctions = await Auction.find({
+            "bids.bidderId": req.userId
+        })
+            .populate("sellerId", "username email")
+            .sort({ updatedAt: -1 });
+
+        res.json(auctions);
+    } catch (error) {
+        console.error("Error fetching user bids:", error);
+        res.status(500).json({ error: "Failed to fetch your bids" });
+    }
+});
+
+// GET /auctions/my/watchlist - Get auctions in the user's watchlist
+router.get("/my/watchlist", authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).populate({
+            path: "watchlist",
+            populate: { path: "sellerId", select: "username email" }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json(user.watchlist);
+    } catch (error) {
+        console.error("Error fetching watchlist:", error);
+        res.status(500).json({ error: "Failed to fetch watchlist" });
+    }
+});
+
 // GET /auctions/:id - Get single auction
 router.get("/:id", async (req, res) => {
     try {
@@ -207,6 +271,79 @@ router.delete("/:id", authenticate, async (req, res) => {
         res.status(500).json({ error: "Failed to delete auction" });
     }
 });
+
+// POST /auctions/:id/bid - Place a bid on an auction
+router.post("/:id/bid", authenticate, async (req, res) => {
+    try {
+        const { bidAmount } = req.body;
+        const auction = await Auction.findById(req.params.id);
+
+        if (!auction) {
+            return res.status(404).json({ error: "Auction not found" });
+        }
+
+        if (auction.status !== "active") {
+            return res.status(400).json({ error: "This auction is no longer active" });
+        }
+
+        if (auction.sellerId.toString() === req.userId) {
+            return res.status(400).json({ error: "Sellers cannot bid on their own auctions" });
+        }
+
+        if (Number(bidAmount) <= auction.currentBid) {
+            return res.status(400).json({ error: `Bid must be higher than current bid of $${auction.currentBid}` });
+        }
+
+        // Add bid to history
+        auction.bids.push({
+            bidderId: req.userId,
+            bidAmount: Number(bidAmount),
+            timestamp: new Date()
+        });
+
+        // Update current stats
+        auction.currentBid = Number(bidAmount);
+        auction.bidsCount += 1;
+
+        await auction.save();
+        await auction.populate("sellerId", "username email");
+
+        res.json(auction);
+    } catch (error) {
+        console.error("Error placing bid:", error);
+        res.status(500).json({ error: "Failed to place bid" });
+    }
+});
+
+// POST /auctions/:id/watch - Toggle watchlist for an auction
+router.post("/:id/watch", authenticate, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const auctionId = req.params.id;
+        const index = user.watchlist.indexOf(auctionId);
+
+        if (index > -1) {
+            // Remove from watchlist
+            user.watchlist.splice(index, 1);
+            await user.save();
+            res.json({ message: "Removed from watchlist", isWatched: false });
+        } else {
+            // Add to watchlist
+            user.watchlist.push(auctionId);
+            await user.save();
+            res.json({ message: "Added to watchlist", isWatched: true });
+        }
+    } catch (error) {
+        console.error("Error toggling watchlist:", error);
+        res.status(500).json({ error: "Failed to update watchlist" });
+    }
+});
+
+
 
 // GET /auctions/seller/:sellerId - Get auctions by seller
 router.get("/seller/:sellerId", async (req, res) => {
