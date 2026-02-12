@@ -4,6 +4,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const authRoutes = require("./routes/auth");
+const userRoutes = require("./routes/users");
+const auctionRoutes = require("./routes/auctions");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -36,6 +38,8 @@ app.get("/", (req, res) => {
 
 // Auth routes
 app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/auctions", auctionRoutes);
 
 if (require.main === module) {
   app.listen(PORT, () => {

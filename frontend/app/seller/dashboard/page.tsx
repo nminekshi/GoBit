@@ -1,375 +1,469 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, PlusCircle, Wallet, MessageCircle, Settings, Menu } from "lucide-react";
+
+// --- Types ---
+interface Auction {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  startPrice: number;
+  currentBid: number;
+  status: "active" | "draft" | "sold";
+  startTime: Date;
+  endTime: Date;
+  winner?: string;
+  bidsCount: number;
+  imageUrl: string;
+  views: number;
+  createdAt: Date;
+};
 
 export default function SellerDashboard() {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // --- State ---
+  const [myAuctions, setMyAuctions] = useState<Auction[]>([]);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileName, setProfileName] = useState("Seller");
+  const [profileEmail, setProfileEmail] = useState("seller@example.com");
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  // Dashboard Filters
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "draft" | "sold">("all");
+
+  const pathname = usePathname();
+
+
+
+  // --- Effects ---
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem("auth");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const username = parsed?.user?.username as string | undefined;
-      if (username) {
-        setDisplayName(username);
+    const loadData = async () => {
+      if (typeof window === "undefined") return;
+
+      setLoading(true);
+      setError("");
+
+      try {
+        const raw = window.localStorage.getItem("auth");
+        if (!raw) {
+          setError("Please log in to view your auctions");
+          setLoading(false);
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        const username = parsed?.user?.username as string | undefined;
+        const userId = parsed?.user?._id || parsed?.user?.id;
+
+        if (username) {
+          setDisplayName(username);
+          setProfileName(username);
+        }
+
+        if (!userId) {
+          setError("User ID not found. Please log in again.");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch auctions from API
+        const { auctionAPI } = await import("../../lib/api");
+        const apiAuctions = await auctionAPI.fetchSellerAuctions(userId);
+
+        // Transform API auctions to match local Auction interface
+        const transformedAuctions: Auction[] = apiAuctions.map((a: any) => ({
+          id: a._id || a.id,
+          title: a.title,
+          category: a.category,
+          description: a.description || "",
+          startPrice: a.startPrice,
+          currentBid: a.currentBid,
+          status: a.status as "active" | "draft" | "sold",
+          startTime: new Date(a.startTime),
+          endTime: new Date(a.endTime),
+          winner: a.winner,
+          bidsCount: a.bidsCount || 0,
+          imageUrl: a.imageUrl || "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=260&h=200",
+          views: a.views || 0,
+          createdAt: new Date(a.createdAt),
+        }));
+
+        setMyAuctions(transformedAuctions);
+      } catch (err) {
+        console.error("Failed to load auctions:", err);
+        setError("Failed to load your auctions. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      // ignore parse errors
-    }
+    };
+
+    loadData();
   }, []);
 
+
+
+  // --- Derived State ---
+  const filteredAuctions = myAuctions.filter(a => filterStatus === "all" || a.status === filterStatus);
+
+  const totalEarnings = myAuctions
+    .filter((a) => a.status === "sold")
+    .reduce((sum, a) => sum + (Number(a.currentBid) || Number(a.startPrice) || 0), 0);
+
+  const activeListings = myAuctions.filter(a => a.status === 'active').length;
+  const totalViews = myAuctions.reduce((sum, a) => sum + (Number(a.views) || 0), 0);
+
+  const navItems = [
+    { label: "Overview", href: "/seller/dashboard", icon: LayoutDashboard },
+    { label: "Create Auction", href: "/seller/create-auction", icon: PlusCircle },
+    { label: "Orders & Payouts", href: "/seller/orders", icon: Wallet },
+    { label: "Messages", href: "/seller/messages", icon: MessageCircle },
+    { label: "Settings", href: "/seller/settings", icon: Settings },
+  ];
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = e.target?.result;
+      if (typeof result === "string") {
+        setProfileAvatar(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = () => {
+    const safeName = profileName.trim() || "Seller";
+    setDisplayName(safeName);
+    setIsProfileModalOpen(false);
+  };
+
   return (
-    <main className="min-h-screen bg-[#040918] px-4 py-10 text-white text-xl sm:px-6 lg:px-10">
-      <div className="mx-auto flex w-full max-w-full flex-col gap-8 rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8">
+    <main className="min-h-screen bg-[#040918] px-4 py-8 text-white sm:px-6 lg:px-8">
+      <div className="w-full space-y-8">
         {/* Header */}
-        <header className="flex flex-col gap-4 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-3xl font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              Seller dashboard
-            </p>
-            <h1 className="mt-1 text-5xl font-semibold tracking-tight text-white md:text-6xl">
-              Welcome back, {displayName || "Seller"}
+            <h1 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+              Seller Dashboard
             </h1>
-            <p className="mt-4 max-w-3xl text-xl text-white/70">
-              Create new auctions, track performance, and see simple AI insights
-              about your prices, timing, and buyer trust.
+            <p className="mt-2 text-slate-400">
+              Manage your listings, track earnings, and reach more buyers.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="rounded-xl bg-emerald-600 px-6 py-3 text-xl font-semibold text-white shadow-sm hover:bg-emerald-700"
-            >
-              + Create new auction
-            </button>
-            <Link
-              href="/categories"
-              className="rounded-xl border border-emerald-200 bg-white px-6 py-3 text-xl font-semibold text-emerald-800 shadow-sm hover:border-emerald-400"
-            >
-              Switch to buyer view
+          <div className="flex gap-3">
+            <Link href="/buyer/dashboard">
+              <button className="rounded-xl bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/20">
+                Switch to Buyer View
+              </button>
+            </Link>
+            <Link href="/seller/create-auction">
+              <button className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600">
+                + Create New Auction
+              </button>
             </Link>
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1.3fr)]">
-          {/* Left column */}
-          <section className="space-y-6">
-            {/* My Auctions */}
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-3xl font-semibold text-slate-900">My auctions</h2>
-                  <p className="mt-2 text-lg text-slate-600">
-                    See what is live, scheduled, and already completed.
-                  </p>
+        <div className="flex w-full flex-col gap-6 items-start lg:flex-row">
+          {/* Sidebar */}
+          <aside
+            className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
+              } min-h-[80vh]`}
+          >
+            <div className="flex h-full flex-col gap-3">
+              <div className="flex items-center gap-3 pr-1">
+                <div className="flex items-center gap-3">
+                  {profileAvatar ? (
+                    <img
+                      src={profileAvatar}
+                      alt="Profile"
+                      className="h-10 w-10 rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg font-semibold text-white">
+                      {(displayName || "S").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div
+                    className={`flex flex-col transition-all duration-300 ${isCollapsed
+                      ? "pointer-events-none opacity-0 translate-x-1 w-0 max-w-0 overflow-hidden"
+                      : "opacity-100 w-auto max-w-[180px]"
+                      }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide text-white/50">Profile</p>
+                    <p className="text-sm font-semibold text-white">{displayName || "Seller"}</p>
+                    {!isCollapsed && (
+                      <button
+                        onClick={() => setIsProfileModalOpen(true)}
+                        className="mt-1 w-fit rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-white/80 transition hover:border-emerald-400/60 hover:text-white"
+                      >
+                        Edit Profile
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="inline-flex gap-1 rounded-full bg-slate-100 p-1 text-base font-medium text-slate-700">
-                  <span className="rounded-full bg-white px-4 py-1.5">Live</span>
-                  <span className="rounded-full px-4 py-1.5">Scheduled</span>
-                  <span className="rounded-full px-4 py-1.5">Completed</span>
-                </div>
+                <button
+                  aria-label="Toggle sidebar"
+                  onClick={() => setIsCollapsed((prev) => !prev)}
+                  className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white transition hover:border-emerald-400/60 hover:text-emerald-200"
+                >
+                  <Menu className="h-4 w-4" />
+                </button>
               </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-                    Live
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">3 active auctions</p>
-                  <p className="text-sm text-slate-600">Avg. 12 bidders each</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Scheduled
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">2 upcoming</p>
-                  <p className="text-sm text-slate-600">Starting in next 24 hours</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Completed
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">18 closed</p>
-                  <p className="text-sm text-slate-600">Last 30 days</p>
-                </div>
+
+              <div className="space-y-3">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname?.startsWith(item.href);
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div
+                        className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-sm font-semibold transition-all duration-200 ${isActive
+                          ? "border-emerald-400/60 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                          : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                          }`}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span
+                          className={`transition-all duration-200 ${isCollapsed ? "opacity-0 max-w-0 overflow-hidden" : "opacity-100 max-w-xs"
+                            }`}
+                        >
+                          {item.label}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div
+                className={`overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/25 via-cyan-500/20 to-indigo-500/25 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)] transition-all duration-300 ${isCollapsed ? "pointer-events-none h-0 border-0 p-0 opacity-0" : "opacity-100"
+                  }`}
+              >
+                <p className="text-xs uppercase tracking-wide text-emerald-50/80">Boost reach</p>
+                <p className="mt-1 text-sm font-semibold text-white">Promote a listing</p>
+                <p className="mt-1 text-emerald-50/80">Feature your auction to appear in trending spots and get more bids.</p>
+                <Link href="/seller/create-auction">
+                  <button className="mt-3 w-full rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white">
+                    Promote now
+                  </button>
+                </Link>
               </div>
             </div>
-
-            {/* Bids Overview */}
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="text-3xl font-semibold text-slate-900">Bids overview</h2>
-              <p className="mt-2 text-lg text-slate-600">
-                Simple view of your current bidding activity.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Current highest bid
-                  </p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-900">$2,120</p>
-                  <p className="text-sm text-slate-600">On "Gaming laptop · RTX 4080"</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Bid activity (today)
-                  </p>
-                  <div className="mt-2 space-y-2 text-sm text-slate-700">
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Morning</span>
-                      <div className="h-1.5 flex-1 rounded-full bg-slate-200">
-                        <div className="h-1.5 w-1/3 rounded-full bg-emerald-500" />
-                      </div>
-                      <span>7 bids</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Afternoon</span>
-                      <div className="h-1.5 flex-1 rounded-full bg-slate-200">
-                        <div className="h-1.5 w-2/3 rounded-full bg-emerald-500" />
-                      </div>
-                      <span>18 bids</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span>Evening</span>
-                      <div className="h-1.5 flex-1 rounded-full bg-slate-200">
-                        <div className="h-1.5 w-1/2 rounded-full bg-emerald-500" />
-                      </div>
-                      <span>11 bids</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Reviews & Trust Score (moved from right column) */}
-            <section className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="text-3xl font-semibold text-slate-900">Reviews & trust score</h2>
-              <p className="mt-2 text-lg text-slate-600">
-                How buyers see you, with a simple AI summary.
-              </p>
-              <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-4">
-                <div>
-                  <p className="text-base font-semibold text-slate-900">Trust score</p>
-                  <p className="text-2xl font-semibold text-emerald-700">4.7 / 5.0</p>
-                  <p className="text-sm text-slate-600">Based on 96 reviews</p>
-                </div>
-                <div className="rounded-full bg-emerald-50 px-5 py-2 text-sm font-semibold uppercase tracking-wide text-emerald-700">
-                  Mostly positive
-                </div>
-              </div>
-              <div className="mt-3 rounded-xl bg-slate-50 px-4 py-4 text-base text-slate-700">
-                <p className="text-lg font-semibold text-slate-900">AI sentiment summary</p>
-                <p className="mt-1 text-base text-slate-700">
-                  Buyers like your clear photos and honest descriptions. A few
-                  reviews mention slower shipping on large items.
-                </p>
-              </div>
-            </section>
-          </section>
-
-          {/* Right column */}
-          <aside className="space-y-6">
-            {/* AI Performance Insights */}
-            <section className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="text-3xl font-semibold text-slate-900">AI performance insights</h2>
-              <p className="mt-2 text-lg text-slate-600">
-                How your final prices compare to AI predictions.
-              </p>
-              <div className="mt-4 space-y-3 text-base">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">Predicted vs final price</p>
-                    <p className="text-sm text-slate-600">Last 10 auctions</p>
-                  </div>
-                  <p className="text-lg font-semibold text-emerald-700">+6.3% above</p>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">Best auction timing</p>
-                    <p className="text-sm text-slate-600">Based on bid activity</p>
-                  </div>
-                  <p className="text-lg font-semibold text-slate-800">Evenings · 6–9 PM</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Payments & Earnings */}
-            <section className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="text-3xl font-semibold text-slate-900">Payments & earnings</h2>
-              <p className="mt-2 text-lg text-slate-600">
-                Simple snapshot of your payouts.
-              </p>
-              <div className="mt-4 grid gap-3 text-base md:grid-cols-2">
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    This month
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold text-slate-900">$8,420</p>
-                  <p className="text-sm text-slate-600">Completed and cleared</p>
-                </div>
-                <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Pending
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold text-slate-900">$1,130</p>
-                  <p className="text-sm text-slate-600">Awaiting buyer payment</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Notifications */}
-            <section className="rounded-2xl border border-slate-200 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
-              <h2 className="text-3xl font-semibold text-slate-900">Notifications</h2>
-              <p className="mt-2 text-lg text-slate-600">
-                Quick updates about new bids and completed auctions.
-              </p>
-              <ul className="mt-3 space-y-3 text-base">
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">New bid on "Gaming laptop"</p>
-                    <p className="text-sm text-slate-600">$40 higher · 2 min ago</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">New bid on "Vintage watch"</p>
-                    <p className="text-sm text-slate-600">You are still winning · 12 min ago</p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-slate-500" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">Auction completed: "Art print"</p>
-                    <p className="text-sm text-slate-600">Buyer has 48 hours to pay</p>
-                  </div>
-                </li>
-              </ul>
-            </section>
           </aside>
+
+          {/* Main Column */}
+          <div className="flex-1 space-y-6 w-full">
+            {/* Stats Section */}
+            <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Total Earnings</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-400">${totalEarnings.toLocaleString()}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Active Listings</p>
+                <p className="mt-2 text-3xl font-bold text-white">{activeListings}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+                <p className="text-sm font-medium text-slate-400">Total Views</p>
+                <p className="mt-2 text-3xl font-bold text-blue-400">{totalViews}</p>
+              </div>
+            </section>
+
+            {/* Content Area */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">My Listings</h2>
+                <div className="flex space-x-1 rounded-xl bg-white/5 p-1">
+                  {(['all', 'active', 'sold', 'draft'] as const).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${filterStatus === status
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                        }`}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Loading State */}
+              {loading && (
+                <div className="flex items-center justify-center py-20">
+                  <div className="text-center space-y-3">
+                    <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-emerald-500 border-r-transparent"></div>
+                    <p className="text-sm text-white/60">Loading your auctions...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error State */}
+              {!loading && error && (
+                <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-8 text-center">
+                  <p className="text-rose-300">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 rounded-xl bg-rose-500 px-6 py-2 text-sm font-semibold text-white transition hover:bg-rose-600"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Auction Grid */}
+              {!loading && !error && (
+                <div className="grid w-full gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {filteredAuctions.length === 0 ? (
+                    <div className="col-span-full py-20 text-center rounded-2xl border border-dashed border-white/10 bg-white/5">
+                      <p className="text-slate-500">No auctions found in this category.</p>
+                      <Link href="/seller/create-auction">
+                        <button className="mt-4 text-emerald-400 hover:underline">
+                          Create your first auction
+                        </button>
+                      </Link>
+                    </div>
+                  ) : (
+                    filteredAuctions.map(auction => {
+                      // Calculate time left (mock logic for demo, real would differ)
+                      const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
+
+                      return (
+                        <div key={auction.id} className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
+                          {/* Image */}
+                          <div className="relative w-full overflow-hidden border-b border-white/10 bg-black/30 aspect-[4/3]">
+                            <img
+                              src={auction.imageUrl}
+                              alt={auction.title}
+                              className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 hover:scale-105"
+                            />
+                            <div className="absolute top-3 right-3">
+                              <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full backdrop-blur-md ${auction.status === 'active' ? 'bg-emerald-500 text-black' :
+                                auction.status === 'sold' ? 'bg-blue-500 text-white' :
+                                  'bg-slate-500 text-white'
+                                }`}>
+                                {auction.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Content Body */}
+                          <div className="flex flex-1 flex-col p-5">
+                            <h3 className="text-xl font-semibold text-white leading-tight line-clamp-1">{auction.title}</h3>
+                            <p className="mt-1 text-sm text-white/60">
+                              {auction.category}
+                            </p>
+
+                            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                                <p className="text-xs uppercase tracking-wide text-white/50">
+                                  Current bid
+                                </p>
+                                <p className="text-lg font-semibold text-white">${auction.currentBid.toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                                <p className="text-xs uppercase tracking-wide text-white/50">
+                                  Ends in
+                                </p>
+                                <p className="text-lg font-semibold text-white">{timeLeft}</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between text-sm">
+                              <span className="text-white/60">{auction.views} views</span>
+                              <span className="text-emerald-300">Bid ready</span>
+                            </div>
+
+                            <Link href={`/seller/edit-auction/${auction.id}`}>
+                              <button className="mt-5 w-full rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90 shadow-lg shadow-white/5">
+                                Manage Listing
+                              </button>
+                            </Link>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-8">
-          <div className="relative w-full max-w-4xl rounded-2xl bg-white p-6 text-base shadow-2xl sm:p-8">
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(false)}
-              className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-200"
-            >
-              Close
-            </button>
-            <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#141820] p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                  New auction
-                </p>
-                <h2 className="mt-1 text-3xl font-semibold text-slate-900">Create auction</h2>
-                <p className="mt-2 text-base text-slate-600">
-                  Fill in the basic details. This is a demo form only – nothing will
-                  be saved.
-                </p>
+                <h3 className="text-2xl font-bold">Edit Profile</h3>
+                <p className="mt-1 text-sm text-white/60">Update your name, email, and profile picture.</p>
               </div>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-lg font-semibold text-slate-700" htmlFor="modalItemTitle">
-                    Item title
-                  </label>
-                  <input
-                    id="modalItemTitle"
-                    type="text"
-                    placeholder={'e.g. 2020 MacBook Pro 16"'}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xl text-slate-900 outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-lg font-semibold text-slate-700" htmlFor="modalCategory">
-                    Category
-                  </label>
-                  <select
-                    id="modalCategory"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xl text-slate-900 outline-none focus:border-emerald-500"
-                  >
-                    <option>Electronics</option>
-                    <option>Vehicles</option>
-                    <option>Real estate</option>
-                    <option>Watches</option>
-                    <option>Art</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-lg font-semibold text-slate-700" htmlFor="modalStartPrice">
-                    Starting price
-                  </label>
-                  <input
-                    id="modalStartPrice"
-                    type="number"
-                    placeholder="$0.00"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xl text-slate-900 outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-lg font-semibold text-slate-700">
-                    Upload images
-                  </label>
-                  <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center">
-                    <p className="text-lg font-semibold text-slate-800">Drag & drop files</p>
-                    <p className="text-sm text-slate-500">or click to browse (demo only)</p>
-                  </div>
-                </div>
-                <div className="grid gap-3 rounded-xl bg-slate-50 p-4">
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-                      AI price suggestion
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">
-                      $1,850 - $2,050
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Based on similar recent auctions and condition.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-emerald-600">
-                      AI authenticity check
-                    </p>
-                    <p className="mt-1 text-base text-slate-800">
-                      Likely authentic
-                      <span className="ml-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
-                        92% confidence
-                      </span>
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Final review still required before publishing.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-5 flex items-center justify-end gap-3">
               <button
-                type="button"
-                onClick={() => setIsCreateOpen(false)}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-base font-medium text-slate-800 hover:border-slate-300"
+                aria-label="Close"
+                onClick={() => setIsProfileModalOpen(false)}
+                className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-slate-900 px-6 py-3 text-xl font-semibold text-white opacity-80"
-              >
-                Publish (demo only)
+                ✕
               </button>
             </div>
+
+            <div className="mt-6 space-y-4">
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Name</span>
+                <input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="Your name"
+                />
+              </label>
+
+              <div className="space-y-2 text-sm font-semibold text-white/80">
+                <span>Profile Picture</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    {profileAvatar ? (
+                      <img src={profileAvatar} alt="Preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs text-white/60">No photo</span>
+                    )}
+                  </div>
+                  <label className="flex-1 cursor-pointer rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white/80 transition hover:border-emerald-400/60 hover:text-white">
+                    Upload New Photo
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              <label className="block space-y-2 text-sm font-semibold text-white/80">
+                <span>Email</span>
+                <input
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none ring-emerald-500/40 focus:ring"
+                  placeholder="you@example.com"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+            >
+              Save Changes
+            </button>
           </div>
         </div>
       )}

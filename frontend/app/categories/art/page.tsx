@@ -1,6 +1,6 @@
-import CategoryDetailPage from "../../components/CategoryDetailPage";
+import CategoryDetailPage, { CategoryHero } from "../../components/CategoryDetailPage";
 
-const hero = {
+const hero: CategoryHero = {
   eyebrow: "Curated releases",
   title: "Gallery-ready canvases & sculptural statements",
   subtitle:
@@ -9,10 +9,7 @@ const hero = {
   statLabel: "Highest active bid",
   statValue: "$18K",
   statDetail: "Classic oil reserve met",
-  actions: [
-    { label: "Request curator set", href: "/inquiry-form" },
-    { label: "Preview upcoming fair", href: "/explore-auctions", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
@@ -58,80 +55,7 @@ const timeline = [
   },
 ];
 
-const items = [
-  {
-    name: "Abstract Painting",
-    img: "/images/Abstract Painting.png",
-    currentBid: 12000,
-    endsIn: "7h 40m",
-    watchers: 42,
-    condition: "Acrylic on canvas · signed verso",
-  },
-  {
-    name: "Sculpture",
-    img: "/images/Sculpture.png",
-    currentBid: 9000,
-    endsIn: "9h 15m",
-    watchers: 31,
-    condition: "Carrara marble · edition 2/8",
-  },
-  {
-    name: "Modern Art Canvas",
-    img: "/images/Modern Art Canvas.png",
-    currentBid: 15000,
-    endsIn: "8h 20m",
-    watchers: 55,
-    condition: "Mixed media diptych",
-  },
-  {
-    name: "Classic Oil Painting",
-    img: "/images/Classic Oil Painting.png",
-    currentBid: 18000,
-    endsIn: "10h 10m",
-    watchers: 63,
-    condition: "Restored 1874 salon work",
-  },
-  {
-    name: "Bronze Statue",
-    img: "/images/Bronze Statue.png",
-    currentBid: 7000,
-    endsIn: "11h 30m",
-    watchers: 24,
-    condition: "Lost-wax bronze, artist proof",
-  },
-  {
-    name: "Street Art Mural",
-    img: "/images/Street Art Mural.png",
-    currentBid: 5000,
-    endsIn: "12h 50m",
-    watchers: 47,
-    condition: "Panel-mounted aerosol",
-  },
-  {
-    name: "Immersive Light Installation",
-    img: "/images/Modern Art Canvas.png",
-    currentBid: 13200,
-    endsIn: "6h 25m",
-    watchers: 38,
-    condition: "Projected neon field",
-  },
-  {
-    name: "Gallery Sculpture Series",
-    img: "/images/Sculpture.png",
-    currentBid: 10400,
-    endsIn: "9h 55m",
-    watchers: 29,
-    condition: "Polished steel trio",
-  },
-  {
-    name: "Urban Fresco Diptych",
-    img: "/images/Street Art Mural.png",
-    currentBid: 8800,
-    endsIn: "7h 5m",
-    watchers: 33,
-    condition: "Archival lacquer finish",
-  },
-];
+const items: any[] = [];
 
 export default function ArtAuction() {
   return (

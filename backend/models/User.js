@@ -11,6 +11,12 @@ const userSchema = new mongoose.Schema(
       enum: ["buyer", "seller", "admin"],
       default: "buyer",
     },
+    watchlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Auction",
+      },
+    ],
   },
   { timestamps: true }
 );

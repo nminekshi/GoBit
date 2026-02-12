@@ -10,10 +10,7 @@ const hero = {
   statLabel: "Fastest turnover",
   statValue: "2.4h",
   statDetail: "Ultrabook clusters this week",
-  actions: [
-    { label: "Book pallet pickup", href: "/inquiry-form" },
-    { label: "Compare financing", href: "/how-to-pay", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
@@ -47,80 +44,7 @@ const timeline = [
   { label: "Firmware push", detail: "bios unlocked + asset tags logged", eta: "Tomorrow" },
 ];
 
-const items = [
-  {
-    name: "MacBook Pro 16''",
-    img: "/images/MacBook Pro 16.png",
-    currentBid: 2100,
-    endsIn: "4h 5m",
-    watchers: 58,
-    condition: "M3 Max · 64GB RAM",
-  },
-  {
-    name: "Dell XPS 13",
-    img: "/images/Dell XPS 13.png",
-    currentBid: 1100,
-    endsIn: "2h 50m",
-    watchers: 34,
-    condition: "OLED · 32GB/1TB",
-  },
-  {
-    name: "HP Spectre x360",
-    img: "/images/HP Spectre x360.png",
-    currentBid: 1300,
-    endsIn: "3h 30m",
-    watchers: 27,
-    condition: "2-in-1 Creator spec",
-  },
-  {
-    name: "Lenovo ThinkPad X1",
-    img: "/images/Lenovo ThinkPad X1.png",
-    currentBid: 1250,
-    endsIn: "5h 10m",
-    watchers: 41,
-    condition: "Carbon Gen 11",
-  },
-  {
-    name: "Microsoft Surface Pro 9",
-    img: "/images/Microsoft Surface Pro 9.png",
-    currentBid: 950,
-    endsIn: "2h 20m",
-    watchers: 30,
-    condition: "5G · Keyboard bundle",
-  },
-  {
-    name: "Asus ROG Zephyrus",
-    img: "/images/Asus ROG Zephyrus.png",
-    currentBid: 1800,
-    endsIn: "6h 45m",
-    watchers: 52,
-    condition: "RTX 4090 · 240Hz",
-  },
-  {
-    name: "Asus ROG Zephyrus Duo",
-    img: "/images/Asus ROG Zephyrus.png",
-    currentBid: 1950,
-    endsIn: "4h 40m",
-    watchers: 36,
-    condition: "Dual-screen · creator tuned",
-  },
-  {
-    name: "Dell XPS 13 Developer Batch",
-    img: "/images/Dell XPS 13.png",
-    currentBid: 1180,
-    endsIn: "3h 15m",
-    watchers: 28,
-    condition: "Ubuntu imaged · 32GB",
-  },
-  {
-    name: "Surface Mobility Pod",
-    img: "/images/Microsoft Surface Pro 9.png",
-    currentBid: 990,
-    endsIn: "5h 55m",
-    watchers: 25,
-    condition: "LTE + keyboard flight cases",
-  },
-];
+const items: any[] = [];
 
 export default function ComputersAuction() {
   return (

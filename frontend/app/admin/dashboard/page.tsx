@@ -1,333 +1,350 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  Layers,
+  LayoutDashboard,
+  Menu,
+  Settings,
+  ShieldCheck,
+  Users,
+  Wallet,
+  Zap,
+} from "lucide-react";
+
+const NAV_ITEMS = [
+  { label: "Overview", icon: LayoutDashboard, href: "/admin/dashboard" },
+  { label: "Auctions", icon: Layers, href: "/admin/auctions" },
+  { label: "Users", icon: Users, href: "/admin/users" },
+  { label: "Payouts", icon: Wallet, href: "/admin/orders" },
+  { label: "Reports", icon: BarChart3, href: "/admin/reports" },
+  { label: "Settings", icon: Settings, href: "/admin/settings" },
+  { label: "Security", icon: ShieldCheck, href: "/admin/security" },
+];
+
+const KPI_CARDS: Kpi[] = [
+  { label: "Active auctions", value: 126, delta: "+12%", accent: "emerald", icon: Activity },
+  { label: "GMV (24h)", value: "$842k", delta: "+6.1%", accent: "blue", icon: Wallet },
+  { label: "New users", value: 384, delta: "+9%", accent: "purple", icon: Users },
+  { label: "Disputes", value: 7, delta: "-2", accent: "amber", icon: ShieldCheck },
+];
+
+const LIVE_ACTIVITY = [
+  { time: "10:12", message: "New bid $1,250 on Tesla Model S", tag: "Live" },
+  { time: "10:08", message: "Payout initiated to seller_21 ($4,900)", tag: "Payout" },
+  { time: "09:58", message: "2FA challenge passed by admin_lee", tag: "Security" },
+  { time: "09:50", message: "New auction submitted: Vintage Omega", tag: "Review" },
+];
+
+const PENDING_APPROVALS = [
+  { id: "A-9921", title: "Vintage Omega Seamaster", seller: "watch_vault", type: "Auction" },
+  { id: "U-2204", title: "KYC verification", seller: "dealer_hub_21", type: "User" },
+  { id: "A-4810", title: "Gaming PC Bundle", seller: "pixel_parts", type: "Auction" },
+];
+
+const RECENT_TRANSACTIONS = [
+  { id: "TX-11820", item: "Rolex Submariner", amount: "$9,800", status: "Paid" },
+  { id: "TX-11819", item: "MacBook Pro", amount: "$2,450", status: "Pending" },
+  { id: "TX-11818", item: "Land Rover Evoque", amount: "$31,600", status: "Paid" },
+  { id: "TX-11817", item: "Art Print #441", amount: "$640", status: "Refund" },
+];
+
+const NOTIFICATIONS = [
+  { title: "Webhook latency warning", detail: "Payments endpoint 480ms", tone: "amber" },
+  { title: "Model retrain completed", detail: "Fraud v4.3 live", tone: "emerald" },
+  { title: "Chargeback raised", detail: "TX-11817 opened by bank", tone: "rose" },
+];
 
 export default function AdminDashboard() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeAuctions, setActiveAuctions] = useState(0);
+
+  const goToCreateAuction = () => router.push("/seller/create-auction");
+  const goToInviteAdmin = () => router.push("/admin/users");
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const { auctionAPI } = await import("../../lib/api");
+        const auctions = await auctionAPI.fetchAuctions();
+        setActiveAuctions(auctions.filter((a: any) => a.status === "active").length);
+      } catch (err) {
+        console.error("Failed to load admin stats:", err);
+      }
+    };
+    loadStats();
+  }, []);
+
+  const kpis = useMemo(() => {
+    return KPI_CARDS.map((card) =>
+      card.label === "Active auctions" ? { ...card, value: activeAuctions } : card
+    );
+  }, [activeAuctions]);
+
   return (
-  <main className="min-h-screen bg-[#040918] px-6 py-12 text-white text-xl lg:px-12">
-      <div className="mx-auto flex max-w-full flex-col gap-8">
-        {/* Header */}
-        <header className="flex flex-col gap-3 border-b border-white/10 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-3xl font-semibold uppercase tracking-[0.2em] text-emerald-300">
-              Admin dashboard
-            </p>
-            <h1 className="mt-1 text-5xl font-semibold tracking-tight text-white md:text-6xl">
-              Platform overview
-            </h1>
-            <p className="mt-4 max-w-3xl text-lg text-white/70">
-              Quick, human-friendly view of what is happening on your marketplace
-              right now: auctions, users, AI fraud checks, and system health.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-lg font-medium text-slate-800 shadow-sm hover:border-emerald-500 hover:text-emerald-700">
-              Download report
+    <main className="relative flex min-h-screen items-start gap-6 bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <aside
+        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"
+          }`}
+      >
+        <div className="flex items-center gap-2 pb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
+          {!isCollapsed && (
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-white/50">Admin</p>
+              <p className="text-sm font-semibold">Overview</p>
+            </div>
+          )}
+          <button
+            aria-label="Toggle sidebar"
+            onClick={() => setIsCollapsed((p) => !p)}
+            className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white hover:border-emerald-400/60"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        </div>
+
+        <nav className="space-y-3 overflow-y-auto pb-4">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = pathname?.startsWith(item.href);
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${active
+                    ? "border-emerald-400/70 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                    : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                    }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {!isCollapsed && (
+          <div className="mt-auto space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs uppercase tracking-wide text-white/60">Quick actions</p>
+            <button onClick={goToCreateAuction} className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-black hover:bg-emerald-400">
+              Create auction
             </button>
-            <Link
-              href="/admin/settings"
-              className="rounded-xl border border-transparent bg-emerald-600 px-5 py-2.5 text-lg font-semibold text-white shadow-sm hover:bg-emerald-700"
-            >
-              Go to settings
-            </Link>
+            <button onClick={goToInviteAdmin} className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/60">
+              Invite admin
+            </button>
           </div>
-        </header>
+        )}
+      </aside>
 
-        {/* System overview */}
-        <section aria-label="System overview" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-slate-800">System overview</h2>
-            <p className="text-lg text-slate-500">Today’s snapshot (sample data)</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-4">
-              <p className="text-xl font-medium uppercase tracking-wide text-emerald-700">
-                Active auctions
-              </p>
-              <p className="mt-2 text-4xl font-semibold text-emerald-900">128</p>
-              <p className="text-lg text-emerald-700">+18 vs last 24 hours</p>
+      <section className="flex-1 w-full overflow-x-hidden">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-2 py-4 sm:px-4 lg:px-6">
+          <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">Overview</p>
+              <h1 className="mt-1 text-4xl font-bold tracking-tight">Admin Dashboard</h1>
+              <p className="mt-2 max-w-3xl text-sm text-white/60">KPI pulse, analytics, live activity, approvals, and quick controls in one responsive view.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-              <p className="text-xl font-medium uppercase tracking-wide text-slate-500">
-                Users online
-              </p>
-              <p className="mt-2 text-4xl font-semibold text-slate-900">642</p>
-              <p className="text-lg text-slate-500">312 currently bidding</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:border-emerald-400/60">
+                <Bell className="h-4 w-4" /> Notifications
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 hover:bg-emerald-400">
+                <Zap className="h-4 w-4" /> Quick Action
+              </button>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-              <p className="text-xl font-medium uppercase tracking-wide text-slate-500">
-                Revenue today
-              </p>
-              <p className="mt-2 text-4xl font-semibold text-slate-900">$84,320</p>
-              <p className="text-lg text-slate-500">Month to date: $1.3M</p>
-            </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-              <p className="text-xl font-medium uppercase tracking-wide text-amber-700">
-                AI alerts (24h)
-              </p>
-              <p className="mt-2 text-4xl font-semibold text-amber-900">9</p>
-              <p className="text-lg text-amber-700">3 critical, 6 warnings</p>
-            </div>
-          </div>
-        </section>
+          </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1.4fr)]">
-          {/* Left column: Risk & auctions */}
-          <section className="space-y-6">
-            {/* AI fraud detection */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold text-slate-800">AI fraud detection</h2>
-                  <p className="text-lg text-slate-500">
-                    Quick view of what the fraud model thinks is risky.
-                  </p>
-                </div>
-                <span className="rounded-full bg-rose-50 px-4 py-2 text-base font-medium text-rose-700">
-                  6 listings, 3 users
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-base">
-                  <p className="text-lg font-medium uppercase tracking-wide text-slate-500">
-                    Flagged listings
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">
-                    6 under review
-                  </p>
-                  <p className="mt-1 text-lg text-slate-500">
-                    Mostly price jumps, reused photos, and odd bid patterns.
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-base">
-                  <p className="text-lg font-medium uppercase tracking-wide text-slate-500">
-                    Suspicious bidding
-                  </p>
-                  <p className="mt-1 text-xl font-semibold text-slate-900">
-                    3 bidder groups
-                  </p>
-                  <p className="mt-1 text-lg text-slate-500">
-                    Same accounts bidding together at the last second.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 text-base">
-                <div className="grid grid-cols-[1.4fr_1.2fr_auto] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-600">
-                  <span>Listing</span>
-                  <span>Why flagged?</span>
-                  <span className="text-right">Next step</span>
-                </div>
-                <ul className="divide-y divide-slate-200">
-                  <li className="grid grid-cols-[1.4fr_1.2fr_auto] items-center gap-3 px-4 py-2">
-                    <span className="truncate text-slate-800">#A-4821 · Tesla Model S</span>
-                    <span className="text-lg text-slate-600">Price spike vs recent sales</span>
-                    <button className="justify-self-end rounded-full bg-emerald-50 px-4 py-2 text-base font-medium text-emerald-700 hover:bg-emerald-100">
-                      Review
-                    </button>
-                  </li>
-                  <li className="grid grid-cols-[1.4fr_1.2fr_auto] items-center gap-3 px-4 py-2">
-                    <span className="truncate text-slate-800">#E-9930 · iPhone 15 Pro</span>
-                    <span className="text-lg text-slate-600">IP address linked to banned user</span>
-                    <button className="justify-self-end rounded-full bg-amber-50 px-4 py-2 text-base font-medium text-amber-700 hover:bg-amber-100">
-                      Check user
-                    </button>
-                  </li>
-                  <li className="grid grid-cols-[1.4fr_1.2fr_auto] items-center gap-3 px-4 py-2">
-                    <span className="truncate text-slate-800">#W-7312 · Rolex Submariner</span>
-                    <span className="text-lg text-slate-600">Photos reused from another site</span>
-                    <button className="justify-self-end rounded-full bg-rose-50 px-4 py-2 text-base font-medium text-rose-700 hover:bg-rose-100">
-                      Hold payout
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Auction moderation */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold text-slate-800">Auction moderation</h2>
-                  <p className="text-lg text-slate-500">
-                    Reported or flagged auctions that need a human decision.
-                  </p>
-                </div>
-                <span className="rounded-full bg-slate-50 px-4 py-2 text-base font-medium text-slate-700">
-                  4 waiting review
-                </span>
-              </div>
-              <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 text-base">
-                <div className="grid grid-cols-[1.6fr_1fr_1.2fr_auto] items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-base font-medium text-slate-600">
-                  <span>Auction</span>
-                  <span>Reporter</span>
-                  <span>Reason</span>
-                  <span className="text-right">Action</span>
-                </div>
-                <div className="divide-y divide-slate-200">
-                  <div className="grid grid-cols-[1.6fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3">
-                    <span className="truncate text-slate-800">#VEH-220 · BMW X5 Executive Fleet</span>
-                    <span className="text-lg text-slate-600">user_184</span>
-                    <span className="text-lg text-slate-600">Misleading description</span>
-                    <button className="justify-self-end rounded-full bg-emerald-50 px-4 py-2 text-base font-medium text-emerald-700 hover:bg-emerald-100">
-                      Open details
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-[1.6fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3">
-                    <span className="truncate text-slate-800">#ELC-441 · Samsung QLED TV</span>
-                    <span className="text-lg text-slate-600">creator_92</span>
-                    <span className="text-lg text-slate-600">Shipping / delivery issue</span>
-                    <button className="justify-self-end rounded-full bg-slate-50 px-4 py-2 text-base font-medium text-slate-700 hover:bg-slate-100">
-                      Mark resolved
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-[1.6fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3">
-                    <span className="truncate text-slate-800">#ART-318 · Abstract Painting</span>
-                    <span className="text-lg text-slate-600">gallery_admin</span>
-                    <span className="text-lg text-slate-600">Potential IP / rights issue</span>
-                    <button className="justify-self-end rounded-full bg-rose-50 px-4 py-2 text-base font-medium text-rose-700 hover:bg-rose-100">
-                      Escalate
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <section className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {kpis.map((card) => (
+              <KpiCard key={card.label} card={card} />
+            ))}
           </section>
 
-          {/* Right column: Users, AI models, logs */}
-          <aside className="space-y-6">
-            {/* User management */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold text-slate-800">User management</h2>
-                  <p className="text-lg text-slate-500">
-                    Ban, suspend, or warn users directly from the dashboard.
-                  </p>
+          <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="space-y-6 w-full">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Revenue & Traffic</h2>
+                  <span className="text-xs text-white/60">Last 7 days</span>
                 </div>
-                <span className="rounded-full bg-slate-50 px-4 py-2 text-base font-medium text-slate-700">
-                  3 high‑risk users
-                </span>
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <SparkChart title="Revenue" values={[42, 68, 61, 74, 90, 85, 102]} accent="emerald" />
+                  <SparkChart title="Sessions" values={[320, 344, 331, 362, 410, 398, 455]} accent="blue" />
+                </div>
               </div>
-              <ul className="mt-3 space-y-3 text-base">
-                <li className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">user_842</p>
-                    <p className="text-lg text-slate-600">Multiple chargebacks, 5 fraud flags</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="rounded-full bg-rose-50 px-4 py-2 text-base font-medium text-rose-700 hover:bg-rose-100">
-                      Ban
-                    </button>
-                    <button className="rounded-full bg-amber-50 px-4 py-2 text-base font-medium text-amber-700 hover:bg-amber-100">
-                      Suspend
-                    </button>
-                    <button className="rounded-full bg-slate-200 px-4 py-2 text-base font-medium text-slate-800 hover:bg-slate-300">
-                      Warn
-                    </button>
-                  </div>
-                </li>
-                <li className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">dealer_hub_21</p>
-                    <p className="text-lg text-slate-600">High‑volume seller, 2 open disputes</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="rounded-full bg-amber-50 px-4 py-2 text-base font-medium text-amber-700 hover:bg-amber-100">
-                      Review
-                    </button>
-                    <button className="rounded-full bg-slate-200 px-4 py-2 text-base font-medium text-slate-800 hover:bg-slate-300">
-                      Add note
-                    </button>
-                  </div>
-                </li>
-                <li className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">creator_92</p>
-                    <p className="text-lg text-slate-600">One AI alert, otherwise clean history</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="rounded-full bg-slate-200 px-4 py-2 text-base font-medium text-slate-800 hover:bg-slate-300">
-                      Dismiss alert
-                    </button>
-                  </div>
-                </li>
-              </ul>
-            </section>
 
-            {/* AI model monitoring */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <h2 className="text-2xl font-semibold text-slate-800">AI model monitoring</h2>
-              <p className="mt-2 text-lg text-slate-500">
-                Quick status of the fraud model and price predictor.
-              </p>
-              <div className="mt-4 space-y-3 text-base">
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">Fraud detection model</p>
-                    <p className="text-lg text-slate-600">Precision 92%, recall 88%</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-50 px-4 py-2 text-base font-medium text-emerald-700">
-                    Healthy
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">Price predictor</p>
-                    <p className="text-lg text-slate-600">MAPE 6.4% on last 7 days</p>
-                  </div>
-                  <span className="rounded-full bg-amber-50 px-4 py-2 text-base font-medium text-amber-700">
-                    Watch
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                  <div>
-                    <p className="text-xl font-semibold text-slate-900">Bid recommendation</p>
-                    <p className="text-lg text-slate-600">34% of users opted in, +3.1% uplift</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-50 px-4 py-2 text-base font-medium text-emerald-700">
-                    Improving
-                  </span>
-                </div>
-              </div>
-            </section>
+              <div className="grid w-full gap-4 lg:grid-cols-2">
+                <CardPanel title="Live Activity" actionLabel="View stream">
+                  <ul className="space-y-3 text-sm">
+                    {LIVE_ACTIVITY.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <span className="text-xs text-white/50 w-12">{item.time}</span>
+                        <div className="flex-1 text-white/90">{item.message}</div>
+                        <Badge tone="emerald" label={item.tag} />
+                      </li>
+                    ))}
+                  </ul>
+                </CardPanel>
 
-            {/* Logs & alerts */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-semibold text-slate-800">Logs & alerts</h2>
-                  <p className="text-lg text-slate-500">Most recent important events.</p>
-                </div>
-                <button className="rounded-full bg-slate-50 px-4 py-2 text-base font-medium text-slate-700 hover:bg-slate-100">
-                  View full log
-                </button>
+                <CardPanel title="Pending Approvals" actionLabel="Open queue">
+                  <ul className="space-y-3 text-sm">
+                    {PENDING_APPROVALS.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">{p.id} · {p.title}</p>
+                          <p className="text-xs text-white/60">Seller: {p.seller}</p>
+                        </div>
+                        <Badge tone="amber" label={p.type} />
+                        <button className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20">Review</button>
+                      </li>
+                    ))}
+                  </ul>
+                </CardPanel>
               </div>
-              <ul className="mt-3 space-y-3 text-base">
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-rose-500" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">AI alert: fraud spike in Vehicles</p>
-                    <p className="text-sm text-slate-600">5 min ago · cluster ID F-204</p>
+
+              <CardPanel title="Recent Transactions" actionLabel="View all">
+                <div className="overflow-hidden rounded-2xl border border-white/10">
+                  <div className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/60">
+                    <span>Txn</span>
+                    <span>Item</span>
+                    <span>Amount</span>
+                    <span className="text-right">Status</span>
                   </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-amber-400" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">System warning: delayed webhook</p>
-                    <p className="text-sm text-slate-600">18 min ago · /payments/settled</p>
+                  <div className="divide-y divide-white/5">
+                    {RECENT_TRANSACTIONS.map((tx) => (
+                      <div key={tx.id} className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center px-4 py-3 text-sm hover:bg-white/5">
+                        <span className="font-semibold text-white">{tx.id}</span>
+                        <span className="text-white/80">{tx.item}</span>
+                        <span className="text-white/80">{tx.amount}</span>
+                        <div className="flex justify-end">
+                          <Badge tone={tx.status === "Paid" ? "emerald" : tx.status === "Pending" ? "amber" : "rose"} label={tx.status} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </li>
-                <li className="flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-emerald-400" />
-                  <div>
-                    <p className="text-lg font-semibold text-slate-900">Info: nightly model retrain complete</p>
-                    <p className="text-sm text-slate-600">42 min ago · fraud_v4.3 deployed</p>
-                  </div>
-                </li>
-              </ul>
-            </section>
-          </aside>
+                </div>
+              </CardPanel>
+            </div>
+
+            <aside className="space-y-6 w-full">
+              <CardPanel title="Notifications" actionLabel="Manage">
+                <div className="space-y-3 text-sm">
+                  {NOTIFICATIONS.map((n, idx) => (
+                    <div key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                      <Bell className={`mt-0.5 h-4 w-4 ${toneIcon(n.tone)}`} />
+                      <div>
+                        <p className="font-semibold text-white">{n.title}</p>
+                        <p className="text-xs text-white/60">{n.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardPanel>
+
+              <CardPanel title="Quick Actions" actionLabel="All actions">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ActionButton label="Create auction" icon={Layers} onClick={goToCreateAuction} />
+                  <ActionButton label="Issue payout" icon={Wallet} />
+                  <ActionButton label="Send notice" icon={Bell} />
+                  <ActionButton label="Export report" icon={BarChart3} />
+                </div>
+              </CardPanel>
+            </aside>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
+}
+
+type Kpi = { label: string; value: string | number; delta: string; accent: "emerald" | "blue" | "purple" | "amber"; icon: React.ComponentType<{ className?: string }> };
+
+function KpiCard({ card }: { card: Kpi }) {
+  const tones: Record<string, { bg: string; text: string }> = {
+    emerald: { bg: "from-emerald-500/25", text: "text-emerald-200" },
+    blue: { bg: "from-blue-500/25", text: "text-blue-200" },
+    purple: { bg: "from-purple-500/25", text: "text-purple-200" },
+    amber: { bg: "from-amber-500/25", text: "text-amber-200" },
+  };
+  const ToneIcon = card.icon;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-4 ring-1 ring-white/5">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${tones[card.accent].bg}`}>
+        <ToneIcon className={`h-5 w-5 ${tones[card.accent].text}`} />
+      </div>
+      <p className="mt-3 text-xs uppercase tracking-wide text-white/60">{card.label}</p>
+      <p className="mt-1 text-2xl font-bold text-white">{card.value}</p>
+      <p className="text-xs font-semibold text-emerald-300">{card.delta}</p>
+    </div>
+  );
+}
+
+function SparkChart({ title, values, accent }: { title: string; values: number[]; accent: "emerald" | "blue" }) {
+  const max = Math.max(...values);
+  const tone = accent === "emerald" ? "bg-emerald-400" : "bg-blue-400";
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="flex items-center justify-between text-sm text-white/80">
+        <span>{title}</span>
+        <span className="text-xs text-white/50">Sparkline</span>
+      </div>
+      <div className="mt-3 flex items-end gap-2">
+        {values.map((v, idx) => (
+          <div
+            key={idx}
+            className={`w-full rounded-t-lg ${tone}`}
+            style={{ height: `${(v / max) * 120 + 10}px` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CardPanel({ title, actionLabel, children }: { title: string; actionLabel?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold text-white">{title}</h3>
+        {actionLabel && <button className="text-xs font-semibold text-emerald-300 hover:text-emerald-200">{actionLabel}</button>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose"; label: string }) {
+  const colors: Record<typeof tone, string> = {
+    emerald: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+    amber: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+    rose: "text-rose-300 bg-rose-500/10 border-rose-500/30",
+  };
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${colors[tone]}`}>{label}</span>;
+}
+
+function ActionButton({ label, icon: Icon, onClick }: { label: string; icon: React.ComponentType<{ className?: string }>; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-white hover:border-emerald-400/60"
+    >
+      <Icon className="h-4 w-4 text-emerald-300" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function toneIcon(tone: string) {
+  if (tone === "emerald") return "text-emerald-300";
+  if (tone === "amber") return "text-amber-300";
+  if (tone === "rose") return "text-rose-300";
+  return "text-white";
 }

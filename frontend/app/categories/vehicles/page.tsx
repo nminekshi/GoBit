@@ -9,10 +9,7 @@ const hero = {
   statLabel: "Avg. recon cost",
   statValue: "$1.8K",
   statDetail: "based on last 20 closings",
-  actions: [
-    { label: "Schedule inspection", href: "/inquiry-form" },
-    { label: "Open fleet desk", href: "/admin/dashboard", variant: "secondary" },
-  ],
+  actions: [],
 };
 
 const metrics = [
@@ -46,80 +43,7 @@ const timeline = [
   { label: "VIN audit", detail: "Fleet lot compliance sweep", eta: "Tomorrow" },
 ];
 
-const items = [
-  {
-    name: "Tesla Model S",
-    img: "/images/Tesla Model S.png",
-    currentBid: 55000,
-    endsIn: "6h 20m",
-    watchers: 64,
-    condition: "Dual motor · 34k mi",
-  },
-  {
-    name: "BMW X5",
-    img: "/images/BMW X5 .png",
-    currentBid: 42000,
-    endsIn: "5h 10m",
-    watchers: 41,
-    condition: "M Sport · full history",
-  },
-  {
-    name: "Audi Q7",
-    img: "/images/Audi Q7.png",
-    currentBid: 39000,
-    endsIn: "7h 30m",
-    watchers: 35,
-    condition: "Prestige trim",
-  },
-  {
-    name: "Mercedes-Benz C-Class",
-    img: "/images/Mercedes-Benz C-Class.png",
-    currentBid: 37000,
-    endsIn: "8h 15m",
-    watchers: 29,
-    condition: "AMG package",
-  },
-  {
-    name: "Toyota Land Cruiser",
-    img: "/images/Toyota Land Cruiser.png",
-    currentBid: 32000,
-    endsIn: "9h 5m",
-    watchers: 33,
-    condition: "Heritage edition",
-  },
-  {
-    name: "Ford Mustang",
-    img: "/images/Ford Mustang.png",
-    currentBid: 28000,
-    endsIn: "10h 40m",
-    watchers: 47,
-    condition: "GT performance",
-  },
-  {
-    name: "Tesla Model S Performance",
-    img: "/images/Tesla Model S.png",
-    currentBid: 61000,
-    endsIn: "7h 15m",
-    watchers: 52,
-    condition: "Plaid · 21k mi",
-  },
-  {
-    name: "BMW X5 Executive Fleet",
-    img: "/images/BMW X5 .png",
-    currentBid: 44500,
-    endsIn: "6h 5m",
-    watchers: 37,
-    condition: "xDrive50e · 3-unit release",
-  },
-  {
-    name: "Audi Q7 Technik Series",
-    img: "/images/Audi Q7.png",
-    currentBid: 40200,
-    endsIn: "8h 55m",
-    watchers: 32,
-    condition: "Adaptive air suspension",
-  },
-];
+const items: any[] = [];
 
 export default function VehiclesAuction() {
   return (
