@@ -45,24 +45,33 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [timeLeft, setTimeLeft] = useState("");
     const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
 
-    useEffect(() => {
-        const fetchAuction = async () => {
-            try {
-                const data = await auctionAPI.fetchAuctionById(id);
-                if (data) {
-                    setAuction(data);
-                } else {
-                    setError("Auction not found");
-                }
-            } catch (err) {
-                setError("Failed to load auction details");
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const isLoaded = useRef(false);
 
+    const fetchAuction = async () => {
+        try {
+            const data = await auctionAPI.fetchAuctionById(id);
+            if (data) {
+                setAuction(data);
+                isLoaded.current = true;
+                // Clear error if we successfully fetched
+                if (error === "Failed to load auction details" || error === "Auction not found") {
+                    setError("");
+                }
+            } else {
+                if (!isLoaded.current) setError("Auction not found");
+            }
+        } catch (err) {
+            console.error("Failed to update auction data", err);
+            if (!isLoaded.current) setError("Failed to load auction details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchAuction();
+        const interval = setInterval(fetchAuction, 5000); // Poll every 5 seconds
+        return () => clearInterval(interval);
     }, [id]);
 
     useEffect(() => {
@@ -148,7 +157,13 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             setBidError("");
             alert("Bid placed successfully!");
         } catch (err: any) {
-            setBidError(err.message || "Failed to place bid");
+            const message = err.message || "Failed to place bid";
+            setBidError(message);
+
+            // If the error indicates a stale bid, refresh the data immediately
+            if (message.includes("higher than current bid")) {
+                fetchAuction();
+            }
         }
     };
 
