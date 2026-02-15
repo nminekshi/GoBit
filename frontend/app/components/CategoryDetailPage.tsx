@@ -41,6 +41,7 @@ type CategoryTimeline = {
 };
 
 type AuctionItem = {
+  id: string; // Added id
   name: string;
   img: string;
   currentBid: number;
@@ -104,6 +105,7 @@ export default function CategoryDetailPage({
           const endsIn = diffMs > 0 ? `${diffDays}d ${diffHours}h` : "Ended";
 
           return {
+            id: a._id, // Map _id to id
             name: a.title,
             img: a.imageUrl,
             currentBid: a.currentBid,
@@ -135,60 +137,7 @@ export default function CategoryDetailPage({
     loadAuctions();
   }, [categoryKey, items]);
 
-  const openModal = (item: AuctionItem) => {
-    setSelectedItem(item);
-    setBid("");
-    setError("");
-    setModalOpen(true);
-  };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedItem(null);
-    setBid("");
-    setError("");
-  };
-
-  const handleBid = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedItem) return;
-
-    if (!bid || isNaN(Number(bid)) || Number(bid) <= selectedItem.currentBid) {
-      setError("Enter a bid higher than the current bid.");
-      return;
-    }
-
-    // persist bid to buyer dashboard storage (per-user)
-    try {
-      const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
-      const parsed = rawAuth ? JSON.parse(rawAuth) : null;
-      const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
-      const role = parsed?.user?.role?.toLowerCase();
-      if (userId && role === "buyer") {
-        const bidValue = Number(bid);
-        const storedRaw = window.localStorage.getItem("buyer-bids");
-        const existing = storedRaw ? JSON.parse(storedRaw) : [];
-        const bidEntry = {
-          id: `cat-${categoryKey}-${selectedItem.name}`,
-          title: selectedItem.name,
-          category: categoryKey,
-          amount: bidValue,
-          imageUrl: selectedItem.img,
-          placedAt: new Date().toISOString(),
-          userId,
-        };
-        const deduped = Array.isArray(existing)
-          ? [bidEntry, ...existing.filter((b: any) => !(b.id === bidEntry.id && b.userId === userId))]
-          : [bidEntry];
-        window.localStorage.setItem("buyer-bids", JSON.stringify(deduped));
-      }
-    } catch {
-      // swallow storage issues
-    }
-
-    closeModal();
-    alert("Your bid has been placed!");
-  };
 
   return (
     <div className="min-h-screen bg-[#040918] px-6 py-12 text-white lg:px-12">
@@ -300,12 +249,11 @@ export default function CategoryDetailPage({
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {mergedItems.map((item) => (
                   <div
-                    key={item.name}
+                    key={item.id || item.name} // Use ID if available
                     className="flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5"
                   >
-                    <button
-                      type="button"
-                      onClick={() => openModal(item)}
+                    <Link
+                      href={`/auctions/${item.id}`}
                       className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#040918]"
                       aria-label={`View details for ${item.name}`}
                     >
@@ -315,7 +263,7 @@ export default function CategoryDetailPage({
                         className="absolute inset-0 h-full w-full object-contain object-center"
                       />
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
-                    </button>
+                    </Link>
                     <div className="flex flex-1 flex-col p-5">
                       <h3 className="text-xl font-semibold text-white/90">{item.name}</h3>
                       <p className="mt-1 text-sm text-white/60 font-medium">
@@ -347,12 +295,12 @@ export default function CategoryDetailPage({
                         <span className="text-white/60">{item.watchers} watchers</span>
                         <span className="text-emerald-300">Bid ready</span>
                       </div>
-                      <button
-                        onClick={() => openModal(item)}
-                        className="mt-5 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
+                      <Link
+                        href={`/auctions/${item.id}`}
+                        className="mt-5 text-center rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
                       >
                         Place bid
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -362,57 +310,7 @@ export default function CategoryDetailPage({
         </div>
       </div>
 
-      {modalOpen && selectedItem && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0b1428] p-6 text-white">
-            <button
-              onClick={closeModal}
-              className="ml-auto flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-xl text-white/60"
-            >
-              ×
-            </button>
-            <div className="mt-2 text-center">
-              <p className="text-xs uppercase tracking-wide text-white/50">
-                Lot details & bid
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold">{selectedItem.name}</h3>
-              <p className="mt-1 text-sm text-white/60">
-                Current bid ${selectedItem.currentBid.toLocaleString()} · {selectedItem.endsIn} remaining
-              </p>
-              <p className="mt-1 text-sm text-white/60">
-                {(selectedItem.condition || "Verified asset") + " · " + selectedItem.watchers + " watchers"}
-              </p>
-            </div>
-            <form onSubmit={handleBid} className="mt-6 space-y-4">
-              <input
-                type="number"
-                min={selectedItem.currentBid + 1}
-                value={bid}
-                onChange={(event) => setBid(event.target.value)}
-                className="w-full rounded-2xl border border-white/20 bg-transparent px-4 py-3 text-lg text-white placeholder:text-white/40 focus:border-white/60 focus:outline-none"
-                placeholder={`Enter a bid greater than $${selectedItem.currentBid.toLocaleString()}`}
-                autoFocus
-              />
-              {error && <p className="text-sm text-rose-400">{error}</p>}
-              <div className="flex gap-3">
-                <button
-                  type="submit"
-                  className="flex-1 rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
-                >
-                  Submit bid
-                </button>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="flex-1 rounded-2xl border border-white/20 px-4 py-2 text-sm font-semibold text-white/70 transition hover:text-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
