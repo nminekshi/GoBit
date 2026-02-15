@@ -350,14 +350,18 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
                                             {/* Dynamic Category Fields */}
                                             {(categoryFields[categoryNameToSlug(auction.category)] || []).map((field) => (
-                                                auction.details && auction.details[field.key] && (
-                                                    <tr key={field.key} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                        <td className="py-4 px-6 text-white/60 font-medium">{field.label}</td>
-                                                        <td className="py-4 px-6 text-white text-right">
-                                                            {auction.details[field.key]} {field.suffix || ""}
-                                                        </td>
-                                                    </tr>
-                                                )
+                                                <tr key={field.key} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-4 px-6 text-white/60 font-medium">{field.label}</td>
+                                                    <td className="py-4 px-6 text-white text-right">
+                                                        {auction.details && auction.details[field.key] ? (
+                                                            <>
+                                                                {auction.details[field.key]} {field.suffix || ""}
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-white/20 italic">Not specified</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
                                             ))}
 
                                             <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
