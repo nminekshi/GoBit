@@ -28,7 +28,7 @@ type Auction = {
     createdAt: string;
     updatedAt?: string;
     bids: {
-        bidderId: string;
+        bidderId: string | { _id: string; username: string };
         bidAmount: number;
         timestamp: string;
     }[];
@@ -116,26 +116,11 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         }
 
         try {
-            // Optimistically update UI or re-fetch
-            // For now, let's just simulate success and update local state for Buyer Dashboard consistency
-            // In a real app, we'd call api.placeBid(id, amount)
+            // Place bid via API
+            const updatedAuction = await auctionAPI.placeBid(auction._id, amount);
 
-            // Simulating the API call structure (replace with actual call if API supports it fully)
-            // await auctionAPI.placeBid(auction._id, amount); 
-
-            // Manually update local state to reflect bid for demo purposes
-            const newBid = {
-                bidderId: "me", // placeholder
-                bidAmount: amount,
-                timestamp: new Date().toISOString()
-            };
-
-            setAuction(prev => prev ? ({
-                ...prev,
-                currentBid: amount,
-                bidsCount: (prev.bids?.length || 0) + 1,
-                bids: [newBid, ...(prev.bids || [])]
-            }) : null);
+            // Update state with response from backend
+            setAuction(updatedAuction);
 
             // Update local storage for Buyer Dashboard
             const parsed = JSON.parse(rawAuth);
@@ -407,20 +392,25 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             <h3 className="text-xl font-semibold text-white mb-4">Bid History</h3>
                             {auction.bids && auction.bids.length > 0 ? (
                                 <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                                    {auction.bids.map((bid, i) => (
-                                        <div key={i} className="flex justify-between items-center p-4 border-b border-white/10 last:border-0 hover:bg-white/5 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
-                                                    {bid.bidderId.substring(0, 2).toUpperCase()}
+                                    {auction.bids.map((bid, i) => {
+                                        const bidderName = typeof bid.bidderId === 'object' ? bid.bidderId.username : (bid.bidderId === "me" ? "You" : `Bidder ${bid.bidderId.substring(0, 6)}...`);
+                                        const bidderInitial = bidderName.substring(0, 2).toUpperCase();
+
+                                        return (
+                                            <div key={i} className="flex justify-between items-center p-4 border-b border-white/10 last:border-0 hover:bg-white/5 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
+                                                        {bidderInitial}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-white">{bidderName}</p>
+                                                        <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-white">Bidder {bid.bidderId.substring(0, 6)}...</p>
-                                                    <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
-                                                </div>
+                                                <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
                                             </div>
-                                            <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-white/40">No bids yet. Be the first to bid!</p>

@@ -149,7 +149,8 @@ router.get("/my/watchlist", authenticate, async (req, res) => {
 router.get("/:id", async (req, res) => {
     try {
         const auction = await Auction.findById(req.params.id)
-            .populate("sellerId", "username email");
+            .populate("sellerId", "username email")
+            .populate("bids.bidderId", "username");
 
         if (!auction) {
             return res.status(404).json({ error: "Auction not found" });
@@ -309,6 +310,7 @@ router.post("/:id/bid", authenticate, async (req, res) => {
 
         await auction.save();
         await auction.populate("sellerId", "username email");
+        await auction.populate("bids.bidderId", "username");
 
         res.json(auction);
     } catch (error) {
