@@ -340,50 +340,66 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             <p className="text-white/80 leading-relaxed">{auction.description}</p>
 
                             {/* Product Overview Section */}
-                            {auction.details && Object.keys(auction.details).length > 0 && (
-                                <div className="mt-8">
-                                    <h3 className="text-xl font-semibold text-white mb-6">Product Overview</h3>
-                                    <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                                        <table className="w-full">
-                                            <tbody>
-                                                {/* Category Fields */}
-                                                {(categoryFields[categoryNameToSlug(auction.category)] || []).map((field) => (
-                                                    auction.details && auction.details[field.key] && (
-                                                        <tr key={field.key} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                            <td className="py-4 px-6 text-white/60 font-medium">{field.label}</td>
-                                                            <td className="py-4 px-6 text-white text-right">
-                                                                {auction.details[field.key]} {field.suffix || ""}
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                ))}
-                                                {/* Standard Fields */}
-                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-4 px-6 text-white/60 font-medium">Verified</td>
-                                                    <td className="py-4 px-6 text-white text-right">
-                                                        <span className="inline-flex items-center gap-1 text-emerald-400">
-                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
-                                                            Yes
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-4 px-6 text-white/60 font-medium">Created At</td>
-                                                    <td className="py-4 px-6 text-white text-right">
-                                                        {new Date(auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </td>
-                                                </tr>
-                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-4 px-6 text-white/60 font-medium">Updated At</td>
-                                                    <td className="py-4 px-6 text-white text-right">
-                                                        {new Date(auction.updatedAt || auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                            <div className="mt-8">
+                                <h3 className="text-xl font-semibold text-white mb-6">Product Overview</h3>
+                                <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+                                    <table className="w-full">
+                                        <tbody>
+                                            {/* Standard Fields */}
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Category</td>
+                                                <td className="py-4 px-6 text-white text-right capitalize">{auction.category}</td>
+                                            </tr>
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Price</td>
+                                                <td className="py-4 px-6 text-emerald-400 text-right font-medium">${auction.startPrice.toLocaleString()}</td>
+                                            </tr>
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Status</td>
+                                                <td className="py-4 px-6 text-white text-right">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${auction.status === 'open' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                                        {auction.status === 'open' ? 'Active' : 'Sold Out'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+
+                                            {/* Dynamic Category Fields */}
+                                            {(categoryFields[categoryNameToSlug(auction.category)] || []).map((field) => (
+                                                auction.details && auction.details[field.key] && (
+                                                    <tr key={field.key} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-4 px-6 text-white/60 font-medium">{field.label}</td>
+                                                        <td className="py-4 px-6 text-white text-right">
+                                                            {auction.details[field.key]} {field.suffix || ""}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            ))}
+
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Verified</td>
+                                                <td className="py-4 px-6 text-white text-right">
+                                                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                                                        Yes
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Created At</td>
+                                                <td className="py-4 px-6 text-white text-right">
+                                                    {new Date(auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </td>
+                                            </tr>
+                                            <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                <td className="py-4 px-6 text-white/60 font-medium">Updated At</td>
+                                                <td className="py-4 px-6 text-white text-right">
+                                                    {new Date(auction.updatedAt || auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     )}
                     {activeTab === 'auction history' && (

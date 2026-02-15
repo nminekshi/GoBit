@@ -43,7 +43,7 @@ export default function CreateAuctionPage() {
             const { auctionAPI } = await import("../../lib/api");
 
             // Create auction via API
-            const newAuction = await auctionAPI.createAuction({
+            const payload = {
                 title: formData.title,
                 description: formData.description || "No description provided.",
                 category: categorySlug,
@@ -51,7 +51,11 @@ export default function CreateAuctionPage() {
                 imageUrl: previewUrl || undefined,
                 endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
                 details: details,
-            });
+            };
+            console.log("DEBUG: Creating auction with payload:", payload);
+            console.log("DEBUG: Current Details State:", details);
+
+            const newAuction = await auctionAPI.createAuction(payload);
 
             alert("Auction item added successfully!");
             router.push("/seller/dashboard");
