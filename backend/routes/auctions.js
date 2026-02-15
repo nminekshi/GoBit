@@ -176,6 +176,7 @@ router.post("/", authenticate, async (req, res) => {
             startPrice,
             imageUrl,
             endTime,
+            details,
         } = req.body;
 
         // Validate required fields
@@ -197,6 +198,7 @@ router.post("/", authenticate, async (req, res) => {
             imageUrl,
             endTime: auctionEndTime,
             sellerId: req.userId,
+            details: details || {},
         });
 
         await auction.save();
@@ -226,7 +228,7 @@ router.put("/:id", authenticate, async (req, res) => {
         }
 
         // Update allowed fields
-        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime", "category", "startPrice"];
+        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime", "category", "startPrice", "details"];
         Object.keys(req.body).forEach((key) => {
             if (allowedUpdates.includes(key)) {
                 if (key === "category" && typeof req.body[key] === "string") {

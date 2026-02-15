@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, FormEvent, use } from "react";
+import { useEffect, useState, FormEvent, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { auctionAPI } from "../../lib/api";
+import { auctionAPI, categoryNameToSlug } from "../../lib/api";
+import { categoryFields } from "../../lib/categoryFields";
 
 type Auction = {
     _id: string;
@@ -23,6 +24,9 @@ type Auction = {
         username: string;
         email: string;
     };
+    details?: Record<string, string>;
+    createdAt: string;
+    updatedAt?: string;
     bids: {
         bidderId: string;
         bidAmount: number;
@@ -39,7 +43,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [bidAmount, setBidAmount] = useState("");
     const [bidError, setBidError] = useState("");
     const [timeLeft, setTimeLeft] = useState("");
-    const [activeTab, setActiveTab] = useState("description"); // description, history, reviews, more
+    const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
 
     useEffect(() => {
         const fetchAuction = async () => {
@@ -259,101 +263,157 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                 <p className="text-sm text-white/60 mb-2">Time left:</p>
                                 <div className="grid grid-cols-4 gap-2 text-center">
                                     {/* Simple countdown blocks */}
-                                    {timeLeft.split(' ').map((part, index) => {
-                                        const value = parseInt(part);
-                                        const label = part.replace(/[0-9]/g, '');
-                                        const labelFull = label === 'd' ? 'Days' : label === 'h' ? 'Hours' : label === 'm' ? 'Minutes' : 'Seconds';
-                                        return (
-                                            <div key={index} className="bg-white p-3 rounded-lg text-gray-900">
-                                                <div className="text-xl font-bold">{value}</div>
-                                                <div className="text-[10px] uppercase font-medium text-gray-500">{labelFull}</div>
-                                            </div>
-                                        );
-                                    })}
+                                    {timeLeft === "Ended" ? (
+                                        <div className="col-span-4 bg-rose-500/20 text-rose-200 p-3 rounded-lg font-bold">
+                                            Auction Ended
+                                        </div>
+                                    ) : timeLeft ? (
+                                        timeLeft.split(' ').map((part, index) => {
+                                            const value = parseInt(part);
+                                            if (isNaN(value)) return null;
+
+                                            const label = part.replace(/[0-9]/g, '');
+                                            const labelFull = label === 'd' ? 'Days' : label === 'h' ? 'Hours' : label === 'm' ? 'Minutes' : 'Seconds';
+                                            return (
+                                                <div key={index} className="bg-white p-3 rounded-lg text-gray-900">
+                                                    <div className="text-xl font-bold">{value}</div>
+                                                    <div className="text-[10px] uppercase font-medium text-gray-500">{labelFull}</div>
+                                                </div>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="col-span-4 text-white/40 animate-pulse">Calculating...</div>
+                                    )}
                                 </div>
                             </div>
-
-                            <div className="space-y-1">
-                                <p className="text-sm text-white/60">Current bid:</p>
-                                <p className="text-3xl font-bold text-white">${auction.currentBid.toLocaleString()}</p>
-                                <p className="text-xs text-white/40">Start Price: ${auction.startPrice.toLocaleString()}</p>
-                            </div>
-
-                            <form onSubmit={handleBid} className="flex gap-2">
-                                <input
-                                    type="number"
-                                    min={auction.currentBid + 1}
-                                    value={bidAmount}
-                                    onChange={(e) => setBidAmount(e.target.value)}
-                                    placeholder={`${auction.currentBid + 1}`}
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
-                                />
-                                <button
-                                    type="submit"
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={auction.status !== "active"}
-                                >
-                                    Submit
-                                </button>
-                                {/* Add + button logic if needed, simplied to basic input for now */}
-                            </form>
-                            {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
                         </div>
+
+                        <div className="space-y-1">
+                            <p className="text-sm text-white/60">Current bid:</p>
+                            <p className="text-3xl font-bold text-white">${auction.currentBid.toLocaleString()}</p>
+                            <p className="text-xs text-white/40">Start Price: ${auction.startPrice.toLocaleString()}</p>
+                        </div>
+
+                        <form onSubmit={handleBid} className="flex gap-2">
+                            <input
+                                type="number"
+                                min={auction.currentBid + 1}
+                                value={bidAmount}
+                                onChange={(e) => setBidAmount(e.target.value)}
+                                placeholder={`${auction.currentBid + 1}`}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
+                            />
+                            <button
+                                type="submit"
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={auction.status !== "active"}
+                            >
+                                Submit
+                            </button>
+                            {/* Add + button logic if needed, simplied to basic input for now */}
+                        </form>
+                        {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
                     </div>
                 </div>
+            </div>
 
-                {/* Bottom Tabs Section */}
-                <div className="mt-16">
-                    <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto">
-                        {['description', 'auction history', 'reviews', 'more products'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-6 py-4 text-sm font-semibold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${activeTab === tab
-                                        ? "border-emerald-500 text-white"
-                                        : "border-transparent text-white/40 hover:text-white/70"
-                                    }`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
+            {/* Bottom Tabs Section */}
+            <div className="mt-16">
+                <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto">
+                    {['description', 'auction history', 'reviews', 'more products'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-6 py-4 text-sm font-semibold uppercase tracking-wide whitespace-nowrap border-b-2 transition-colors ${activeTab === tab
+                                ? "border-emerald-500 text-white"
+                                : "border-transparent text-white/40 hover:text-white/70"
+                                }`}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
 
-                    <div className="min-h-[200px]">
-                        {activeTab === 'description' && (
-                            <div className="prose prose-invert max-w-none">
-                                <p className="text-white/80 leading-relaxed">{auction.description}</p>
-                            </div>
-                        )}
-                        {activeTab === 'auction history' && (
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-semibold text-white mb-4">Bid History</h3>
-                                {auction.bids && auction.bids.length > 0 ? (
+                <div className="min-h-[200px]">
+                    {activeTab === 'description' && (
+                        <div className="prose prose-invert max-w-none">
+                            <p className="text-white/80 leading-relaxed">{auction.description}</p>
+
+                            {/* Product Overview Section */}
+                            {auction.details && Object.keys(auction.details).length > 0 && (
+                                <div className="mt-8">
+                                    <h3 className="text-xl font-semibold text-white mb-6">Product Overview</h3>
                                     <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                                        {auction.bids.map((bid, i) => (
-                                            <div key={i} className="flex justify-between items-center p-4 border-b border-white/10 last:border-0 hover:bg-white/5 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
-                                                        {bid.bidderId.substring(0, 2).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-white">Bidder {bid.bidderId.substring(0, 6)}...</p>
-                                                        <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
-                                                    </div>
-                                                </div>
-                                                <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
-                                            </div>
-                                        ))}
+                                        <table className="w-full">
+                                            <tbody>
+                                                {/* Category Fields */}
+                                                {(categoryFields[categoryNameToSlug(auction.category)] || []).map((field) => (
+                                                    auction.details && auction.details[field.key] && (
+                                                        <tr key={field.key} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                            <td className="py-4 px-6 text-white/60 font-medium">{field.label}</td>
+                                                            <td className="py-4 px-6 text-white text-right">
+                                                                {auction.details[field.key]} {field.suffix || ""}
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                ))}
+                                                {/* Standard Fields */}
+                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-4 px-6 text-white/60 font-medium">Verified</td>
+                                                    <td className="py-4 px-6 text-white text-right">
+                                                        <span className="inline-flex items-center gap-1 text-emerald-400">
+                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
+                                                            Yes
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-4 px-6 text-white/60 font-medium">Created At</td>
+                                                    <td className="py-4 px-6 text-white text-right">
+                                                        {new Date(auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </td>
+                                                </tr>
+                                                <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-4 px-6 text-white/60 font-medium">Updated At</td>
+                                                    <td className="py-4 px-6 text-white text-right">
+                                                        {new Date(auction.updatedAt || auction.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                ) : (
-                                    <p className="text-white/40">No bids yet. Be the first to bid!</p>
-                                )}
-                            </div>
-                        )}
-                        {/* Placeholders for other tabs */}
-                        {activeTab === 'reviews' && <p className="text-white/40">No reviews yet.</p>}
-                        {activeTab === 'more products' && <p className="text-white/40">Related auctions will appear here.</p>}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {activeTab === 'auction history' && (
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-semibold text-white mb-4">Bid History</h3>
+                            {auction.bids && auction.bids.length > 0 ? (
+                                <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+                                    {auction.bids.map((bid, i) => (
+                                        <div key={i} className="flex justify-between items-center p-4 border-b border-white/10 last:border-0 hover:bg-white/5 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs font-bold">
+                                                    {bid.bidderId.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-white">Bidder {bid.bidderId.substring(0, 6)}...</p>
+                                                    <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-white/40">No bids yet. Be the first to bid!</p>
+                            )}
+                        </div>
+                    )}
+                    {/* Placeholders for other tabs */}
+                    {activeTab === 'reviews' && <p className="text-white/40">No reviews yet.</p>}
+                    {activeTab === 'more products' && <p className="text-white/40">Related auctions will appear here.</p>}
                 </div>
             </div>
         </div>

@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { categoryFields } from "../../lib/categoryFields";
+import { categoryNameToSlug } from "../../lib/api";
 
 export default function CreateAuctionPage() {
     const router = useRouter();
@@ -12,8 +14,13 @@ export default function CreateAuctionPage() {
         description: "",
         startPrice: "",
     });
+    const [details, setDetails] = useState<Record<string, string>>({});
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Get fields based on selected category
+    const categorySlug = categoryNameToSlug(formData.category);
+    const currentCategoryFields = categoryFields[categorySlug] || [];
 
     // Handle file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,10 +40,7 @@ export default function CreateAuctionPage() {
         setIsSubmitting(true);
 
         try {
-            const { auctionAPI, categoryNameToSlug } = await import("../../lib/api");
-
-            // Convert category display name to slug
-            const categorySlug = categoryNameToSlug(formData.category);
+            const { auctionAPI } = await import("../../lib/api");
 
             // Create auction via API
             const newAuction = await auctionAPI.createAuction({
@@ -46,6 +50,7 @@ export default function CreateAuctionPage() {
                 startPrice: Number(formData.startPrice),
                 imageUrl: previewUrl || undefined,
                 endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
+                details: details,
             });
 
             alert("Auction item added successfully!");
@@ -100,7 +105,10 @@ export default function CreateAuctionPage() {
                             </label>
                             <select
                                 value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, category: e.target.value });
+                                    setDetails({}); // Reset details on category change
+                                }}
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition appearance-none [&>option]:bg-[#0B1121]"
                             >
                                 <option value="Watches">Watches</option>
@@ -111,6 +119,49 @@ export default function CreateAuctionPage() {
                                 <option value="Computers">Computers</option>
                             </select>
                         </div>
+
+                        {/* Dynamic Category Fields */}
+                        {currentCategoryFields.length > 0 && (
+                            <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-6">
+                                <h3 className="text-lg font-semibold text-white">Product Overview</h3>
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {currentCategoryFields.map((field) => (
+                                        <div key={field.key} className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-300">
+                                                {field.label}
+                                            </label>
+                                            {field.type === "select" ? (
+                                                <select
+                                                    value={details[field.key] || ""}
+                                                    onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition [&>option]:bg-[#0B1121]"
+                                                >
+                                                    <option value="">Select {field.label}</option>
+                                                    {field.options?.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <input
+                                                        type={field.type}
+                                                        value={details[field.key] || ""}
+                                                        onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition"
+                                                        placeholder={field.placeholder}
+                                                    />
+                                                    {field.suffix && (
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                                                            {field.suffix}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Description */}
                         <div className="space-y-2">

@@ -78,6 +78,11 @@ const auctionSchema = new mongoose.Schema(
                 },
             },
         ],
+        details: {
+            type: Map,
+            of: String,
+            default: {},
+        },
     },
     {
         timestamps: true,

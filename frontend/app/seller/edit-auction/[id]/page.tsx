@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { auctionAPI, categorySlugToName, categoryNameToSlug } from "../../../lib/api";
+import { categoryFields } from "../../../lib/categoryFields";
 
 export default function EditAuctionPage() {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function EditAuctionPage() {
         description: "",
         startPrice: "",
     });
+    const [details, setDetails] = useState<Record<string, string>>({});
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +37,7 @@ export default function EditAuctionPage() {
                         description: auction.description || "",
                         startPrice: auction.startPrice.toString(),
                     });
+                    setDetails(auction.details || {});
                     setPreviewUrl(auction.imageUrl);
                 } else {
                     setError("Auction not found.");
@@ -49,6 +52,10 @@ export default function EditAuctionPage() {
 
         loadAuction();
     }, [auctionId]);
+
+    // Get fields based on selected category
+    const categorySlug = categoryNameToSlug(formData.category);
+    const currentCategoryFields = categoryFields[categorySlug] || [];
 
     // Handle file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +82,7 @@ export default function EditAuctionPage() {
                 description: formData.description,
                 startPrice: Number(formData.startPrice),
                 imageUrl: previewUrl || undefined,
+                details: details,
             });
 
             alert("Auction updated successfully!");
@@ -184,6 +192,49 @@ export default function EditAuctionPage() {
                                 <option value="Computers">Computers</option>
                             </select>
                         </div>
+
+                        {/* Dynamic Category Fields */}
+                        {currentCategoryFields.length > 0 && (
+                            <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-6">
+                                <h3 className="text-lg font-semibold text-white">Product Overview</h3>
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {currentCategoryFields.map((field) => (
+                                        <div key={field.key} className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-300">
+                                                {field.label}
+                                            </label>
+                                            {field.type === "select" ? (
+                                                <select
+                                                    value={details[field.key] || ""}
+                                                    onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition [&>option]:bg-[#0B1121]"
+                                                >
+                                                    <option value="">Select {field.label}</option>
+                                                    {field.options?.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <input
+                                                        type={field.type}
+                                                        value={details[field.key] || ""}
+                                                        onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition"
+                                                        placeholder={field.placeholder}
+                                                    />
+                                                    {field.suffix && (
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                                                            {field.suffix}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Description */}
                         <div className="space-y-2">

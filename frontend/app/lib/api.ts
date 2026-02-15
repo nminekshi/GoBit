@@ -70,6 +70,7 @@ export const auctionAPI = {
         startPrice: number;
         imageUrl?: string;
         endTime?: Date;
+        details?: Record<string, string>;
     }): Promise<any | null> {
         try {
             const userId = getUserId();
