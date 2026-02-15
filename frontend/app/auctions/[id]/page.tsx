@@ -342,8 +342,8 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                             <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                                                 <td className="py-4 px-6 text-white/60 font-medium">Status</td>
                                                 <td className="py-4 px-6 text-white text-right">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${auction.status === 'open' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                                        {auction.status === 'open' ? 'Active' : 'Sold Out'}
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${auction.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                                        {auction.status === 'active' ? 'Active' : 'Sold Out'}
                                                     </span>
                                                 </td>
                                             </tr>
