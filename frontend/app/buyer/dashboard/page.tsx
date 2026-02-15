@@ -142,7 +142,7 @@ export default function BuyerDashboard() {
             bidsCount: a.bidsCount || 0,
             isWatchlisted: activeTab === "watchlist" || currentWatchedIds.has(a._id || a.id),
             status: a.status as "active" | "won" | "ended",
-            seller: a.sellerId?.username || "Verified Seller",
+            seller: a.sellerId?.username || "Unknown",
           };
         });
 
