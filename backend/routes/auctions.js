@@ -28,12 +28,27 @@ const authenticate = async (req, res, next) => {
         }
 
         req.userId = userId;
+        req.user = user;
         next();
     } catch (error) {
         console.error("Authentication error:", error);
-        return res.status(500).json({ error: "Authentication failed" });
+        res.status(500).json({ error: "Authentication failed" });
     }
 };
+
+// Diagnostic route
+router.get("/debug/auth-status", authenticate, (req, res) => {
+    res.json({
+        message: "You are authenticated",
+        userId: req.userId,
+        role: req.user?.role,
+        userObject: {
+            username: req.user?.username,
+            role: req.user?.role,
+            _id: req.user?._id
+        }
+    });
+});
 
 // GET /auctions - Get all auctions (with optional category filter)
 router.get("/", async (req, res) => {
@@ -46,7 +61,10 @@ router.get("/", async (req, res) => {
         }
 
         if (status) {
-            filter.status = status;
+            if (status !== "all") {
+                filter.status = status;
+            }
+            // If status is "all", we don't add status to filter, so it finds all
         } else {
             // By default, only show active auctions
             filter.status = "active";
@@ -223,13 +241,26 @@ router.put("/:id", authenticate, async (req, res) => {
             return res.status(404).json({ error: "Auction not found" });
         }
 
-        // Verify the user is the seller
-        if (auction.sellerId.toString() !== req.userId) {
-            return res.status(403).json({ error: "Not authorized to update this auction" });
+        // Verify the user is the seller or an admin
+        const isSeller = auction.sellerId?.toString() === req.userId;
+        const isAdmin = req.user?.role === "admin";
+
+        if (!isSeller && !isAdmin) {
+            console.log(`[DEBUG_AUTH] Access Denied. User:${req.userId}, Role:${req.user?.role}, Seller:${auction.sellerId?.toString()}`);
+            return res.status(403).json({
+                error: `AUTH_DENIED: You are not the seller (${auction.sellerId?.toString()}) and your role is (${req.user?.role}).`,
+                debug: {
+                    yourId: req.userId,
+                    yourRole: req.user?.role,
+                    sellerId: auction.sellerId?.toString(),
+                    isSeller,
+                    isAdmin
+                }
+            });
         }
 
         // Update allowed fields
-        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime", "category", "startPrice", "details"];
+        const allowedUpdates = ["title", "description", "imageUrl", "status", "endTime", "category", "startPrice", "details", "commission", "isVerified"];
         Object.keys(req.body).forEach((key) => {
             if (allowedUpdates.includes(key)) {
                 if (key === "category" && typeof req.body[key] === "string") {
@@ -261,8 +292,11 @@ router.delete("/:id", authenticate, async (req, res) => {
             return res.status(404).json({ error: "Auction not found" });
         }
 
-        // Verify the user is the seller
-        if (auction.sellerId && auction.sellerId.toString() !== req.userId) {
+        // Verify the user is the seller or an admin
+        const isSeller = auction.sellerId?.toString() === req.userId;
+        const isAdmin = req.user?.role === "admin";
+
+        if (!isSeller && !isAdmin) {
             return res.status(403).json({ error: "Not authorized to delete this auction" });
         }
         // If sellerId is missing, we'll allow the authenticated user to delete it (as it's orphaned)

@@ -17,11 +17,16 @@ const getUserId = (): string | null => {
 // Auction API functions
 export const auctionAPI = {
     // Fetch all auctions or filter by category
-    async fetchAuctions(category?: string): Promise<any[]> {
+    async fetchAuctions(category?: string, status?: string): Promise<any[]> {
         try {
-            const url = category
-                ? `${API_BASE_URL}/auctions?category=${category}`
-                : `${API_BASE_URL}/auctions`;
+            let url = `${API_BASE_URL}/auctions`;
+            const params = new URLSearchParams();
+            if (category) params.append("category", category);
+            if (status) params.append("status", status);
+
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
 
             const response = await fetch(url);
             if (!response.ok) {
@@ -110,6 +115,8 @@ export const auctionAPI = {
             imageUrl?: string;
             status?: string;
             endTime?: Date;
+            commission?: number;
+            isVerified?: boolean;
         }
     ): Promise<any | null> {
         try {
