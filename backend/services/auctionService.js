@@ -107,6 +107,7 @@ async function completeAuction(auction) {
     if (latestBid) {
         auction.winnerId = latestBid.bidderId;
     }
+    auction.saleStatus = auction.saleStatus || "pending";
     await auction.save();
     await auction.populate("sellerId", "username email");
     await auction.populate("bids.bidderId", "username email");
@@ -178,6 +179,34 @@ async function sendWinnerEmailOnce(auction) {
     }
 }
 
+async function sendPaymentConfirmationEmailOnce(auction) {
+    if (!auction.winnerId || auction.paymentNotified) return;
+
+    const winner = await User.findById(auction.winnerId);
+    if (!winner?.email) {
+        auction.paymentNotified = true;
+        await auction.save();
+        return;
+    }
+
+    const transport = createMailTransport();
+    const mail = {
+        from: process.env.MAIL_FROM || "no-reply@fyp.local",
+        to: winner.email,
+        subject: `Payment received for ${auction.title}`,
+        text: buildPaymentEmailText({ auction, winner }),
+    };
+
+    try {
+        await transport.sendMail(mail);
+    } catch (err) {
+        console.error("Failed to send payment confirmation email", err);
+    } finally {
+        auction.paymentNotified = true;
+        await auction.save();
+    }
+}
+
 function createMailTransport() {
     if (process.env.SMTP_HOST) {
         return nodemailer.createTransport({
@@ -218,6 +247,25 @@ function buildWinnerEmailText({ auction, winner }) {
     ].join("\n");
 }
 
+function buildPaymentEmailText({ auction, winner }) {
+    const latestBid = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+    const amount = latestBid?.bidAmount || auction.currentBid;
+    const orderId = auction.paymentOrderId || "TBD";
+
+    return [
+        `Hi ${winner.username || winner.email},`,
+        "",
+        `We received your payment for ${auction.title} (${auction.category})`,
+        `Auction type: ${auction.auctionType === "live" ? "Live" : "Normal"}`,
+        `Paid amount: $${amount}`,
+        `Order ID: ${orderId}`,
+        "",
+        "Your order is being processed. We'll notify you when shipping or pickup is ready.",
+        "",
+        "Thank you!",
+    ].join("\n");
+}
+
 module.exports = {
     LIVE_ENABLED_CATEGORIES,
     buildLiveAuctionConfig,
@@ -226,4 +274,5 @@ module.exports = {
     closeExpiredLiveAuctions,
     closeExpiredNormalAuctions,
     sendWinnerEmailOnce,
+    sendPaymentConfirmationEmailOnce,
 };

@@ -248,6 +248,38 @@ export const auctionAPI = {
         }
     },
 
+    async claimAuction(id: string): Promise<{ message: string; claimedAt?: string; checkoutPath?: string }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/claim`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Failed to claim item");
+        }
+        return data;
+    },
+
+    async payAuction(id: string): Promise<{ message: string; orderId?: string; paidAt?: string }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/pay`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Payment failed");
+        }
+        return data;
+    },
+
     // Fetch auctions where user has bid
     async fetchMyBids(): Promise<any[]> {
         try {

@@ -16,6 +16,7 @@ type Auction = {
     startPrice: number;
     currentBid: number;
     status: string;
+    saleStatus?: "pending" | "claim-initiated" | "paid";
     auctionType?: "normal" | "live";
     startTime?: string;
     liveDurationSeconds?: number;
@@ -33,6 +34,8 @@ type Auction = {
         email: string;
     };
     winnerId?: string | { _id: string; username: string };
+    winnerClaimedAt?: string;
+    paidAt?: string;
     details?: Record<string, string>;
     createdAt: string;
     updatedAt?: string;
@@ -55,6 +58,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [countdownPhase, setCountdownPhase] = useState<"upcoming" | "running" | "ended">("running");
     const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [claimMessage, setClaimMessage] = useState<string | null>(null);
 
     const isLoaded = useRef(false);
 
@@ -269,6 +273,21 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
     const isLiveAuction = auction.auctionType === "live";
     const isWinner = Boolean(currentUserId && (typeof auction.winnerId === "string" ? auction.winnerId === currentUserId : auction.winnerId?._id === currentUserId));
+    const isPaid = Boolean(auction.paidAt || auction.saleStatus === "paid");
+    const isClaimInitiated = Boolean(auction.saleStatus === "claim-initiated" || auction.winnerClaimedAt);
+
+    const handleClaimAndCheckout = async () => {
+        if (!auction) return;
+        try {
+            setClaimMessage(null);
+            const res = await auctionAPI.claimAuction(auction._id);
+            const nextPath = res.checkoutPath || `/checkout/${auction._id}`;
+            setClaimMessage(res.message || "Claim initiated. Redirecting to checkout...");
+            setTimeout(() => router.push(nextPath), 200);
+        } catch (err: any) {
+            setClaimMessage(err?.message || "Failed to claim item.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -343,12 +362,42 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
 
                         {isWinner && countdownPhase === "ended" && (
-                            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-100">
+                            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-100 space-y-2">
                                 <p className="text-sm font-semibold">You won this auction!</p>
-                                <p className="text-xs text-emerald-50/80">Click Claim Item to proceed to payment.</p>
-                                <button className="mt-3 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30">
-                                    Claim Item
-                                </button>
+                                {isPaid ? (
+                                    <>
+                                        <p className="text-xs text-emerald-50/80">Payment confirmed. View your receipt or dashboard.</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button
+                                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900 shadow"
+                                                onClick={() => router.push(`/order-confirmation/${auction._id}`)}
+                                            >
+                                                View confirmation
+                                            </button>
+                                            <button
+                                                className="rounded-xl border border-white/30 px-4 py-2 text-sm font-semibold text-white/90"
+                                                onClick={() => router.push("/buyer/dashboard")}
+                                            >
+                                                Go to dashboard
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-emerald-50/80">{isClaimInitiated ? "Finish checkout to complete payment." : "Click checkout to confirm and pay."}</p>
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            <button
+                                                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 disabled:opacity-60"
+                                                onClick={handleClaimAndCheckout}
+                                            >
+                                                Go to checkout
+                                            </button>
+                                            {claimMessage && (
+                                                <span className="text-xs text-white/80">{claimMessage}</span>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 

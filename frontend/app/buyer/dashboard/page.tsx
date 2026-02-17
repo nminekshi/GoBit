@@ -16,9 +16,12 @@ interface Auction {
   endsIn: string;
   startTime?: string;
   endTime?: string;
+  saleStatus?: "pending" | "claim-initiated" | "paid";
+  paidAt?: string;
+  winnerId?: string;
   bidsCount: number;
   isWatchlisted: boolean;
-  status: "active" | "won" | "ended";
+  status: "active" | "won" | "ended" | "paid";
   seller: string;
 }
 
@@ -134,11 +137,17 @@ export default function BuyerDashboard() {
         }
 
         const formatted = data.map((a: any) => {
-          // Find user's highest bid in this auction
           const myBids = a.bids?.filter((b: any) => b.bidderId === currentUser?.id) || [];
           const myHighestBid = myBids.length > 0 ? Math.max(...myBids.map((b: any) => b.bidAmount)) : undefined;
 
           const phaseInfo = getPhaseLabel(a.startTime, a.endTime);
+          const userIsWinner = Boolean(a.winnerId && currentUser?.id && a.winnerId === currentUser.id);
+          const isPaid = Boolean(a.saleStatus === "paid" || a.paidAt);
+          const status: Auction["status"] = isPaid
+            ? "paid"
+            : phaseInfo.phase === "ended"
+              ? (userIsWinner ? "won" : "ended")
+              : (a.status as "active" | "won" | "ended");
 
           return {
             id: a._id || a.id,
@@ -150,11 +159,12 @@ export default function BuyerDashboard() {
             endsIn: phaseInfo.label,
             startTime: a.startTime,
             endTime: a.endTime,
+            saleStatus: a.saleStatus,
+            paidAt: a.paidAt,
+            winnerId: a.winnerId,
             bidsCount: a.bidsCount || 0,
             isWatchlisted: activeTab === "watchlist" || currentWatchedIds.has(a._id || a.id),
-            status: phaseInfo.phase === "ended"
-              ? (a.winnerId && currentUser?.id && a.winnerId === currentUser.id ? "won" : "ended")
-              : (a.status as "active" | "won" | "ended"),
+            status,
             seller: a.sellerId?.username || "Unknown",
           };
         });
@@ -214,8 +224,16 @@ export default function BuyerDashboard() {
     }
   };
 
-  const handleClaim = (id: string) => {
-    alert("Payment and delivery flow would start here.");
+  const handleClaim = async (id: string) => {
+    try {
+      const { auctionAPI } = await import("../../lib/api");
+      const res = await auctionAPI.claimAuction(id);
+      alert(res.message || "Claim started. Proceed to payment.");
+      const nextPath = res.checkoutPath || `/checkout/${id}`;
+      router.push(nextPath);
+    } catch (err: any) {
+      alert(err?.message || "Failed to claim item");
+    }
   };
 
   const toggleWatchlist = async (id: string) => {
@@ -552,13 +570,15 @@ function AuctionCard({
   onClaim: (id: string) => void;
   onWatchlist: (id: string) => void;
 }) {
-  const statusTone = auction.status === "won"
-    ? "bg-amber-500/20 text-amber-200"
-    : auction.status === "active"
-      ? "bg-emerald-500/15 text-emerald-200"
-      : "bg-white/10 text-white/70";
-
-  const shouldShowClaim = auction.status === "won";
+  const statusTone = auction.status === "paid"
+    ? "bg-emerald-500/20 text-emerald-100"
+    : auction.status === "won"
+      ? "bg-amber-500/20 text-amber-200"
+      : auction.status === "active"
+        ? "bg-emerald-500/15 text-emerald-200"
+        : "bg-white/10 text-white/70";
+  const isPaid = auction.status === "paid";
+  const shouldShowClaim = !isPaid && auction.status === "won";
 
   return (
     <div className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-white transition hover:border-white/30 hover:shadow-[0_18px_40px_rgba(16,185,129,0.2)]">
@@ -643,12 +663,19 @@ function AuctionCard({
       </div>
 
       <div className="flex gap-3">
-        {shouldShowClaim ? (
+        {isPaid ? (
+          <Link
+            href={`/order-confirmation/${auction.id}`}
+            className="flex-1 rounded-2xl bg-emerald-500 px-4 py-2.5 text-center text-sm font-semibold text-slate-900 transition hover:bg-emerald-400"
+          >
+            View receipt
+          </Link>
+        ) : shouldShowClaim ? (
           <button
             onClick={() => onClaim(auction.id)}
             className="flex-1 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-amber-400"
           >
-            Claim item
+            Checkout
           </button>
         ) : (
           <button

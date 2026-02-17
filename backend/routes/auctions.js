@@ -5,6 +5,8 @@ const {
     placeBid: placeBidService,
     buildLiveAuctionConfig,
     LIVE_ENABLED_CATEGORIES,
+    completeAuction,
+    sendPaymentConfirmationEmailOnce,
 } = require("../services/auctionService");
 
 const mongoose = require("mongoose");
@@ -372,6 +374,74 @@ router.post("/:id/bid", authenticate, async (req, res) => {
     } catch (error) {
         console.error("Error placing bid:", error);
         res.status(error.statusCode || 500).json({ error: error.message || "Failed to place bid" });
+    }
+});
+
+// POST /auctions/:id/claim - Winner claims item
+router.post("/:id/claim", authenticate, async (req, res) => {
+    try {
+        const auction = await Auction.findById(req.params.id);
+        if (!auction) return res.status(404).json({ error: "Auction not found" });
+
+        // ensure completed or endTime past
+        if (auction.status === "active" && auction.endTime && new Date() >= new Date(auction.endTime)) {
+            await completeAuction(auction);
+        }
+
+        if (auction.status !== "completed") {
+            return res.status(400).json({ error: "Auction not completed yet" });
+        }
+
+        if (!auction.winnerId || auction.winnerId.toString() !== req.userId) {
+            return res.status(403).json({ error: "Only the winning bidder can claim this item" });
+        }
+
+        auction.winnerClaimedAt = auction.winnerClaimedAt || new Date();
+        auction.saleStatus = "claim-initiated";
+        await auction.save();
+
+        res.json({ message: "Claim initiated", claimedAt: auction.winnerClaimedAt, checkoutPath: `/checkout/${auction._id}` });
+    } catch (error) {
+        console.error("Error claiming auction:", error);
+        res.status(500).json({ error: "Failed to claim item" });
+    }
+});
+
+// POST /auctions/:id/pay - Winner completes payment
+router.post("/:id/pay", authenticate, async (req, res) => {
+    try {
+        const auction = await Auction.findById(req.params.id);
+        if (!auction) return res.status(404).json({ error: "Auction not found" });
+
+        if (!auction.winnerId || auction.winnerId.toString() !== req.userId) {
+            return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (auction.saleStatus === "paid") {
+            return res.json({ message: "Payment already completed", orderId: auction.paymentOrderId, paidAt: auction.winnerPaidAt });
+        }
+
+        if (auction.status === "active" && auction.endTime && new Date() >= new Date(auction.endTime)) {
+            await completeAuction(auction);
+        }
+
+        const now = new Date();
+        auction.saleStatus = "paid";
+        auction.winnerPaidAt = now;
+        auction.winnerClaimedAt = auction.winnerClaimedAt || now;
+        auction.paymentOrderId = auction.paymentOrderId || `ord-${Date.now()}-${auction._id.toString().slice(-6)}`;
+        await auction.save();
+
+        await sendPaymentConfirmationEmailOnce(auction);
+
+        res.json({
+            message: "Payment recorded",
+            orderId: auction.paymentOrderId,
+            paidAt: auction.winnerPaidAt,
+        });
+    } catch (error) {
+        console.error("Error processing payment:", error);
+        res.status(500).json({ error: "Failed to process payment" });
     }
 });
 

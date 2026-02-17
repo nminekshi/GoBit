@@ -109,6 +109,24 @@ const auctionSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        paymentNotified: {
+            type: Boolean,
+            default: false,
+        },
+        saleStatus: {
+            type: String,
+            enum: ["pending", "claim-initiated", "paid"],
+            default: "pending",
+        },
+        paymentOrderId: {
+            type: String,
+        },
+        winnerClaimedAt: {
+            type: Date,
+        },
+        winnerPaidAt: {
+            type: Date,
+        },
         lastBidAt: {
             type: Date,
         },
