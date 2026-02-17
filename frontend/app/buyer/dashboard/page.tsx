@@ -152,7 +152,9 @@ export default function BuyerDashboard() {
             endTime: a.endTime,
             bidsCount: a.bidsCount || 0,
             isWatchlisted: activeTab === "watchlist" || currentWatchedIds.has(a._id || a.id),
-            status: phaseInfo.phase === "ended" ? "ended" : (a.status as "active" | "won" | "ended"),
+            status: phaseInfo.phase === "ended"
+              ? (a.winnerId && currentUser?.id && a.winnerId === currentUser.id ? "won" : "ended")
+              : (a.status as "active" | "won" | "ended"),
             seller: a.sellerId?.username || "Unknown",
           };
         });
@@ -556,7 +558,7 @@ function AuctionCard({
       ? "bg-emerald-500/15 text-emerald-200"
       : "bg-white/10 text-white/70";
 
-  const shouldShowClaim = auction.status === "won" || auction.myBid !== undefined;
+  const shouldShowClaim = auction.status === "won";
 
   return (
     <div className="group relative flex flex-col gap-4 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 text-white transition hover:border-white/30 hover:shadow-[0_18px_40px_rgba(16,185,129,0.2)]">

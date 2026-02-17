@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
+const User = require("../models/User");
+const nodemailer = require("nodemailer");
 
 const LIVE_ENABLED_CATEGORIES = ["vehicles", "watches", "art", "electronics"];
 
@@ -107,7 +109,12 @@ async function completeAuction(auction) {
     }
     await auction.save();
     await auction.populate("sellerId", "username email");
-    await auction.populate("bids.bidderId", "username");
+    await auction.populate("bids.bidderId", "username email");
+
+    if (auction.winnerId && !auction.winnerNotified) {
+        await sendWinnerEmailOnce(auction);
+    }
+
     return auction;
 }
 
@@ -127,10 +134,96 @@ async function closeExpiredLiveAuctions(io) {
     }
 }
 
+async function closeExpiredNormalAuctions(io) {
+    const now = new Date();
+    const expired = await Auction.find({
+        auctionType: { $ne: "live" },
+        status: "active",
+        endTime: { $lte: now },
+    });
+
+    for (const auction of expired) {
+        const completed = await completeAuction(auction);
+        if (io) {
+            io.to(`auction:${auction._id}`).emit("auction:update", completed);
+        }
+    }
+}
+
+async function sendWinnerEmailOnce(auction) {
+    if (!auction.winnerId || auction.winnerNotified) return;
+
+    const winner = await User.findById(auction.winnerId);
+    if (!winner?.email) {
+        auction.winnerNotified = true;
+        await auction.save();
+        return;
+    }
+
+    const transport = createMailTransport();
+    const mail = {
+        from: process.env.MAIL_FROM || "no-reply@fyp.local",
+        to: winner.email,
+        subject: `You won ${auction.title}`,
+        text: buildWinnerEmailText({ auction, winner }),
+    };
+
+    try {
+        await transport.sendMail(mail);
+    } catch (err) {
+        console.error("Failed to send winner email", err);
+    } finally {
+        auction.winnerNotified = true;
+        await auction.save();
+    }
+}
+
+function createMailTransport() {
+    if (process.env.SMTP_HOST) {
+        return nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT) || 587,
+            secure: false,
+            auth: process.env.SMTP_USER
+                ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+                : undefined,
+        });
+    }
+    // Fallback: log-only transport to avoid blocking
+    return {
+        sendMail: async (opts) => {
+            console.log("[MAIL:DEV-LOG]", opts);
+        },
+    };
+}
+
+function buildWinnerEmailText({ auction, winner }) {
+    const isLive = auction.auctionType === "live";
+    const deadlineHours = process.env.PAYMENT_DEADLINE_HOURS || 48;
+    const latestBid = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+    const amount = latestBid?.bidAmount || auction.currentBid;
+
+    return [
+        `Hi ${winner.username || winner.email},`,
+        "",
+        `Congratulations! You won the ${auction.title} in the ${auction.category} category (${isLive ? "Live" : "Normal"} Auction).`,
+        `Winning bid amount: $${amount}`,
+        "",
+        "Next steps:",
+        "1) Open the app and click 'Claim Item' on this auction.",
+        "2) Complete payment and any required deposit.",
+        `3) Please complete payment within ${deadlineHours} hours to avoid cancellation.`,
+        "",
+        "Thank you for bidding with us!",
+    ].join("\n");
+}
+
 module.exports = {
     LIVE_ENABLED_CATEGORIES,
     buildLiveAuctionConfig,
     placeBid,
     completeAuction,
     closeExpiredLiveAuctions,
+    closeExpiredNormalAuctions,
+    sendWinnerEmailOnce,
 };

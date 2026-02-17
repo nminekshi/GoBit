@@ -105,6 +105,10 @@ const auctionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
         },
+        winnerNotified: {
+            type: Boolean,
+            default: false,
+        },
         lastBidAt: {
             type: Date,
         },

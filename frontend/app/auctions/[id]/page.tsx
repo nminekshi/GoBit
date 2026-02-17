@@ -32,6 +32,7 @@ type Auction = {
         username: string;
         email: string;
     };
+    winnerId?: string | { _id: string; username: string };
     details?: Record<string, string>;
     createdAt: string;
     updatedAt?: string;
@@ -53,6 +54,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [timeLeft, setTimeLeft] = useState("");
     const [countdownPhase, setCountdownPhase] = useState<"upcoming" | "running" | "ended">("running");
     const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
     const isLoaded = useRef(false);
 
@@ -112,6 +114,17 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
     useEffect(() => {
         if (!auction) return;
+
+        const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
+        if (rawAuth) {
+            try {
+                const parsed = JSON.parse(rawAuth);
+                const userId = parsed?.user?._id || parsed?.user?.id;
+                setCurrentUserId(userId || null);
+            } catch {
+                setCurrentUserId(null);
+            }
+        }
 
         const updateTimeLeft = () => {
             const now = new Date().getTime();
@@ -255,6 +268,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     }
 
     const isLiveAuction = auction.auctionType === "live";
+    const isWinner = Boolean(currentUserId && (typeof auction.winnerId === "string" ? auction.winnerId === currentUserId : auction.winnerId?._id === currentUserId));
 
     return (
         <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
@@ -327,6 +341,16 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                 <p className="text-white">UTC</p>
                             </div>
                         </div>
+
+                        {isWinner && countdownPhase === "ended" && (
+                            <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-4 text-emerald-100">
+                                <p className="text-sm font-semibold">You won this auction!</p>
+                                <p className="text-xs text-emerald-50/80">Click Claim Item to proceed to payment.</p>
+                                <button className="mt-3 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30">
+                                    Claim Item
+                                </button>
+                            </div>
+                        )}
 
                         <div className="bg-[#0b1428] rounded-3xl p-6 border border-white/10 space-y-6">
                             <div className="flex items-center justify-between">

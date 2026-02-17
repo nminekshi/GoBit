@@ -83,6 +83,7 @@ router.get("/", async (req, res) => {
 
         const auctions = await Auction.find(filter)
             .populate("sellerId", "username email")
+            .populate("winnerId", "username email")
             .sort({ createdAt: -1 });
 
         res.json(auctions);
@@ -101,6 +102,7 @@ router.get("/category/:category", async (req, res) => {
             status: "active"
         })
             .populate("sellerId", "username email")
+            .populate("winnerId", "username email")
             .sort({ createdAt: -1 });
 
         res.json(auctions);
@@ -146,6 +148,7 @@ router.get("/my/bids", authenticate, async (req, res) => {
             "bids.bidderId": req.userId
         })
             .populate("sellerId", "username email")
+            .populate("winnerId", "username email")
             .sort({ updatedAt: -1 });
 
         res.json(auctions);
@@ -160,7 +163,7 @@ router.get("/my/watchlist", authenticate, async (req, res) => {
     try {
         const user = await User.findById(req.userId).populate({
             path: "watchlist",
-            populate: { path: "sellerId", select: "username email" }
+            populate: [{ path: "sellerId", select: "username email" }, { path: "winnerId", select: "username email" }]
         });
 
         if (!user) {
@@ -179,7 +182,8 @@ router.get("/:id", async (req, res) => {
     try {
         const auction = await Auction.findById(req.params.id)
             .populate("sellerId", "username email")
-            .populate("bids.bidderId", "username");
+            .populate("bids.bidderId", "username")
+            .populate("winnerId", "username email");
 
         if (!auction) {
             return res.status(404).json({ error: "Auction not found" });

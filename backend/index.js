@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const { closeExpiredLiveAuctions, placeBid } = require("./services/auctionService");
+const { closeExpiredLiveAuctions, closeExpiredNormalAuctions, placeBid } = require("./services/auctionService");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -80,6 +80,7 @@ io.on("connection", (socket) => {
 });
 
 setInterval(() => closeExpiredLiveAuctions(io), 5000);
+setInterval(() => closeExpiredNormalAuctions(io), 10000);
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
