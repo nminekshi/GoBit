@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Auction = require("../models/Auction");
+const {
+    placeBid: placeBidService,
+    buildLiveAuctionConfig,
+    LIVE_ENABLED_CATEGORIES,
+} = require("../services/auctionService");
 
 const mongoose = require("mongoose");
 const User = require("../models/User");
@@ -53,11 +58,17 @@ router.get("/debug/auth-status", authenticate, (req, res) => {
 // GET /auctions - Get all auctions (with optional category filter)
 router.get("/", async (req, res) => {
     try {
-        const { category, status } = req.query;
+        const { category, status, auctionType } = req.query;
         const filter = {};
 
         if (category) {
             filter.category = category.toLowerCase();
+        }
+
+        if (auctionType === "live") {
+            filter.auctionType = "live";
+        } else if (auctionType === "normal") {
+            filter.auctionType = "normal";
         }
 
         if (status) {
@@ -196,6 +207,11 @@ router.post("/", authenticate, async (req, res) => {
             imageUrl,
             endTime,
             details,
+            auctionType,
+            liveDurationSeconds,
+            liveAutoExtendSeconds,
+            liveExtendThresholdSeconds,
+            liveStartTime,
         } = req.body;
 
         // Validate required fields
@@ -205,20 +221,37 @@ router.post("/", authenticate, async (req, res) => {
             });
         }
 
+        const normalizedCategory = category.toLowerCase();
+        const isLiveRequested = auctionType === "live" && LIVE_ENABLED_CATEGORIES.includes(normalizedCategory);
+
         // Set default end time if not provided (7 days from now)
         const auctionEndTime = endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-        const auction = new Auction({
+        const baseAuction = {
             title,
             description,
-            category: category.toLowerCase(),
+            category: normalizedCategory,
             startPrice: Number(startPrice),
             currentBid: Number(startPrice),
             imageUrl,
             endTime: auctionEndTime,
             sellerId: req.userId,
             details: details || {},
-        });
+        };
+
+        if (isLiveRequested) {
+            Object.assign(
+                baseAuction,
+                buildLiveAuctionConfig({
+                    liveDurationSeconds,
+                    liveAutoExtendSeconds,
+                    liveExtendThresholdSeconds,
+                    liveStartTime,
+                })
+            );
+        }
+
+        const auction = new Auction(baseAuction);
 
         await auction.save();
 
@@ -314,44 +347,22 @@ router.delete("/:id", authenticate, async (req, res) => {
 // POST /auctions/:id/bid - Place a bid on an auction
 router.post("/:id/bid", authenticate, async (req, res) => {
     try {
-        const { bidAmount } = req.body;
-        const auction = await Auction.findById(req.params.id);
-
-        if (!auction) {
-            return res.status(404).json({ error: "Auction not found" });
-        }
-
-        if (auction.status !== "active") {
-            return res.status(400).json({ error: "This auction is no longer active" });
-        }
-
-        if (auction.sellerId.toString() === req.userId) {
-            return res.status(400).json({ error: "Sellers cannot bid on their own auctions" });
-        }
-
-        if (Number(bidAmount) <= auction.currentBid) {
-            return res.status(400).json({ error: `Bid must be higher than current bid of $${auction.currentBid}` });
-        }
-
-        // Add bid to history
-        auction.bids.push({
+        const updatedAuction = await placeBidService({
+            auctionId: req.params.id,
             bidderId: req.userId,
-            bidAmount: Number(bidAmount),
-            timestamp: new Date()
+            bidAmount: req.body.bidAmount,
+            user: req.user,
         });
 
-        // Update current stats
-        auction.currentBid = Number(bidAmount);
-        auction.bidsCount += 1;
+        const io = req.app.get("io");
+        if (io) {
+            io.to(`auction:${updatedAuction._id}`).emit("auction:update", updatedAuction);
+        }
 
-        await auction.save();
-        await auction.populate("sellerId", "username email");
-        await auction.populate("bids.bidderId", "username");
-
-        res.json(auction);
+        res.json(updatedAuction);
     } catch (error) {
         console.error("Error placing bid:", error);
-        res.status(500).json({ error: "Failed to place bid" });
+        res.status(error.statusCode || 500).json({ error: error.message || "Failed to place bid" });
     }
 });
 

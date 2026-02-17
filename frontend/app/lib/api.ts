@@ -4,6 +4,8 @@ export const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     "http://localhost:4000";
 
+export type AuctionType = "normal" | "live";
+
 // Helper function to get user ID from localStorage
 const getUserId = (): string | null => {
     if (typeof window === "undefined") return null;
@@ -20,12 +22,13 @@ const getUserId = (): string | null => {
 // Auction API functions
 export const auctionAPI = {
     // Fetch all auctions or filter by category
-    async fetchAuctions(category?: string, status?: string): Promise<any[]> {
+    async fetchAuctions(category?: string, status?: string, auctionType?: AuctionType): Promise<any[]> {
         try {
             let url = `${API_BASE_URL}/auctions`;
             const params = new URLSearchParams();
             if (category) params.append("category", category);
             if (status) params.append("status", status);
+            if (auctionType) params.append("auctionType", auctionType);
 
             if (params.toString()) {
                 url += `?${params.toString()}`;
@@ -79,6 +82,11 @@ export const auctionAPI = {
         imageUrl?: string;
         endTime?: Date;
         details?: Record<string, string>;
+        auctionType?: AuctionType;
+        liveDurationSeconds?: number;
+        liveAutoExtendSeconds?: number;
+        liveExtendThresholdSeconds?: number;
+        liveStartTime?: Date;
     }): Promise<any | null> {
         try {
             const userId = getUserId();

@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { categoryFields } from "../../lib/categoryFields";
-import { categoryNameToSlug } from "../../lib/api";
+import { AuctionType, categoryNameToSlug } from "../../lib/api";
 
 export default function CreateAuctionPage() {
     const router = useRouter();
@@ -14,6 +14,12 @@ export default function CreateAuctionPage() {
         description: "",
         startPrice: "",
     });
+    const [auctionType, setAuctionType] = useState<AuctionType>("normal");
+    const [liveSettings, setLiveSettings] = useState({
+        liveDurationSeconds: 60,
+        liveAutoExtendSeconds: 15,
+        liveExtendThresholdSeconds: 10,
+    });
     const [details, setDetails] = useState<Record<string, string>>({});
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,6 +27,10 @@ export default function CreateAuctionPage() {
     // Get fields based on selected category
     const categorySlug = categoryNameToSlug(formData.category);
     const currentCategoryFields = categoryFields[categorySlug] || [];
+
+    const liveEnabled = useMemo(() =>
+        ["vehicles", "watches", "art", "electronics"].includes(categorySlug)
+    , [categorySlug]);
 
     // Handle file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,14 +53,24 @@ export default function CreateAuctionPage() {
             const { auctionAPI } = await import("../../lib/api");
 
             // Create auction via API
-            const payload = {
+                const payload = {
                 title: formData.title,
                 description: formData.description || "No description provided.",
                 category: categorySlug,
                 startPrice: Number(formData.startPrice),
                 imageUrl: previewUrl || undefined,
                 endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
-                details: details,
+                    details: details,
+                    auctionType: auctionType,
+                    ...(auctionType === "live"
+                        ? {
+                            liveDurationSeconds: liveSettings.liveDurationSeconds,
+                            liveAutoExtendSeconds: liveSettings.liveAutoExtendSeconds,
+                            liveExtendThresholdSeconds: liveSettings.liveExtendThresholdSeconds,
+                            // Live auctions begin immediately in this UI
+                            liveStartTime: new Date(),
+                        }
+                        : {}),
             };
             console.log("DEBUG: Creating auction with payload:", payload);
             console.log("DEBUG: Current Details State:", details);
@@ -112,6 +132,11 @@ export default function CreateAuctionPage() {
                                 onChange={(e) => {
                                     setFormData({ ...formData, category: e.target.value });
                                     setDetails({}); // Reset details on category change
+                                    // reset to normal when switching to a non-live category
+                                    const nextSlug = categoryNameToSlug(e.target.value);
+                                    if (!["vehicles", "watches", "art", "electronics"].includes(nextSlug)) {
+                                        setAuctionType("normal");
+                                    }
                                 }}
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition appearance-none [&>option]:bg-[#0B1121]"
                             >
@@ -123,6 +148,61 @@ export default function CreateAuctionPage() {
                                 <option value="Computers">Computers</option>
                             </select>
                         </div>
+
+                        {liveEnabled && (
+                            <div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <label className="block text-sm font-semibold text-emerald-200">Auction Type</label>
+                                <div className="flex flex-wrap gap-3">
+                                    {(["normal", "live"] as AuctionType[]).map((type) => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => setAuctionType(type)}
+                                            className={`rounded-xl px-4 py-2 text-sm font-semibold border transition ${auctionType === type
+                                                ? "border-emerald-400 bg-emerald-400/10 text-emerald-100"
+                                                : "border-white/10 bg-white/5 text-white/70 hover:border-white/30"}`}
+                                        >
+                                            {type === "live" ? "Live Auction (60s)" : "Normal Auction"}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {auctionType === "live" && (
+                                    <div className="grid gap-4 sm:grid-cols-3">
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Countdown (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={30}
+                                                value={liveSettings.liveDurationSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveDurationSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Auto-extend by (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={5}
+                                                value={liveSettings.liveAutoExtendSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveAutoExtendSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Extend when under (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={5}
+                                                value={liveSettings.liveExtendThresholdSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveExtendThresholdSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Dynamic Category Fields */}
                         {currentCategoryFields.length > 0 && (

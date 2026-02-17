@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { auctionAPI, categoryNameToSlug } from "../../lib/api";
+import { getSocket } from "../../lib/socket";
 import { categoryFields } from "../../lib/categoryFields";
 
 type Auction = {
@@ -15,6 +16,12 @@ type Auction = {
     startPrice: number;
     currentBid: number;
     status: string;
+    auctionType?: "normal" | "live";
+    liveDurationSeconds?: number;
+    liveAutoExtendSeconds?: number;
+    liveExtendThresholdSeconds?: number;
+    liveStartTime?: string;
+    liveEndedAt?: string;
     endTime: string;
     imageUrl: string;
     views: number;
@@ -70,9 +77,36 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
     useEffect(() => {
         fetchAuction();
-        const interval = setInterval(fetchAuction, 5000); // Poll every 5 seconds
+        const interval = setInterval(fetchAuction, 12000); // Slow fallback polling; realtime comes from sockets
         return () => clearInterval(interval);
     }, [id]);
+
+    useEffect(() => {
+        if (!auction?._id) return;
+        const socket = getSocket();
+
+        socket.emit("join-auction", auction._id);
+
+        const handleUpdate = (payload: any) => {
+            if (payload?._id === auction._id) {
+                setAuction(payload);
+            }
+        };
+
+        const handleBidError = (payload: any) => {
+            if (payload?.auctionId && payload.auctionId !== auction._id) return;
+            setBidError(payload?.message || "Bid failed");
+        };
+
+        socket.on("auction:update", handleUpdate);
+        socket.on("bid:error", handleBidError);
+
+        return () => {
+            socket.emit("leave-auction", auction._id);
+            socket.off("auction:update", handleUpdate);
+            socket.off("bid:error", handleBidError);
+        };
+    }, [auction?._id]);
 
     useEffect(() => {
         if (!auction) return;
@@ -82,8 +116,16 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             const end = new Date(auction.endTime).getTime();
             const distance = end - now;
 
-            if (distance < 0) {
+            if (distance <= 0) {
                 setTimeLeft("Ended");
+                return;
+            }
+
+            if (auction.auctionType === "live") {
+                const totalSeconds = Math.floor(distance / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")}`);
                 return;
             }
 
@@ -186,6 +228,8 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         );
     }
 
+    const isLiveAuction = auction.auctionType === "live";
+
     return (
         <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
@@ -259,32 +303,46 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
 
                         <div className="bg-[#0b1428] rounded-3xl p-6 border border-white/10 space-y-6">
-                            <div>
+                            <div className="flex items-center justify-between">
                                 <p className="text-sm text-white/60 mb-2">Time left:</p>
-                                <div className="grid grid-cols-4 gap-2 text-center">
-                                    {/* Simple countdown blocks */}
-                                    {timeLeft === "Ended" ? (
-                                        <div className="col-span-4 bg-rose-500/20 text-rose-200 p-3 rounded-lg font-bold">
-                                            Auction Ended
+                                {isLiveAuction && (
+                                    <span className="inline-flex items-center gap-2 rounded-full bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-200">
+                                        <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" /> Live
+                                    </span>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                                {timeLeft === "Ended" ? (
+                                    <div className="col-span-4 bg-rose-500/20 text-rose-200 p-3 rounded-lg font-bold">
+                                        Auction Ended
+                                    </div>
+                                ) : isLiveAuction && timeLeft ? (
+                                    <div className="col-span-4 flex items-center justify-center gap-3">
+                                        <div className="rounded-2xl bg-white px-6 py-4 text-gray-900 shadow">
+                                            <div className="text-3xl font-black tracking-wide">{timeLeft}</div>
+                                            <div className="text-[10px] uppercase font-semibold text-gray-500">MM:SS</div>
                                         </div>
-                                    ) : timeLeft ? (
-                                        timeLeft.split(' ').map((part, index) => {
-                                            const value = parseInt(part);
-                                            if (isNaN(value)) return null;
+                                        <div className="text-left text-xs text-white/60">
+                                            <p>Auto-extends by {auction.liveAutoExtendSeconds || 15}s when bids arrive with {auction.liveExtendThresholdSeconds || 10}s remaining.</p>
+                                        </div>
+                                    </div>
+                                ) : timeLeft ? (
+                                    timeLeft.split(" ").map((part, index) => {
+                                        const value = parseInt(part);
+                                        if (isNaN(value)) return null;
 
-                                            const label = part.replace(/[0-9]/g, '');
-                                            const labelFull = label === 'd' ? 'Days' : label === 'h' ? 'Hours' : label === 'm' ? 'Minutes' : 'Seconds';
-                                            return (
-                                                <div key={index} className="bg-white p-3 rounded-lg text-gray-900">
-                                                    <div className="text-xl font-bold">{value}</div>
-                                                    <div className="text-[10px] uppercase font-medium text-gray-500">{labelFull}</div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="col-span-4 text-white/40 animate-pulse">Calculating...</div>
-                                    )}
-                                </div>
+                                        const label = part.replace(/[0-9]/g, "");
+                                        const labelFull = label === "d" ? "Days" : label === "h" ? "Hours" : label === "m" ? "Minutes" : "Seconds";
+                                        return (
+                                            <div key={index} className="bg-white p-3 rounded-lg text-gray-900">
+                                                <div className="text-xl font-bold">{value}</div>
+                                                <div className="text-[10px] uppercase font-medium text-gray-500">{labelFull}</div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="col-span-4 text-white/40 animate-pulse">Calculating...</div>
+                                )}
                             </div>
                         </div>
 

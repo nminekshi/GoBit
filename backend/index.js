@@ -2,6 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http");
+const { Server } = require("socket.io");
+const { closeExpiredLiveAuctions, placeBid } = require("./services/auctionService");
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -40,6 +43,44 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/auctions", auctionRoutes);
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST"],
+  },
+});
+
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  socket.on("join-auction", (auctionId) => {
+    if (!auctionId) return;
+    socket.join(`auction:${auctionId}`);
+  });
+
+  socket.on("leave-auction", (auctionId) => {
+    if (!auctionId) return;
+    socket.leave(`auction:${auctionId}`);
+  });
+
+  socket.on("live:bid", async (payload) => {
+    try {
+      const { auctionId, bidAmount, userId } = payload || {};
+      if (!auctionId || !userId) {
+        return socket.emit("bid:error", { auctionId, message: "Missing auction or user" });
+      }
+      const updatedAuction = await placeBid({ auctionId, bidderId: userId, bidAmount });
+      io.to(`auction:${auctionId}`).emit("auction:update", updatedAuction);
+      socket.emit("bid:ok", { auctionId });
+    } catch (err) {
+      socket.emit("bid:error", { auctionId: payload?.auctionId, message: err.message || "Bid failed" });
+    }
+  });
+});
+
+setInterval(() => closeExpiredLiveAuctions(io), 5000);
+
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
