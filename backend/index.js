@@ -9,11 +9,10 @@ const auctionRoutes = require("./routes/auctions");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/fyp";
 
-if (!MONGODB_URI) {
-  console.error("Missing MONGODB_URI in environment. Please set it in a .env file.");
-  process.exit(1);
+if (!process.env.MONGODB_URI) {
+  console.warn("MONGODB_URI not set; falling back to mongodb://127.0.0.1:27017/fyp for local dev.");
 }
 
 // Basic middleware
