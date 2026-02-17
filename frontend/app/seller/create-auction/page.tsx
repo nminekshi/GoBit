@@ -14,6 +14,12 @@ export default function CreateAuctionPage() {
         description: "",
         startPrice: "",
     });
+    const [startDateTime, setStartDateTime] = useState(() => {
+        const now = new Date();
+        // round to nearest minute for nicer UI
+        now.setSeconds(0, 0);
+        return now.toISOString().slice(0, 16);
+    });
     const [auctionType, setAuctionType] = useState<AuctionType>("normal");
     const [liveSettings, setLiveSettings] = useState({
         liveDurationSeconds: 60,
@@ -59,7 +65,8 @@ export default function CreateAuctionPage() {
                 category: categorySlug,
                 startPrice: Number(formData.startPrice),
                 imageUrl: previewUrl || undefined,
-                endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
+                    startTime: new Date(startDateTime),
+                    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
                     details: details,
                     auctionType: auctionType,
                     ...(auctionType === "live"
@@ -67,8 +74,7 @@ export default function CreateAuctionPage() {
                             liveDurationSeconds: liveSettings.liveDurationSeconds,
                             liveAutoExtendSeconds: liveSettings.liveAutoExtendSeconds,
                             liveExtendThresholdSeconds: liveSettings.liveExtendThresholdSeconds,
-                            // Live auctions begin immediately in this UI
-                            liveStartTime: new Date(),
+                            liveStartTime: new Date(startDateTime),
                         }
                         : {}),
             };
@@ -259,6 +265,20 @@ export default function CreateAuctionPage() {
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition resize-none"
                                 placeholder="Luxury SUV with 62,000 miles. Panoramic sunroof, heated seats, and navigation..."
                             />
+                        </div>
+
+                        {/* Start Date & Time */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-slate-300">
+                                Start Date &amp; Time <span className="text-rose-400">*</span>
+                            </label>
+                            <input
+                                type="datetime-local"
+                                value={startDateTime}
+                                onChange={(e) => setStartDateTime(e.target.value)}
+                                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition"
+                            />
+                            <p className="text-xs text-white/60">Bidding opens at this time for both Normal and Live auctions.</p>
                         </div>
 
                         {/* Starting Price */}

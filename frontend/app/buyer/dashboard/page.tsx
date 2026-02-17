@@ -14,6 +14,8 @@ interface Auction {
   currentBid: number;
   myBid?: number;
   endsIn: string;
+  startTime?: string;
+  endTime?: string;
   bidsCount: number;
   isWatchlisted: boolean;
   status: "active" | "won" | "ended";
@@ -42,20 +44,25 @@ type StoredBid = {
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1506765515384-028b60a970df?auto=format&fit=crop&q=80&w=260&h=200";
 
 // --- Helpers ---
-const getTimeRemaining = (endTime: string | Date) => {
-  const end = new Date(endTime).getTime();
-  const now = new Date().getTime();
-  const diff = end - now;
+const formatDuration = (ms: number) => {
+  if (ms <= 0) return "0m";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  return `${Math.max(1, minutes)}m`;
+};
 
-  if (diff <= 0) return "Ended";
+const getPhaseLabel = (startTime?: string | Date, endTime?: string | Date) => {
+  const now = Date.now();
+  const start = startTime ? new Date(startTime).getTime() : now;
+  const end = endTime ? new Date(endTime).getTime() : now;
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (days > 0) return `${days}d ${hours}h`;
-  if (hours > 0) return `${hours}h ${mins}m`;
-  return `${mins}m`;
+  if (start > now) return { label: `Starts in ${formatDuration(start - now)}`, phase: "upcoming" as const };
+  if (end <= now) return { label: "Ended", phase: "ended" as const };
+  return { label: `Ends in ${formatDuration(end - now)}`, phase: "live" as const };
 };
 
 // --- Mock Data --- (REMOVED)
@@ -131,6 +138,8 @@ export default function BuyerDashboard() {
           const myBids = a.bids?.filter((b: any) => b.bidderId === currentUser?.id) || [];
           const myHighestBid = myBids.length > 0 ? Math.max(...myBids.map((b: any) => b.bidAmount)) : undefined;
 
+          const phaseInfo = getPhaseLabel(a.startTime, a.endTime);
+
           return {
             id: a._id || a.id,
             title: a.title,
@@ -138,10 +147,12 @@ export default function BuyerDashboard() {
             imageUrl: a.imageUrl || FALLBACK_IMAGE,
             currentBid: a.currentBid || a.startPrice || 0,
             myBid: myHighestBid,
-            endsIn: a.endTime ? getTimeRemaining(a.endTime) : "N/A",
+            endsIn: phaseInfo.label,
+            startTime: a.startTime,
+            endTime: a.endTime,
             bidsCount: a.bidsCount || 0,
             isWatchlisted: activeTab === "watchlist" || currentWatchedIds.has(a._id || a.id),
-            status: a.status as "active" | "won" | "ended",
+            status: phaseInfo.phase === "ended" ? "ended" : (a.status as "active" | "won" | "ended"),
             seller: a.sellerId?.username || "Unknown",
           };
         });
@@ -610,6 +621,9 @@ function AuctionCard({
           <p className={`text-lg font-semibold ${auction.endsIn === "Ended" ? "text-rose-400" : "text-emerald-300"}`}>
             {auction.endsIn}
           </p>
+          {auction.startTime && (
+            <p className="text-xs text-white/60">Starts: {new Date(auction.startTime).toLocaleString()}</p>
+          )}
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-white/50">Bids</p>

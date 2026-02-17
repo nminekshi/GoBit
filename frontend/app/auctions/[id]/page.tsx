@@ -17,6 +17,7 @@ type Auction = {
     currentBid: number;
     status: string;
     auctionType?: "normal" | "live";
+    startTime?: string;
     liveDurationSeconds?: number;
     liveAutoExtendSeconds?: number;
     liveExtendThresholdSeconds?: number;
@@ -50,6 +51,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [bidAmount, setBidAmount] = useState("");
     const [bidError, setBidError] = useState("");
     const [timeLeft, setTimeLeft] = useState("");
+    const [countdownPhase, setCountdownPhase] = useState<"upcoming" | "running" | "ended">("running");
     const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
 
     const isLoaded = useRef(false);
@@ -113,13 +115,27 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
         const updateTimeLeft = () => {
             const now = new Date().getTime();
+            const start = auction.startTime ? new Date(auction.startTime).getTime() : now;
+            if (now < start) {
+                const distance = start - now;
+                const totalSeconds = Math.floor(distance / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                setCountdownPhase("upcoming");
+                setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")}`);
+                return;
+            }
+
             const end = new Date(auction.endTime).getTime();
             const distance = end - now;
 
             if (distance <= 0) {
+                setCountdownPhase("ended");
                 setTimeLeft("Ended");
                 return;
             }
+
+            setCountdownPhase("running");
 
             if (auction.auctionType === "live") {
                 const totalSeconds = Math.floor(distance / 1000);
@@ -150,6 +166,16 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         const amount = Number(bidAmount);
         if (!amount || isNaN(amount)) {
             setBidError("Please enter a valid amount");
+            return;
+        }
+
+        if (countdownPhase === "upcoming") {
+            setBidError("Auction has not started yet.");
+            return;
+        }
+
+        if (countdownPhase === "ended") {
+            setBidError("Auction has ended.");
             return;
         }
 
@@ -304,19 +330,21 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
                         <div className="bg-[#0b1428] rounded-3xl p-6 border border-white/10 space-y-6">
                             <div className="flex items-center justify-between">
-                                <p className="text-sm text-white/60 mb-2">Time left:</p>
-                                {isLiveAuction && (
+                                <p className="text-sm text-white/60 mb-2">
+                                    {countdownPhase === "upcoming" ? "Starts in" : countdownPhase === "running" ? "Time left" : "Status"}
+                                </p>
+                                {isLiveAuction && countdownPhase === "running" && (
                                     <span className="inline-flex items-center gap-2 rounded-full bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-200">
                                         <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" /> Live
                                     </span>
                                 )}
                             </div>
                             <div className="grid grid-cols-4 gap-2 text-center">
-                                {timeLeft === "Ended" ? (
+                                {countdownPhase === "ended" ? (
                                     <div className="col-span-4 bg-rose-500/20 text-rose-200 p-3 rounded-lg font-bold">
                                         Auction Ended
                                     </div>
-                                ) : isLiveAuction && timeLeft ? (
+                                ) : isLiveAuction && countdownPhase === "running" && timeLeft ? (
                                     <div className="col-span-4 flex items-center justify-center gap-3">
                                         <div className="rounded-2xl bg-white px-6 py-4 text-gray-900 shadow">
                                             <div className="text-3xl font-black tracking-wide">{timeLeft}</div>
@@ -324,6 +352,17 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                         </div>
                                         <div className="text-left text-xs text-white/60">
                                             <p>Auto-extends by {auction.liveAutoExtendSeconds || 15}s when bids arrive with {auction.liveExtendThresholdSeconds || 10}s remaining.</p>
+                                        </div>
+                                    </div>
+                                ) : countdownPhase === "upcoming" && timeLeft ? (
+                                    <div className="col-span-4 flex items-center justify-between gap-3 bg-white/5 rounded-xl px-4 py-3">
+                                        <div className="text-left text-sm">
+                                            <p className="text-white/60">Starts at</p>
+                                            <p className="font-semibold text-white">{auction.startTime ? new Date(auction.startTime).toLocaleString() : "Scheduled"}</p>
+                                        </div>
+                                        <div className="rounded-2xl bg-white px-4 py-3 text-gray-900 shadow">
+                                            <div className="text-2xl font-black tracking-wide">{timeLeft}</div>
+                                            <div className="text-[10px] uppercase font-semibold text-gray-500">MM:SS</div>
                                         </div>
                                     </div>
                                 ) : timeLeft ? (
@@ -364,7 +403,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             <button
                                 type="submit"
                                 className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={auction.status !== "active"}
+                                disabled={auction.status !== "active" || countdownPhase !== "running"}
                             >
                                 Submit
                             </button>

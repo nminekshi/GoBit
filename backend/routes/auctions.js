@@ -212,6 +212,7 @@ router.post("/", authenticate, async (req, res) => {
             liveAutoExtendSeconds,
             liveExtendThresholdSeconds,
             liveStartTime,
+            startTime,
         } = req.body;
 
         // Validate required fields
@@ -223,6 +224,8 @@ router.post("/", authenticate, async (req, res) => {
 
         const normalizedCategory = category.toLowerCase();
         const isLiveRequested = auctionType === "live" && LIVE_ENABLED_CATEGORIES.includes(normalizedCategory);
+
+        const startAt = startTime ? new Date(startTime) : new Date();
 
         // Set default end time if not provided (7 days from now)
         const auctionEndTime = endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -237,6 +240,7 @@ router.post("/", authenticate, async (req, res) => {
             endTime: auctionEndTime,
             sellerId: req.userId,
             details: details || {},
+            startTime: startAt,
         };
 
         if (isLiveRequested) {
@@ -246,7 +250,8 @@ router.post("/", authenticate, async (req, res) => {
                     liveDurationSeconds,
                     liveAutoExtendSeconds,
                     liveExtendThresholdSeconds,
-                    liveStartTime,
+                    liveStartTime: liveStartTime || startAt,
+                    startTime: startAt,
                 })
             );
         }

@@ -8,16 +8,17 @@ function buildLiveAuctionConfig(payload = {}) {
     const duration = Number(payload.liveDurationSeconds) || 60;
     const autoExtend = Number(payload.liveAutoExtendSeconds) || 15;
     const extendThreshold = Number(payload.liveExtendThresholdSeconds) || 10;
+    const startSource = payload.liveStartTime || payload.startTime;
+    const start = startSource ? new Date(startSource) : new Date();
 
     return {
         auctionType: "live",
         liveDurationSeconds: duration,
         liveAutoExtendSeconds: autoExtend,
         liveExtendThresholdSeconds: extendThreshold,
-        liveStartTime: payload.liveStartTime ? new Date(payload.liveStartTime) : new Date(),
-        endTime: payload.liveStartTime
-            ? new Date(new Date(payload.liveStartTime).getTime() + duration * 1000)
-            : new Date(Date.now() + duration * 1000),
+        liveStartTime: start,
+        endTime: new Date(start.getTime() + duration * 1000),
+        startTime: start,
     };
 }
 
@@ -43,6 +44,13 @@ async function placeBid({ auctionId, bidderId, bidAmount, user }) {
         throw err;
     }
 
+    const now = new Date();
+    if (auction.startTime && now < new Date(auction.startTime)) {
+        const err = new Error("Auction has not started yet");
+        err.statusCode = 400;
+        throw err;
+    }
+
     if (auction.sellerId?.toString() === bidderId) {
         const err = new Error("Sellers cannot bid on their own auctions");
         err.statusCode = 400;
@@ -54,8 +62,6 @@ async function placeBid({ auctionId, bidderId, bidAmount, user }) {
         err.statusCode = 400;
         throw err;
     }
-
-    const now = new Date();
 
     if (auction.auctionType === "live") {
         // If timer has ended, complete the auction before rejecting new bids

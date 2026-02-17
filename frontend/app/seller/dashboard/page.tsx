@@ -336,8 +336,31 @@ export default function SellerDashboard() {
                     </div>
                   ) : (
                     filteredAuctions.map(auction => {
-                      // Calculate time left (mock logic for demo, real would differ)
-                      const timeLeft = auction.status === 'active' ? '2d 14h' : auction.status === 'sold' ? 'Ended' : '-';
+                      const now = new Date();
+                      const start = new Date(auction.startTime);
+                      const end = new Date(auction.endTime);
+                      const msToStart = start.getTime() - now.getTime();
+                      const msToEnd = end.getTime() - now.getTime();
+
+                      const formatDuration = (ms: number) => {
+                        if (ms <= 0) return "0m";
+                        const totalSeconds = Math.floor(ms / 1000);
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const hours = Math.floor(minutes / 60);
+                        const days = Math.floor(hours / 24);
+                        if (days > 0) return `${days}d ${hours % 24}h`;
+                        if (hours > 0) return `${hours}h ${minutes % 60}m`;
+                        return `${Math.max(1, minutes)}m`;
+                      };
+
+                      const phase = msToStart > 0 ? "upcoming" : msToEnd <= 0 ? "ended" : "live";
+                      const timeLeft = phase === "upcoming"
+                        ? `Starts in ${formatDuration(msToStart)}`
+                        : phase === "ended"
+                          ? "Ended"
+                          : `Ends in ${formatDuration(msToEnd)}`;
+
+                      const startLabel = start.toLocaleString();
 
                       return (
                         <div key={auction.id} className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 font-sans">
@@ -353,7 +376,7 @@ export default function SellerDashboard() {
                                 auction.status === 'sold' ? 'bg-blue-500 text-white' :
                                   'bg-slate-500 text-white'
                                 }`}>
-                                {auction.status}
+                                {phase === "upcoming" ? "Upcoming" : phase === "live" ? "Live" : "Ended"}
                               </span>
                             </div>
                           </div>
@@ -379,6 +402,8 @@ export default function SellerDashboard() {
                                 <p className="text-lg font-semibold text-white">{timeLeft}</p>
                               </div>
                             </div>
+
+                            <div className="mt-2 text-xs text-white/60">Starts at: {startLabel}</div>
 
                             <div className="mt-4 flex items-center justify-between text-sm">
                               <span className="text-white/60">{auction.views} views</span>
