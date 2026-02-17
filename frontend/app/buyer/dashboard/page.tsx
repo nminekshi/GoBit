@@ -590,19 +590,23 @@ function AuctionCard({
         </div>
       </div>
 
-      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-        <img
-          src={auction.imageUrl}
-          alt={auction.title}
-          className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
-      </div>
+      <Link href={`/auctions/${auction.id}`} className="block">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+          <img
+            src={auction.imageUrl}
+            alt={auction.title}
+            className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
+        </div>
+      </Link>
 
       <div className="space-y-1">
-        <h3 className="text-xl font-semibold leading-tight group-hover:text-emerald-300">
-          {auction.title}
-        </h3>
+        <Link href={`/auctions/${auction.id}`} className="block">
+          <h3 className="text-xl font-semibold leading-tight group-hover:text-emerald-300">
+            {auction.title}
+          </h3>
+        </Link>
         <p className="text-sm text-white/60">
           Sold by <span className="text-white/80">{auction.seller}</span>
         </p>
