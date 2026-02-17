@@ -1,13 +1,22 @@
 "use client";
 import Link from "next/link";
 import FAQ from "./components/FAQ";
-import { useEffect, useState, FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, FormEvent } from "react";
+import { auctionAPI } from "./lib/api";
 
-type HomeAuctionBid = {
-  name: string;
+type HomeAuction = {
+  _id: string;
+  title: string;
+  description?: string;
+  category: string;
+  imageUrl?: string;
+  startPrice: number;
   currentBid: number;
-  reserve: number;
-  location: string;
+  startTime?: string;
+  endTime: string;
+  watchers?: number;
+  bids?: { bidAmount: number; bidderId?: string; timestamp?: string }[];
+  location?: string;
 };
 
 type Review = {
@@ -20,11 +29,34 @@ type Review = {
   role?: string | null;
 };
 
+const now = () => new Date().getTime();
+
+const isActive = (auction: HomeAuction) => {
+  const start = auction.startTime ? new Date(auction.startTime).getTime() : now();
+  const end = auction.endTime ? new Date(auction.endTime).getTime() : 0;
+  return start <= now() && end > now();
+};
+
+const formatCountdown = (endTime: string) => {
+  const diff = new Date(endTime).getTime() - now();
+  if (diff <= 0) return "Ended";
+  const totalMinutes = Math.floor(diff / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ${hours % 24}h left`;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${Math.max(1, minutes)}m left`;
+};
+
 export default function Home() {
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<HomeAuctionBid | null>(null);
+  const [selectedItem, setSelectedItem] = useState<HomeAuction | null>(null);
   const [bid, setBid] = useState("");
   const [error, setError] = useState("");
+  const [featuredAuctions, setFeaturedAuctions] = useState<HomeAuction[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredError, setFeaturedError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewName, setReviewName] = useState("");
   const [reviewText, setReviewText] = useState("");
@@ -72,9 +104,46 @@ export default function Home() {
     }
   }, []);
 
-  const openModal = (item: HomeAuctionBid) => {
+  const loadFeaturedAuctions = useCallback(async () => {
+    setFeaturedLoading(true);
+    setFeaturedError(null);
+    try {
+      const data = await auctionAPI.fetchAuctions();
+      const active = (data || []).filter(isActive);
+      const ranked = active.sort(
+        (a: any, b: any) =>
+          (b.watchers || 0) + (b.bids?.length || 0) - ((a.watchers || 0) + (a.bids?.length || 0)) ||
+          (b.currentBid || 0) - (a.currentBid || 0)
+      );
+      setFeaturedAuctions(ranked.slice(0, 5));
+    } catch (err: any) {
+      setFeaturedError(err?.message || "Failed to load featured auctions");
+    } finally {
+      setFeaturedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFeaturedAuctions();
+  }, [loadFeaturedAuctions]);
+
+  const heroStats = useMemo(() => {
+    const lots = featuredAuctions.length;
+    const totalBids = featuredAuctions.reduce((sum, a) => sum + (a.bids?.length || 0), 0);
+    const bidders = new Set(
+      featuredAuctions.flatMap((a) => (a.bids || []).map((b: any) => b.bidderId || b.userId || "unknown"))
+    ).size;
+    return [
+      { icon: "👤", label: "Active bidders", value: bidders ? bidders.toLocaleString() : "0", note: "across featured lots" },
+      { icon: "📦", label: "Live lots", value: lots.toString(), note: "available right now" },
+      { icon: "⚡", label: "Total bids", value: totalBids.toString(), note: "counted in real time" },
+    ];
+  }, [featuredAuctions]);
+
+  const openModal = (item: HomeAuction) => {
     setSelectedItem(item);
-    setBid("");
+    const minimum = (item.currentBid || item.startPrice || 0) + 1;
+    setBid(minimum ? String(minimum) : "");
     setError("");
     setModalOpen(true);
   };
@@ -86,42 +155,23 @@ export default function Home() {
     setError("");
   };
 
-  const handleBid = (e: FormEvent<HTMLFormElement>) => {
+  const handleBid = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!bid || isNaN(Number(bid)) || Number(bid) <= (selectedItem?.currentBid || 0)) {
-      setError("Please enter a valid bid higher than the current bid.");
+    if (!selectedItem) return;
+    const amount = Number(bid);
+    const floor = (selectedItem.currentBid || selectedItem.startPrice || 0) + 1;
+    if (!amount || isNaN(amount) || amount < floor) {
+      setError(`Please enter a bid of at least ${floor}.`);
       return;
     }
-
-    // persist bid to buyer dashboard storage (per-user)
     try {
-      const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
-      const parsed = rawAuth ? JSON.parse(rawAuth) : null;
-      const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid || parsed?.user?.email || parsed?.user?.username || null;
-      const role = parsed?.user?.role?.toLowerCase();
-      if (selectedItem && userId && role === "buyer") {
-        const bidValue = Number(bid);
-        const storedRaw = window.localStorage.getItem("buyer-bids");
-        const existing = storedRaw ? JSON.parse(storedRaw) : [];
-        const bidEntry = {
-          id: `home-${selectedItem.name}`,
-          title: selectedItem.name,
-          category: "home",
-          amount: bidValue,
-          imageUrl: undefined,
-          placedAt: new Date().toISOString(),
-          userId,
-        };
-        const deduped = Array.isArray(existing)
-          ? [bidEntry, ...existing.filter((b: any) => !(b.id === bidEntry.id && b.userId === userId))]
-          : [bidEntry];
-        window.localStorage.setItem("buyer-bids", JSON.stringify(deduped));
-      }
-    } catch {
-      // ignore storage errors
+      await auctionAPI.placeBid(selectedItem._id, amount);
+      await loadFeaturedAuctions();
+      closeModal();
+      alert("Your bid has been placed!");
+    } catch (err: any) {
+      setError(err?.message || "Failed to place bid");
     }
-    closeModal();
-    alert("Your bid has been placed!");
   };
 
   const handleReviewSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -230,24 +280,16 @@ export default function Home() {
         </div>
 
         <div className="w-full max-w-5xl grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 px-4 mt-12">
-          <div className="flex flex-col items-center bg-white/90 rounded-2xl p-6 shadow-lg">
-            <span className="text-3xl mb-2">👤</span>
-            <span className="text-3xl font-extrabold text-gray-900">50K+</span>
-            <span className="text-gray-600 font-medium mt-1">Active bidders this month</span>
-          </div>
-          <div className="flex flex-col items-center bg-white/90 rounded-2xl p-6 shadow-lg">
-            <span className="text-3xl mb-2">📦</span>
-            <span className="text-3xl font-extrabold text-gray-900">2K+</span>
-            <span className="text-gray-600 font-medium mt-1">Lots across all categories</span>
-          </div>
-          <div className="flex flex-col items-center bg-white/90 rounded-2xl p-6 shadow-lg">
-            <span className="text-3xl mb-2">✅</span>
-            <span className="text-3xl font-extrabold text-gray-900">100%</span>
-            <span className="text-gray-600 font-medium mt-1">Secure payments & support</span>
-          </div>
+          {heroStats.map((stat) => (
+            <div key={stat.label} className="flex flex-col items-center bg-white/90 rounded-2xl p-6 shadow-lg text-center">
+              <span className="text-3xl mb-2">{stat.icon}</span>
+              <span className="text-3xl font-extrabold text-gray-900">{featuredLoading ? "..." : stat.value}</span>
+              <span className="text-gray-600 font-medium mt-1">{stat.label}</span>
+              <span className="text-xs text-gray-500 mt-1">{stat.note}</span>
+            </div>
+          ))}
         </div>
       </section>
-
       {/* Most Loved Auctions Section */}
       <section className="bg-[#0b1524] text-white w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] px-6 sm:px-12 lg:px-20 py-24">
         <div className="w-full max-w-[1600px] mx-auto">
@@ -257,215 +299,84 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-            {/* Card 1 */}
-            <div className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
-              <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
-                  Watches  b7 Live now
-                </span>
-                <img src="/images/Rolex Submariner.png" alt="Rolex Submariner" className="w-full h-56 object-contain" />
-                <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
-              </div>
-              <div className="mt-6 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">Rolex Submariner</h3>
-                  <p className="text-gray-300 text-sm">Automatic  b7 Stainless steel</p>
-                </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  ★ 8.5 score
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                <span>Current bid: $9,500</span>
-                <span>85 watchers</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-3 pt-4">
-                <button
-                  className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
-                  onClick={() =>
-                    openModal({
-                      name: "Rolex Submariner",
-                      currentBid: 9500,
-                      reserve: 12000,
-                      location: "London vault",
-                    })
-                  }
-                >
-                  Bid Now
-                </button>
-                <Link href="/ongoing-auctions" className="w-full">
-                  <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
-                </Link>
-              </div>
-            </div>
+            {featuredLoading &&
+              Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl h-full animate-pulse" />
+              ))}
 
-            {/* Card 2 */}
-            <div className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
-              <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
-                  Vehicles  b7 Live now
-                </span>
-                <img src="/images/Audi Q7.png" alt="Audi Q7" className="w-full h-56 object-contain" />
-                <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
-              </div>
-              <div className="mt-6 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">Audi Q7</h3>
-                  <p className="text-gray-300 text-sm">SUV  b7 2021 model</p>
-                </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  ★ 8.7 score
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                <span>Current bid: $32,800</span>
-                <span>64 watchers</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-3 pt-4">
+            {!featuredLoading && featuredError && (
+              <div className="col-span-full flex flex-col items-center justify-center gap-3 rounded-3xl border border-white/10 bg-gray-900/60 p-8 text-center text-white">
+                <p className="text-lg text-rose-200">{featuredError}</p>
                 <button
-                  className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
-                  onClick={() =>
-                    openModal({
-                      name: "Audi Q7",
-                      currentBid: 32800,
-                      reserve: 38000,
-                      location: "Colombo showroom",
-                    })
-                  }
+                  onClick={loadFeaturedAuctions}
+                  className="rounded-2xl border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
                 >
-                  Bid Now
+                  Retry
                 </button>
-                <Link href="/ongoing-auctions" className="w-full">
-                  <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
-                </Link>
               </div>
-            </div>
+            )}
 
-            {/* Card 3 */}
-            <div className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
-              <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
-                  Electronics  b7 Ending soon
-                </span>
-                <img src="/images/MacBook Pro 16.png" alt="MacBook Pro 16" className="w-full h-56 object-contain" />
-                <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
-              </div>
-              <div className="mt-6 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">MacBook Pro 16"</h3>
-                  <p className="text-gray-300 text-sm">M-series  b7 16" display</p>
-                </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  ★ 8.6 score
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                <span>Current bid: $2,750</span>
-                <span>51 watchers</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-3 pt-4">
-                <button
-                  className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
-                  onClick={() =>
-                    openModal({
-                      name: "MacBook Pro 16\"",
-                      currentBid: 2750,
-                      reserve: 3200,
-                      location: "Tech hub, Colombo",
-                    })
-                  }
+            {!featuredLoading && !featuredError && featuredAuctions.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center gap-2 rounded-3xl border border-white/10 bg-gray-900/60 p-8 text-center text-white">
+                <p className="text-lg font-semibold">No live auctions yet</p>
+                <p className="text-sm text-gray-300">Check back soon or explore all ongoing auctions.</p>
+                <Link
+                  href="/ongoing-auctions"
+                  className="mt-2 inline-flex items-center justify-center rounded-2xl bg-white px-5 py-2 text-sm font-semibold text-gray-900 hover:bg-white/90"
                 >
-                  Bid Now
-                </button>
-                <Link href="/ongoing-auctions" className="w-full">
-                  <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
+                  Browse all auctions
                 </Link>
               </div>
-            </div>
+            )}
 
-            {/* Card 4 */}
-            <div className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
-              <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
-                  Real estate  b7 Premium
-                </span>
-                <img src="/images/Beach House.png" alt="Beach House" className="w-full h-56 object-contain" />
-                <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
-              </div>
-              <div className="mt-6 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">Beach House</h3>
-                  <p className="text-gray-300 text-sm">Oceanfront  b7 4 bedrooms</p>
-                </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  ★ 8.8 score
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                <span>Current bid: $420,000</span>
-                <span>23 watchers</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-3 pt-4">
-                <button
-                  className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
-                  onClick={() =>
-                    openModal({
-                      name: "Beach House",
-                      currentBid: 420000,
-                      reserve: 500000,
-                      location: "Southern coast, Sri Lanka",
-                    })
-                  }
-                >
-                  Bid Now
-                </button>
-                <Link href="/ongoing-auctions" className="w-full">
-                  <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Card 5 */}
-            <div className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]">
-              <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
-                  Vehicles  b7 Trending
-                </span>
-                <img src="/images/Mercedes-Benz C-Class.png" alt="Mercedes-Benz C-Class" className="w-full h-56 object-contain" />
-                <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
-              </div>
-              <div className="mt-6 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-white text-lg font-semibold">Mercedes-Benz</h3>
-                  <p className="text-gray-300 text-sm">C-Class  b7 Sport trim</p>
-                </div>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                  ★ 9.0 score
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                <span>Current bid: $28,400</span>
-                <span>72 watchers</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-3 pt-4">
-                <button
-                  className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
-                  onClick={() =>
-                    openModal({
-                      name: "Mercedes-Benz",
-                      currentBid: 28400,
-                      reserve: 32000,
-                      location: "City center garage",
-                    })
-                  }
-                >
-                  Bid Now
-                </button>
-                <Link href="/ongoing-auctions" className="w-full">
-                  <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
-                </Link>
-              </div>
-            </div>
+            {!featuredLoading && !featuredError &&
+              featuredAuctions.map((auction) => {
+                const bidCount = auction.bids?.length || 0;
+                const watchers = auction.watchers ?? 0;
+                const displayImage = auction.imageUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80";
+                const label = `${auction.category || "Auction"} | ${formatCountdown(auction.endTime)}`;
+                const minNextBid = (auction.currentBid || auction.startPrice || 0) + 1;
+                const currentBidDisplay = auction.currentBid ?? auction.startPrice ?? 0;
+                return (
+                  <div
+                    key={auction._id}
+                    className="rounded-3xl bg-linear-to-b from-gray-900 to-gray-800 p-5 shadow-2xl flex flex-col h-full transition-transform duration-200 hover:-translate-y-2 hover:shadow-[0_20px_45px_rgba(0,0,0,0.6)]"
+                  >
+                    <div className="relative rounded-2xl bg-gray-800/60 p-6 overflow-hidden">
+                      <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white/90">
+                        {label}
+                      </span>
+                      <img src={displayImage} alt={auction.title} className="w-full h-56 object-contain" />
+                      <button aria-label="favorite" className="absolute bottom-3 right-3 text-white/80 hover:text-white">♡</button>
+                    </div>
+                    <div className="mt-6 flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-white text-lg font-semibold line-clamp-2">{auction.title}</h3>
+                        <p className="text-gray-300 text-sm line-clamp-2">{auction.description || "Featured live lot"}</p>
+                      </div>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                        {bidCount} bids
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
+                      <span>Current bid: ${currentBidDisplay.toLocaleString()}</span>
+                      <span>{watchers} watchers</span>
+                    </div>
+                    <div className="mt-auto flex flex-col gap-3 pt-4">
+                      <button
+                        className="w-full py-3 rounded-2xl bg-white text-gray-900 font-semibold hover:bg-gray-200 transition"
+                        onClick={() => openModal(auction)}
+                      >
+                        Bid Now
+                      </button>
+                      <Link href={`/auctions/${auction._id}`} className="w-full">
+                        <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
+                      </Link>
+                      <p className="text-[11px] text-gray-400 text-center">Minimum next bid ${minNextBid.toLocaleString()}</p>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </section>
@@ -584,16 +495,16 @@ export default function Home() {
             >
               ×
             </button>
-            <h2 className="text-2xl font-bold">Bid for {selectedItem.name}</h2>
-            <p className="text-sm text-white/60 mt-1">{selectedItem.location}</p>
+            <h2 className="text-2xl font-bold">Bid for {selectedItem.title}</h2>
+            <p className="text-sm text-white/60 mt-1">{selectedItem.location || "Online listing"}</p>
             <div className="mt-4 rounded-2xl bg-white/5 p-4">
               <div className="flex items-center justify-between text-sm text-white/60">
                 <span>Current bid</span>
-                <span>Reserve</span>
+                <span>Starting bid</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-semibold mt-1">
-                <span>${selectedItem.currentBid.toLocaleString()}</span>
-                <span>${selectedItem.reserve.toLocaleString()}</span>
+                <span>${(selectedItem.currentBid ?? selectedItem.startPrice ?? 0).toLocaleString()}</span>
+                <span>${(selectedItem.startPrice ?? selectedItem.currentBid ?? 0).toLocaleString()}</span>
               </div>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">
@@ -603,11 +514,11 @@ export default function Home() {
               <input
                 id="home-bid-input"
                 type="number"
-                min={(selectedItem.currentBid || 0) + 1}
+                min={(selectedItem.currentBid || selectedItem.startPrice || 0) + 1}
                 value={bid}
                 onChange={(e) => setBid(e.target.value)}
                 className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 focus:border-white focus:outline-none"
-                placeholder={`Enter amount above $${selectedItem.currentBid.toLocaleString()}`}
+                placeholder={`Enter amount above $${(selectedItem.currentBid || selectedItem.startPrice || 0).toLocaleString()}`}
                 autoFocus
               />
               {error && <div className="text-red-400 text-sm">{error}</div>}
