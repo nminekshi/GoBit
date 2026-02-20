@@ -47,6 +47,8 @@ type Auction = {
     }[];
 };
 
+const RELATED_FALLBACK_IMAGE = "https://images.unsplash.com/photo-1506765515384-028b60a970df?auto=format&fit=crop&q=80&w=260&h=200";
+
 export default function AuctionDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
@@ -60,6 +62,8 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [activeTab, setActiveTab] = useState<string>("description"); // description, history, reviews, more
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [claimMessage, setClaimMessage] = useState<string | null>(null);
+    const [relatedAuctions, setRelatedAuctions] = useState<Auction[]>([]);
+    const [relatedLoading, setRelatedLoading] = useState(false);
 
     const isLoaded = useRef(false);
 
@@ -89,6 +93,42 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         const interval = setInterval(fetchAuction, 12000); // Slow fallback polling; realtime comes from sockets
         return () => clearInterval(interval);
     }, [id]);
+
+    useEffect(() => {
+        const fetchRelated = async () => {
+            if (!auction?.category) return;
+            setRelatedLoading(true);
+            try {
+                // Prefer active items in the same category
+                const activeResults = await auctionAPI.fetchAuctions(auction.category, "active");
+                const activeFiltered = (activeResults || []).filter((item: any) => (item._id || item.id) !== auction._id);
+
+                // If not enough, backfill with completed items from same category
+                let combined = activeFiltered;
+                if (combined.length < 9) {
+                    const allResults = await auctionAPI.fetchAuctions(auction.category, "all");
+                    const completed = (allResults || [])
+                        .filter((item: any) => (item._id || item.id) !== auction._id)
+                        .filter((item: any) => item.status !== "active");
+                    combined = [...activeFiltered, ...completed];
+                }
+
+                const deduped = combined.reduce((acc: Auction[], item: any) => {
+                    const id = item._id || item.id;
+                    if (!acc.some((a) => (a as any)._id === id || (a as any).id === id)) acc.push(item);
+                    return acc;
+                }, []);
+
+                setRelatedAuctions(deduped.slice(0, 9) as Auction[]);
+            } catch {
+                setRelatedAuctions([]);
+            } finally {
+                setRelatedLoading(false);
+            }
+        };
+
+        fetchRelated();
+    }, [auction?._id, auction?.category]);
 
     useEffect(() => {
         if (!auction?._id) return;
@@ -609,7 +649,43 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                     )}
                     {/* Placeholders for other tabs */}
                     {activeTab === 'reviews' && <p className="text-white/40">No reviews yet.</p>}
-                    {activeTab === 'more products' && <p className="text-white/40">Related auctions will appear here.</p>}
+                    {activeTab === 'more products' && (
+                        <div className="space-y-4">
+                            <h3 className="text-xl font-semibold text-white">More products</h3>
+                            {relatedLoading ? (
+                                <p className="text-white/40">Loading related auctions...</p>
+                            ) : relatedAuctions.length === 0 ? (
+                                <p className="text-white/40">No related auctions found.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {relatedAuctions.map((item) => {
+                                        const id = (item as any)._id || (item as any).id;
+                                        return (
+                                            <Link key={id} href={`/auctions/${id}`} className="group block rounded-2xl border border-white/10 bg-white/5 p-3 hover:border-emerald-400/60 transition">
+                                                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-white/5">
+                                                    <Image
+                                                        src={(item as any).imageUrl || RELATED_FALLBACK_IMAGE}
+                                                        alt={(item as any).title}
+                                                        width={400}
+                                                        height={300}
+                                                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                                    />
+                                                </div>
+                                                <div className="mt-3 space-y-1">
+                                                    <p className="text-sm uppercase tracking-wide text-white/50">{(item as any).category}</p>
+                                                    <h4 className="text-lg font-semibold text-white line-clamp-1">{(item as any).title}</h4>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <span className="text-emerald-400 font-semibold">${((item as any).currentBid || (item as any).startPrice || 0).toLocaleString()}</span>
+                                                        <span className="text-white/50">Bids {(item as any).bidsCount || 0}</span>
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
