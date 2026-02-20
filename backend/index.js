@@ -21,6 +21,8 @@ if (!process.env.MONGODB_URI) {
 // Basic middleware
 app.use(cors());
 app.use(express.json());
+// PayHere sends urlencoded form data to the notify URL
+app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB
 mongoose

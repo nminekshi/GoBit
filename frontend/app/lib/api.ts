@@ -280,6 +280,34 @@ export const auctionAPI = {
         return data;
     },
 
+    // Create PayHere sandbox payment session
+    async createPayHereSession(id: string): Promise<{
+        merchantId: string;
+        hash: string;
+        orderId: string;
+        amount: string;
+        currency: string;
+        items: string;
+        firstName: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/payhere/session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Failed to create PayHere session");
+        }
+        return data;
+    },
+
     // Fetch auctions where user has bid
     async fetchMyBids(): Promise<any[]> {
         try {

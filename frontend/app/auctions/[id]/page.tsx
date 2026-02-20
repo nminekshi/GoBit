@@ -35,6 +35,7 @@ type Auction = {
     };
     winnerId?: string | { _id: string; username: string };
     winnerClaimedAt?: string;
+    winnerPaidAt?: string;
     paidAt?: string;
     details?: Record<string, string>;
     createdAt: string;
@@ -273,7 +274,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
     const isLiveAuction = auction.auctionType === "live";
     const isWinner = Boolean(currentUserId && (typeof auction.winnerId === "string" ? auction.winnerId === currentUserId : auction.winnerId?._id === currentUserId));
-    const isPaid = Boolean(auction.paidAt || auction.saleStatus === "paid");
+    const isPaid = Boolean(auction.winnerPaidAt || auction.paidAt || auction.saleStatus === "paid");
     const isClaimInitiated = Boolean(auction.saleStatus === "claim-initiated" || auction.winnerClaimedAt);
 
     const handleClaimAndCheckout = async () => {

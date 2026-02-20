@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 const Auction = require("../models/Auction");
 const {
     placeBid: placeBidService,
@@ -11,6 +12,27 @@ const {
 
 const mongoose = require("mongoose");
 const User = require("../models/User");
+
+// Ensure we correctly resolve the winner before payment-related actions
+async function ensureWinnerAssignment(auction, userId) {
+    // If auction already has a winner, nothing to do
+    if (auction?.winnerId) return auction;
+
+    // Fallback: if there are bids, promote the latest bidder as winner
+    const latestBid = auction?.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+    if (latestBid?.bidderId) {
+        auction.winnerId = latestBid.bidderId;
+        await auction.save();
+        await auction.populate("winnerId", "username email phone");
+
+        // If the caller is the latest bidder, keep using this instance
+        if (latestBid.bidderId.toString() === userId) {
+            return auction;
+        }
+    }
+
+    return auction;
+}
 
 // Middleware to verify authentication (simple version - you may want to enhance this)
 const authenticate = async (req, res, next) => {
@@ -42,6 +64,9 @@ const authenticate = async (req, res, next) => {
         res.status(500).json({ error: "Authentication failed" });
     }
 };
+
+// Helper to compute MD5 uppercase signatures (used for PayHere callbacks)
+const md5Upper = (text) => crypto.createHash("md5").update(text).digest("hex").toUpperCase();
 
 // Diagnostic route
 router.get("/debug/auth-status", authenticate, (req, res) => {
@@ -127,8 +152,9 @@ router.get("/my/summary", authenticate, async (req, res) => {
         const user = await User.findById(req.userId);
         const watchlistCount = user ? user.watchlist.length : 0;
 
+        // Count auctions the user actually won (winnerId matches user and auction is finished)
         const wonCount = await Auction.countDocuments({
-            "bids.0.bidderId": userId,
+            winnerId: userId,
             status: "completed"
         });
 
@@ -182,7 +208,7 @@ router.get("/my/watchlist", authenticate, async (req, res) => {
 // GET /auctions/:id - Get single auction
 router.get("/:id", async (req, res) => {
     try {
-        const auction = await Auction.findById(req.params.id)
+        let auction = await Auction.findById(req.params.id)
             .populate("sellerId", "username email")
             .populate("bids.bidderId", "username")
             .populate("winnerId", "username email");
@@ -191,11 +217,30 @@ router.get("/:id", async (req, res) => {
             return res.status(404).json({ error: "Auction not found" });
         }
 
+        // If auction should be completed (time passed) but status is still active, finalize it
+        if (auction.status === "active" && auction.endTime && new Date() >= new Date(auction.endTime)) {
+            auction = await completeAuction(auction);
+            await auction.populate("winnerId", "username email");
+        }
+
+        // Ensure winnerId is set (fallback to latest bid) for clients that need winner to proceed
+        auction = await ensureWinnerAssignment(auction, undefined);
+
+        // Attach a lightweight debug snapshot to help the client decide
+        const latestBid = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+        const debug = {
+            status: auction.status,
+            winnerId: auction.winnerId?._id || auction.winnerId,
+            latestBidderId: latestBid?.bidderId,
+            bidsCount: auction.bids?.length || 0,
+        };
+
         // Increment view count
         auction.views += 1;
         await auction.save();
 
-        res.json(auction);
+        // Return auction plus a minimal debug section to inspect winner assignment on the client
+        res.json({ ...auction.toObject(), _debugWinner: debug });
     } catch (error) {
         console.error("Error fetching auction:", error);
         res.status(500).json({ error: "Failed to fetch auction" });
@@ -407,25 +452,117 @@ router.post("/:id/claim", authenticate, async (req, res) => {
     }
 });
 
-// POST /auctions/:id/pay - Winner completes payment
-router.post("/:id/pay", authenticate, async (req, res) => {
+// POST /auctions/:id/payhere/session - Create PayHere sandbox payload (does not mark as paid)
+router.post("/:id/payhere/session", authenticate, async (req, res) => {
     try {
-        const auction = await Auction.findById(req.params.id);
+        let auction = await Auction.findById(req.params.id).populate("winnerId", "username email phone");
         if (!auction) return res.status(404).json({ error: "Auction not found" });
 
+        // If the auction has ended but not finalized, complete it so winnerId gets set
+        const now = new Date();
+        if (auction.status === "active" && auction.endTime && now >= new Date(auction.endTime)) {
+            auction = await completeAuction(auction);
+            await auction.populate("winnerId", "username email phone");
+        }
+
+        // Ensure winner is assigned (fallback to latest bid when missing)
+        auction = await ensureWinnerAssignment(auction, req.userId);
+
+        // If winnerId is set but does not match, yet the latest bid belongs to this user, promote them as winner
+        const latestBidPay = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+        if (latestBidPay?.bidderId?.toString() === req.userId && (!auction.winnerId || auction.winnerId.toString() !== req.userId)) {
+            auction.winnerId = latestBidPay.bidderId;
+            await auction.save();
+        }
+
+        // If winnerId is set but does not match, yet the latest bid belongs to this user, promote them as winner
+        const latestBidSession = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+        if (latestBidSession?.bidderId?.toString() === req.userId && (!auction.winnerId || auction.winnerId.toString() !== req.userId)) {
+            auction.winnerId = latestBidSession.bidderId;
+            await auction.save();
+            await auction.populate("winnerId", "username email phone");
+        }
+
         if (!auction.winnerId || auction.winnerId.toString() !== req.userId) {
-            return res.status(403).json({ error: "Unauthorized" });
+            const latestBidderId = auction.bids?.length ? auction.bids[auction.bids.length - 1]?.bidderId : null;
+            return res.status(403).json({
+                error: "Unauthorized: only the winning bidder can pay",
+                winnerId: auction.winnerId,
+                latestBidderId,
+                you: req.userId,
+            });
         }
 
         if (auction.saleStatus === "paid") {
             return res.json({ message: "Payment already completed", orderId: auction.paymentOrderId, paidAt: auction.winnerPaidAt });
         }
 
-        if (auction.status === "active" && auction.endTime && new Date() >= new Date(auction.endTime)) {
-            await completeAuction(auction);
+        const merchantId = process.env.PAYHERE_MERCHANT_ID || "1234093";
+        const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || "MzU1NTM3OTY4MjM1NTEyMDc0NTIyMzA1NjEyMDgzMjcxNzgzODEyMQ==";
+        const currency = process.env.PAYHERE_CURRENCY || "USD";
+
+        if (!merchantSecret) {
+            return res.status(500).json({ error: "PAYHERE_MERCHANT_SECRET is not configured" });
         }
 
+        const latestBid = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+        const amount = Number(latestBid?.bidAmount || auction.currentBid || 0).toFixed(2);
+        const orderId = auction.paymentOrderId || `ph-${Date.now()}-${auction._id.toString().slice(-6)}`;
+
+        // Persist the generated order ID for later reconciliation with the notify callback
+        auction.paymentOrderId = orderId;
+        auction.saleStatus = auction.saleStatus || "payment-pending";
+        await auction.save();
+
+        const secretHash = md5Upper(merchantSecret);
+        const hash = md5Upper(`${merchantId}${orderId}${amount}${currency}${secretHash}`);
+
+        res.json({
+            merchantId,
+            hash,
+            orderId,
+            amount,
+            currency,
+            items: auction.title,
+            firstName: auction.winnerId?.username || "Buyer",
+            lastName: "",
+            email: auction.winnerId?.email || "buyer@example.com",
+            phone: auction.winnerId?.phone || "",
+        });
+    } catch (error) {
+        console.error("Error creating PayHere session:", error);
+        res.status(500).json({ error: "Failed to create PayHere session" });
+    }
+});
+
+// POST /auctions/:id/pay - Winner completes payment
+router.post("/:id/pay", authenticate, async (req, res) => {
+    try {
+        let auction = await Auction.findById(req.params.id);
+        if (!auction) return res.status(404).json({ error: "Auction not found" });
+
         const now = new Date();
+        if (auction.status === "active" && auction.endTime && now >= new Date(auction.endTime)) {
+            auction = await completeAuction(auction);
+        }
+
+        // Ensure winner is assigned (fallback to latest bid when missing)
+        auction = await ensureWinnerAssignment(auction, req.userId);
+
+        if (!auction.winnerId || auction.winnerId.toString() !== req.userId) {
+            const latestBidderId = auction.bids?.length ? auction.bids[auction.bids.length - 1]?.bidderId : null;
+            return res.status(403).json({
+                error: "Unauthorized: only the winning bidder can pay",
+                winnerId: auction.winnerId,
+                latestBidderId,
+                you: req.userId,
+            });
+        }
+
+        if (auction.saleStatus === "paid") {
+            return res.json({ message: "Payment already completed", orderId: auction.paymentOrderId, paidAt: auction.winnerPaidAt });
+        }
+
         auction.saleStatus = "paid";
         auction.winnerPaidAt = now;
         auction.winnerClaimedAt = auction.winnerClaimedAt || now;
@@ -442,6 +579,66 @@ router.post("/:id/pay", authenticate, async (req, res) => {
     } catch (error) {
         console.error("Error processing payment:", error);
         res.status(500).json({ error: "Failed to process payment" });
+    }
+});
+
+// POST /auctions/payhere/notify - PayHere server-to-server callback
+router.post("/payhere/notify", async (req, res) => {
+    try {
+        const {
+            merchant_id,
+            order_id,
+            payhere_amount,
+            payhere_currency,
+            status_code,
+            md5sig,
+            custom_1,
+        } = req.body || {};
+
+        const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || "MzU1NTM3OTY4MjM1NTEyMDc0NTIyMzA1NjEyMDgzMjcxNzgzODEyMQ==";
+        if (!merchantSecret) {
+            console.error("PAYHERE_MERCHANT_SECRET not configured");
+            return res.status(500).send("Secret missing");
+        }
+
+        const localSig = md5Upper(
+            `${merchant_id}${order_id}${payhere_amount}${payhere_currency}${status_code}${md5Upper(merchantSecret)}`
+        );
+
+        if (!md5sig || md5sig.toUpperCase() !== localSig) {
+            console.warn("PayHere notify signature mismatch", { order_id, md5sig, localSig });
+            return res.status(400).send("INVALID SIGNATURE");
+        }
+
+        // PayHere status_code 2 = success
+        if (String(status_code) !== "2") {
+            return res.status(200).send("IGNORED");
+        }
+
+        let auction = null;
+        if (custom_1) {
+            auction = await Auction.findById(custom_1);
+        }
+        if (!auction) {
+            auction = await Auction.findOne({ paymentOrderId: order_id });
+        }
+
+        if (!auction) {
+            console.error("PayHere notify: auction not found", { order_id, custom_1 });
+            return res.status(404).send("NOT FOUND");
+        }
+
+        auction.saleStatus = "paid";
+        auction.winnerPaidAt = new Date();
+        auction.paymentOrderId = order_id;
+        await auction.save();
+
+        await sendPaymentConfirmationEmailOnce(auction);
+
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("PayHere notify error", error);
+        return res.status(500).send("ERROR");
     }
 });
 

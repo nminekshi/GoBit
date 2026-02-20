@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { auctionAPI } from "../../lib/api";
 
 export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
   const [auction, setAuction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -21,6 +23,21 @@ export default function OrderConfirmationPage() {
       try {
         const data = await auctionAPI.fetchAuctionById(id as string);
         setAuction(data);
+
+        // If returning from PayHere (gateway param) and backend hasn't marked as paid yet, mark it now.
+        const gateway = searchParams?.get("gateway");
+        if (gateway === "payhere" && data?.saleStatus !== "paid" && !data?.winnerPaidAt) {
+          setSyncing(true);
+          try {
+            await auctionAPI.payAuction(id as string);
+            const refreshed = await auctionAPI.fetchAuctionById(id as string);
+            setAuction(refreshed);
+          } catch (payErr: any) {
+            console.error("Failed to sync PayHere payment", payErr);
+          } finally {
+            setSyncing(false);
+          }
+        }
       } catch (err: any) {
         setError(err?.message || "Failed to load order");
       } finally {
@@ -28,7 +45,7 @@ export default function OrderConfirmationPage() {
       }
     };
     load();
-  }, [id]);
+  }, [id, searchParams]);
 
   if (loading) {
     return (
@@ -55,6 +72,7 @@ export default function OrderConfirmationPage() {
       <div className="max-w-3xl mx-auto space-y-6 text-center">
         <h1 className="text-3xl font-bold">Payment Confirmed</h1>
         <p className="text-white/70">Your order is confirmed. We'll notify you when shipping or pickup is ready.</p>
+        {syncing && <p className="text-xs text-emerald-200/80">Syncing payment status...</p>}
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-left space-y-3">
           <div className="flex items-center justify-between text-sm text-white/70">

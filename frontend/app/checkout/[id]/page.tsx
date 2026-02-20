@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,6 +16,7 @@ export default function CheckoutPage() {
   const [paying, setPaying] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"payhere" | "demo">("payhere");
 
   useEffect(() => {
     const authRaw = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
@@ -61,7 +62,12 @@ export default function CheckoutPage() {
   const winningAmount = latestBid?.bidAmount || auction?.currentBid;
   const paymentDeadlineHours = process.env.NEXT_PUBLIC_PAYMENT_DEADLINE_HOURS || 48;
 
-  const handlePay = async () => {
+  const payHereEndpoint = useMemo(
+    () => process.env.NEXT_PUBLIC_PAYHERE_BASE_URL || "https://sandbox.payhere.lk/pay/checkout",
+    []
+  );
+
+  const handlePayDemo = async () => {
     if (!auction) return;
     setMessage(null);
     setPaying(true);
@@ -72,6 +78,55 @@ export default function CheckoutPage() {
     } catch (err: any) {
       setMessage(err?.message || "Payment failed");
     } finally {
+      setPaying(false);
+    }
+  };
+
+  const handlePayHere = async () => {
+    if (!auction) return;
+    setMessage(null);
+    setPaying(true);
+    try {
+      const session = await auctionAPI.createPayHereSession(auction._id);
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = payHereEndpoint;
+      form.target = "_self";
+
+      const fields: Record<string, string> = {
+        merchant_id: session.merchantId,
+        return_url: `${window.location.origin}/order-confirmation/${auction._id}?gateway=payhere`,
+        cancel_url: window.location.href,
+        notify_url: `${process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}/auctions/payhere/notify`,
+        order_id: session.orderId,
+        items: session.items,
+        amount: session.amount,
+        currency: session.currency,
+        first_name: session.firstName || "Buyer",
+        last_name: session.lastName || "",
+        email: session.email || "buyer@example.com",
+        phone: session.phone || "",
+        address: "",
+        city: "",
+        country: "Sri Lanka",
+        custom_1: auction._id,
+        custom_2: currentUserId || "",
+        hash: session.hash,
+      };
+
+      Object.entries(fields).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = String(value ?? "");
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err: any) {
+      setMessage(err?.message || "Failed to start PayHere sandbox payment");
       setPaying(false);
     }
   };
@@ -142,22 +197,44 @@ export default function CheckoutPage() {
             {message && <div className="rounded-xl border border-white/10 bg-emerald-500/10 text-emerald-200 p-3 text-sm">{message}</div>}
 
             <button
-              onClick={handlePay}
+              onClick={paymentMethod === "payhere" ? handlePayHere : handlePayDemo}
               disabled={paying}
               className="w-full rounded-xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition disabled:opacity-60"
             >
-              {paying ? "Processing..." : "Pay and Confirm"}
+              {paying ? "Processing..." : paymentMethod === "payhere" ? "Pay with PayHere Sandbox" : "Mark as Paid (Demo)"}
             </button>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 text-sm">
             <h3 className="text-lg font-semibold">Payment Methods</h3>
-            <p className="text-white/70 text-sm">Use your existing payment method on file. This demo flow records payment immediately.</p>
-            <ul className="space-y-2 text-white/70">
-              <li>• Escrow balance</li>
-              <li>• Card on file</li>
-              <li>• Bank transfer</li>
-            </ul>
+            <p className="text-white/70 text-sm">Choose how to simulate payment. PayHere opens the sandbox checkout page.</p>
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/20 p-3 hover:border-emerald-300/60">
+                <input
+                  type="radio"
+                  className="mt-1"
+                  checked={paymentMethod === "payhere"}
+                  onChange={() => setPaymentMethod("payhere")}
+                />
+                <div className="space-y-1">
+                  <p className="font-semibold">PayHere Sandbox</p>
+                  <p className="text-xs text-white/60">Redirects to PayHere sandbox using merchant 1234093. Great for testing full flow.</p>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/10 p-3 hover:border-emerald-300/60">
+                <input
+                  type="radio"
+                  className="mt-1"
+                  checked={paymentMethod === "demo"}
+                  onChange={() => setPaymentMethod("demo")}
+                />
+                <div className="space-y-1">
+                  <p className="font-semibold">Mark as Paid (Demo)</p>
+                  <p className="text-xs text-white/60">Calls the existing API to record payment without external gateway.</p>
+                </div>
+              </label>
+            </div>
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-100 text-xs">
               Payment is due within {paymentDeadlineHours} hours to avoid cancellation.
             </div>
