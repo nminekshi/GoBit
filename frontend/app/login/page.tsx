@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+import { API_BASE_URL } from "../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,7 +17,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

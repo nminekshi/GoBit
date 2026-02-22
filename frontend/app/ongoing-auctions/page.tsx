@@ -1,220 +1,122 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { auctionAPI } from "../lib/api";
 
 type Auction = {
-  name: string;
-  img: string;
+  _id: string;
+  title: string;
+  description?: string;
   category: string;
+  imageUrl?: string;
+  startPrice: number;
   currentBid: number;
-  reserve: number;
-  bids: number;
-  watchers: number;
-  endsInMinutes: number;
-  link: string;
-  description: string;
-  location: string;
-  accent: string;
+  startTime?: string;
+  endTime: string;
+  auctionType?: "normal" | "live";
+  bids?: { bidAmount: number; timestamp: string }[];
+  watchers?: number;
 };
 
-const ongoingAuctions: Auction[] = [
-  {
-    name: "iPhone 15 Pro Max",
-    img: "/images/15 pro max.png",
-    category: "Electronics",
-    currentBid: 1200,
-    reserve: 1800,
-    bids: 62,
-    watchers: 143,
-    endsInMinutes: 150,
-    link: "/categories/electronics",
-    description: "Factory-unlocked, 256GB. Includes AppleCare+ transfer.",
-    location: "Global fulfillment",
-    accent: "from-orange-500/30 via-transparent to-transparent"
-  },
-  {
-    name: "Rolex Submariner",
-    img: "/images/Rolex Submariner.png",
-    category: "Watches",
-    currentBid: 9500,
-    reserve: 12000,
-    bids: 34,
-    watchers: 201,
-    endsInMinutes: 195,
-    link: "/categories/watches",
-    description: "2021 stainless steel, full box & papers, freshly serviced.",
-    location: "London vault",
-    accent: "from-emerald-400/30 via-transparent to-transparent"
-  },
-  {
-    name: "MacBook Pro 16\"",
-    img: "/images/MacBook Pro 16.png",
-    category: "Computers",
-    currentBid: 2100,
-    reserve: 2600,
-    bids: 51,
-    watchers: 97,
-    endsInMinutes: 245,
-    link: "/categories/computers",
-    description: "M3 Max, 64GB RAM, 1TB SSD, warranty through 2026.",
-    location: "Los Angeles studio",
-    accent: "from-sky-400/30 via-transparent to-transparent"
-  },
-  {
-    name: "Tesla Model S",
-    img: "/images/Tesla Model S.png",
-    category: "Vehicles",
-    currentBid: 55000,
-    reserve: 62000,
-    bids: 18,
-    watchers: 76,
-    endsInMinutes: 380,
-    link: "/categories/vehicles",
-    description: "Dual-motor Long Range, FSD transfer eligible, 22k miles.",
-    location: "San Francisco showroom",
-    accent: "from-rose-400/30 via-transparent to-transparent"
-  },
-  {
-    name: "Downtown Apartment",
-    img: "/images/Downtown Apartment.png",
-    category: "Real Estate",
-    currentBid: 320000,
-    reserve: 360000,
-    bids: 11,
-    watchers: 64,
-    endsInMinutes: 720,
-    link: "/categories/realestate",
-    description: "2BR loft, skyline views, turnkey rental with 6% yield.",
-    location: "Colombo 03",
-    accent: "from-amber-400/30 via-transparent to-transparent"
-  },
-  {
-    name: "Abstract Painting",
-    img: "/images/Abstract Painting.png",
-    category: "Art",
-    currentBid: 12000,
-    reserve: 18000,
-    bids: 27,
-    watchers: 88,
-    endsInMinutes: 460,
-    link: "/categories/art",
-    description: "Oil on canvas, 140cm, catalogued at the 2024 Basel Fair.",
-    location: "Private collection, Paris",
-    accent: "from-purple-400/30 via-transparent to-transparent"
-  },
-  {
-    name: "Ford Mustang",
-    img: "/images/Ford Mustang.png",
-    category: "Vehicles",
-    currentBid: 98000,
-    reserve: 112000,
-    bids: 22,
-    watchers: 131,
-    endsInMinutes: 510,
-    link: "/categories/vehicles",
-    description: "1988 Carrera G50, matching numbers, freshly detailed.",
-    location: "Munich showroom",
-    accent: "from-red-500/30 via-transparent to-transparent"
-  },
-  {
-    name: "Modern Art Canvas",
-    img: "/images/Modern Art Canvas.png",
-    category: "Art",
-    currentBid: 450000,
-    reserve: 520000,
-    bids: 9,
-    watchers: 54,
-    endsInMinutes: 840,
-    link: "/categories/art",
-    description: "2.4ct vivid blue cushion-cut stone with GIA report.",
-    location: "Dubai vault",
-    accent: "from-blue-500/30 via-transparent to-transparent"
-  },
-  {
-    name: "GoPro Hero 12",
-    img: "/images/GoPro Hero 12.png",
-    category: "Electronics",
-    currentBid: 62000,
-    reserve: 74000,
-    bids: 41,
-    watchers: 118,
-    endsInMinutes: 600,
-    link: "/categories/electronics",
-    description: "6-axis industrial arm with full maintenance logs included.",
-    location: "Singapore logistics hub",
-    accent: "from-cyan-400/30 via-transparent to-transparent"
-  }
-];
+type SortKey = "ending" | "price" | "bids";
 
-const categoryFilters = [
-  "All",
-  ...Array.from(new Set(ongoingAuctions.map((item) => item.category)))
-];
-
-const liveStats = [
-  { label: "Live lots", value: "128", change: "+12 today" },
-  { label: "Avg. savings", value: "34%", change: "+4% vs last week" },
-  { label: "Active bidders", value: "52k", change: "↗ steady demand" },
-  { label: "Secure payouts", value: "< 24h", change: "after settlement" }
-];
-
-const formatTime = (minutes: number) => {
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hrs <= 0) {
-    return `${mins}m left`;
-  }
-  return `${hrs}h ${mins}m left`;
+const accentByCategory: Record<string, string> = {
+  Electronics: "from-sky-400/30 via-transparent to-transparent",
+  Watches: "from-amber-400/30 via-transparent to-transparent",
+  Vehicles: "from-rose-400/30 via-transparent to-transparent",
+  "Real Estate": "from-emerald-400/30 via-transparent to-transparent",
+  Art: "from-purple-400/30 via-transparent to-transparent",
+  Computers: "from-blue-400/30 via-transparent to-transparent",
 };
 
-const getProgress = (current: number, reserve: number) => {
-  if (!reserve) return 0;
-  return Math.min(100, Math.round((current / reserve) * 100));
+const now = () => new Date().getTime();
+
+const isOngoing = (auction: Auction) => {
+  const start = auction.startTime ? new Date(auction.startTime).getTime() : now();
+  const end = auction.endTime ? new Date(auction.endTime).getTime() : 0;
+  return start <= now() && end > now();
+};
+
+const formatCountdown = (endTime: string) => {
+  const diff = new Date(endTime).getTime() - now();
+  if (diff <= 0) return "Ended";
+  const totalMinutes = Math.floor(diff / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ${hours % 24}h left`;
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${Math.max(1, minutes)}m left`;
+};
+
+const bidProgress = (current: number, startPrice: number) => {
+  const baseline = startPrice || 1;
+  return Math.min(100, Math.round((current / baseline) * 40));
 };
 
 export default function OngoingAuctionsPage() {
+  const [auctions, setAuctions] = useState<Auction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Auction | null>(null);
   const [bid, setBid] = useState("");
-  const [error, setError] = useState("");
+  const [bidError, setBidError] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"ending" | "price" | "bids">("ending");
+  const [sortBy, setSortBy] = useState<SortKey>("ending");
 
-  const filteredAuctions = ongoingAuctions.filter((item) => {
-    const matchesCategory =
-      activeCategory === "All" || item.category === activeCategory;
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+  const loadAuctions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await auctionAPI.fetchAuctions();
+      const ongoing = (data || []).filter(isOngoing);
+      setAuctions(ongoing);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load auctions");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAuctions();
+  }, []);
+
+  const categoryFilters = useMemo(() => ["All", ...new Set(auctions.map((a) => a.category))], [auctions]);
+
+  const filteredAuctions = auctions.filter((item) => {
+    const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
   const sortedAuctions = useMemo(() => {
     return [...filteredAuctions].sort((a, b) => {
       if (sortBy === "ending") {
-        return a.endsInMinutes - b.endsInMinutes;
+        return new Date(a.endTime).getTime() - new Date(b.endTime).getTime();
       }
       if (sortBy === "price") {
-        return b.currentBid - a.currentBid;
+        return (b.currentBid || 0) - (a.currentBid || 0);
       }
-      return b.bids - a.bids;
+      const bidsA = a.bids?.length || 0;
+      const bidsB = b.bids?.length || 0;
+      return bidsB - bidsA;
     });
   }, [filteredAuctions, sortBy]);
 
-  const heroHighlight = sortedAuctions[0] ?? ongoingAuctions[0];
+  const heroHighlight = sortedAuctions[0] ?? auctions[0];
   const closingSoon = useMemo(
-    () =>
-      [...ongoingAuctions]
-        .sort((a, b) => a.endsInMinutes - b.endsInMinutes)
-        .slice(0, 3),
-    []
+    () => [...auctions].sort((a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime()).slice(0, 3),
+    [auctions]
   );
 
   const openModal = (item: Auction) => {
     setSelectedItem(item);
     setBid("");
-    setError("");
+    setBidError("");
     setModalOpen(true);
   };
 
@@ -222,18 +124,62 @@ export default function OngoingAuctionsPage() {
     setModalOpen(false);
     setSelectedItem(null);
     setBid("");
-    setError("");
+    setBidError("");
   };
 
-  const handleBid = (e: React.FormEvent) => {
+  const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bid || isNaN(Number(bid)) || Number(bid) <= (selectedItem?.currentBid || 0)) {
-      setError("Please enter a valid bid higher than the current bid.");
+    if (!selectedItem) return;
+    const amount = Number(bid);
+    if (!amount || isNaN(amount) || amount <= (selectedItem.currentBid || 0)) {
+      setBidError("Enter a bid higher than the current bid.");
       return;
     }
-    closeModal();
-    alert("Your bid has been placed!");
+    try {
+      await auctionAPI.placeBid(selectedItem._id, amount);
+      await loadAuctions();
+      closeModal();
+      alert("Bid placed successfully!");
+    } catch (err: any) {
+      setBidError(err?.message || "Failed to place bid");
+    }
   };
+
+  const liveStats = useMemo(() => {
+    const lots = auctions.length;
+    const bidders = new Set(
+      auctions.flatMap((a) => (a.bids || []).map((b: any) => b.bidderId || "unknown"))
+    ).size;
+    const avgSavings = lots > 0 ? "Live" : "–";
+    return [
+      { label: "Live lots", value: `${lots}`, change: "updating in real time" },
+      { label: "Active bidders", value: bidders ? `${bidders}` : "–", change: "joined these lots" },
+      { label: "Auction type", value: "Normal & Live", change: "mixed catalog" },
+      { label: "Payout speed", value: "< 24h", change: "after settlement" },
+    ];
+  }, [auctions]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a1020] text-white flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0a1020] text-white flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-lg text-rose-300">{error}</p>
+        <button
+          onClick={loadAuctions}
+          className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#0a1020] text-white">
@@ -243,7 +189,7 @@ export default function OngoingAuctionsPage() {
             <div className="order-2 flex flex-col gap-6 lg:order-1">
               <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#0b1524]/10 px-4 py-1 text-1.5xl font-semibold text-[#0b1524]">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                6 premium lots closing soon
+                {auctions.length} lots closing soon
               </span>
               <h1 className="text-4xl md:text-6xl font-semibold leading-tight">
                 Bid live on curated assets with real-time price discovery
@@ -252,12 +198,14 @@ export default function OngoingAuctionsPage() {
                 Track luxury goods, tech, property, and fine art in one dashboard. Join vetted bidders, monitor transparent pricing, and secure verified consignments.
               </p>
               <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={() => heroHighlight && openModal(heroHighlight)}
-                  className="rounded-2xl bg-[#0b1524] text-white px-8 py-3 font-semibold transition hover:bg-[#111c30]"
-                >
-                  Place a live bid
-                </button>
+                {heroHighlight && (
+                  <button
+                    onClick={() => openModal(heroHighlight)}
+                    className="rounded-2xl bg-[#0b1524] text-white px-8 py-3 font-semibold transition hover:bg-[#111c30]"
+                  >
+                    Place a live bid
+                  </button>
+                )}
                 <Link
                   href="/categories"
                   className="rounded-2xl border border-[#0b1524]/20 px-8 py-3 font-semibold text-[#0b1524] hover:border-[#0b1524]"
@@ -278,25 +226,26 @@ export default function OngoingAuctionsPage() {
                     {heroHighlight.category}
                   </span>
                 </div>
-                <div className="h-72 rounded-3xl bg-slate-50 flex items-center justify-center">
-                  <img
-                    src={heroHighlight.img}
-                    alt={heroHighlight.name}
-                    className="h-52 object-contain drop-shadow-2xl"
+                <div className="relative h-72 rounded-3xl bg-slate-50 overflow-hidden">
+                  <Image
+                    src={heroHighlight.imageUrl || "/images/placeholder.png"}
+                    alt={heroHighlight.title}
+                    fill
+                    className="object-contain drop-shadow-2xl"
                   />
                 </div>
                 <div className="space-y-1">
-                  <h2 className="text-2xl font-semibold text-[#0b1524]">{heroHighlight.name}</h2>
-                  <p className="text-sm text-slate-500">{heroHighlight.description}</p>
+                  <h2 className="text-2xl font-semibold text-[#0b1524]">{heroHighlight.title}</h2>
+                  <p className="text-sm text-slate-500">{heroHighlight.description || "Bid now to secure this lot."}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <p className="text-slate-500">Current bid</p>
-                    <p className="text-2xl font-semibold text-[#0b1524]">${heroHighlight.currentBid.toLocaleString()}</p>
+                    <p className="text-2xl font-semibold text-[#0b1524]">${heroHighlight.currentBid?.toLocaleString() || heroHighlight.startPrice?.toLocaleString()}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <p className="text-slate-500">Ends in</p>
-                    <p className="text-2xl font-semibold text-[#0b1524]">{formatTime(heroHighlight.endsInMinutes)}</p>
+                    <p className="text-2xl font-semibold text-[#0b1524]">{formatCountdown(heroHighlight.endTime)}</p>
                   </div>
                 </div>
               </div>
@@ -375,14 +324,14 @@ export default function OngoingAuctionsPage() {
                 </p>
                 <div className="mt-5 space-y-4">
                   {closingSoon.map((lot) => (
-                    <div key={lot.name} className="rounded-2xl bg-black/20 p-4">
+                    <Link key={lot._id} href={`/auctions/${lot._id}`} className="block rounded-2xl bg-black/20 p-4 hover:bg-black/30 transition">
                       <div className="flex items-center justify-between text-sm text-white/60">
                         <span>{lot.category}</span>
-                        <span>{formatTime(lot.endsInMinutes)}</span>
+                        <span>{formatCountdown(lot.endTime)}</span>
                       </div>
-                      <p className="mt-2 font-semibold">{lot.name}</p>
-                      <p className="text-sm text-white/60">${lot.currentBid.toLocaleString()}</p>
-                    </div>
+                      <p className="mt-2 font-semibold">{lot.title}</p>
+                      <p className="text-sm text-white/60">${(lot.currentBid || lot.startPrice).toLocaleString()}</p>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -409,14 +358,16 @@ export default function OngoingAuctionsPage() {
 
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {sortedAuctions.map((item) => {
-                  const progress = getProgress(item.currentBid, item.reserve);
+                  const progress = bidProgress(item.currentBid || item.startPrice, item.startPrice);
+                  const accent = accentByCategory[item.category] || "from-emerald-400/20 via-transparent to-transparent";
                   return (
-                    <div
-                      key={item.name}
-                      className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/0 to-black/20 p-6 backdrop-blur"
+                    <Link
+                      key={item._id}
+                      href={`/auctions/${item._id}`}
+                      className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/0 to-black/20 p-6 backdrop-blur hover:border-white/30 transition"
                     >
                       <div
-                        className={`absolute inset-0 rounded-3xl bg-gradient-to-br opacity-40 pointer-events-none ${item.accent}`}
+                        className={`absolute inset-0 rounded-3xl bg-gradient-to-br opacity-40 pointer-events-none ${accent}`}
                       />
                       <div className="relative z-10 flex flex-col gap-4">
                         <div className="flex items-center justify-between text-sm">
@@ -424,30 +375,30 @@ export default function OngoingAuctionsPage() {
                             {item.category}
                           </span>
                           <span className="text-white/60">
-                            {item.watchers} watchers · {item.bids} bids
+                            {(item.watchers || 0)} watchers · {(item.bids?.length || 0)} bids
                           </span>
                         </div>
-                        <div className="h-48 rounded-2xl bg-black/30 flex items-center justify-center">
-                          <img src={item.img} alt={item.name} className="max-h-40 object-contain" />
+                        <div className="relative h-48 rounded-2xl bg-black/30 overflow-hidden">
+                          <Image src={item.imageUrl || "/images/placeholder.png"} alt={item.title} fill className="object-contain" />
                         </div>
                         <div>
-                          <h3 className="text-xl font-semibold">{item.name}</h3>
-                          <p className="text-sm text-white/60 mt-1">{item.description}</p>
+                          <h3 className="text-xl font-semibold">{item.title}</h3>
+                          <p className="text-sm text-white/60 mt-1">{item.description || "Live now—join the bidding."}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div className="rounded-2xl bg-white/5 p-3">
                             <p className="text-white/60">Current bid</p>
-                            <p className="text-2xl font-semibold">${item.currentBid.toLocaleString()}</p>
+                            <p className="text-2xl font-semibold">${(item.currentBid || item.startPrice).toLocaleString()}</p>
                           </div>
                           <div className="rounded-2xl bg-white/5 p-3">
-                            <p className="text-white/60">Reserve</p>
-                            <p className="text-2xl font-semibold">${item.reserve.toLocaleString()}</p>
+                            <p className="text-white/60">Start price</p>
+                            <p className="text-2xl font-semibold">${item.startPrice?.toLocaleString()}</p>
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center justify-between text-sm text-white/60">
-                            <span>{formatTime(item.endsInMinutes)}</span>
-                            <span>{item.location}</span>
+                            <span>{formatCountdown(item.endTime)}</span>
+                            <span className="capitalize">{item.auctionType || "normal"}</span>
                           </div>
                           <div className="mt-2 h-2 rounded-full bg-white/10">
                             <div
@@ -459,20 +410,18 @@ export default function OngoingAuctionsPage() {
                         </div>
                         <div className="flex flex-col gap-3 md:flex-row">
                           <button
-                            onClick={() => openModal(item)}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); openModal(item); }}
                             className="flex-1 rounded-2xl bg-white text-gray-900 py-3 font-semibold hover:bg-white/90"
                           >
                             Bid now
                           </button>
-                          <Link
-                            href={item.link}
-                            className="flex-1 rounded-2xl border border-white/30 py-3 text-center font-semibold hover:border-white"
-                          >
+                          <span className="flex-1 rounded-2xl border border-white/30 py-3 text-center font-semibold">
                             View lot
-                          </Link>
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -491,16 +440,16 @@ export default function OngoingAuctionsPage() {
             >
               ×
             </button>
-            <h2 className="text-2xl font-bold">Bid for {selectedItem.name}</h2>
-            <p className="text-sm text-white/60 mt-1">{selectedItem.location}</p>
+            <h2 className="text-2xl font-bold">Bid for {selectedItem.title}</h2>
+            <p className="text-sm text-white/60 mt-1">Ends {formatCountdown(selectedItem.endTime)}</p>
             <div className="mt-4 rounded-2xl bg-white/5 p-4">
               <div className="flex items-center justify-between text-sm text-white/60">
                 <span>Current bid</span>
-                <span>Reserve</span>
+                <span>Start</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-semibold mt-1">
-                <span>${selectedItem.currentBid.toLocaleString()}</span>
-                <span>${selectedItem.reserve.toLocaleString()}</span>
+                <span>${(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}</span>
+                <span>${selectedItem.startPrice?.toLocaleString()}</span>
               </div>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">
@@ -510,14 +459,14 @@ export default function OngoingAuctionsPage() {
               <input
                 id="bid-input"
                 type="number"
-                min={selectedItem.currentBid + 1}
+                min={(selectedItem.currentBid || selectedItem.startPrice) + 1}
                 value={bid}
                 onChange={(e) => setBid(e.target.value)}
                 className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 focus:border-white focus:outline-none"
-                placeholder={`Enter amount above $${selectedItem.currentBid.toLocaleString()}`}
+                placeholder={`Enter amount above $${(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}`}
                 autoFocus
               />
-              {error && <div className="text-red-400 text-sm">{error}</div>}
+              {bidError && <div className="text-red-400 text-sm">{bidError}</div>}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="submit"

@@ -1,354 +1,350 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  Layers,
+  LayoutDashboard,
+  Menu,
+  Settings,
+  ShieldCheck,
+  Users,
+  Wallet,
+  Zap,
+} from "lucide-react";
+
+const NAV_ITEMS = [
+  { label: "Overview", icon: LayoutDashboard, href: "/admin/dashboard" },
+  { label: "Auctions", icon: Layers, href: "/admin/auctions" },
+  { label: "Users", icon: Users, href: "/admin/users" },
+  { label: "Payouts", icon: Wallet, href: "/admin/orders" },
+  { label: "Reports", icon: BarChart3, href: "/admin/reports" },
+  { label: "Settings", icon: Settings, href: "/admin/settings" },
+  { label: "Security", icon: ShieldCheck, href: "/admin/security" },
+];
+
+const KPI_CARDS: Kpi[] = [
+  { label: "Active auctions", value: 126, delta: "+12%", accent: "emerald", icon: Activity },
+  { label: "GMV (24h)", value: "$842k", delta: "+6.1%", accent: "blue", icon: Wallet },
+  { label: "New users", value: 384, delta: "+9%", accent: "purple", icon: Users },
+  { label: "Disputes", value: 7, delta: "-2", accent: "amber", icon: ShieldCheck },
+];
+
+const LIVE_ACTIVITY = [
+  { time: "10:12", message: "New bid $1,250 on Tesla Model S", tag: "Live" },
+  { time: "10:08", message: "Payout initiated to seller_21 ($4,900)", tag: "Payout" },
+  { time: "09:58", message: "2FA challenge passed by admin_lee", tag: "Security" },
+  { time: "09:50", message: "New auction submitted: Vintage Omega", tag: "Review" },
+];
+
+const PENDING_APPROVALS = [
+  { id: "A-9921", title: "Vintage Omega Seamaster", seller: "watch_vault", type: "Auction" },
+  { id: "U-2204", title: "KYC verification", seller: "dealer_hub_21", type: "User" },
+  { id: "A-4810", title: "Gaming PC Bundle", seller: "pixel_parts", type: "Auction" },
+];
+
+const RECENT_TRANSACTIONS = [
+  { id: "TX-11820", item: "Rolex Submariner", amount: "$9,800", status: "Paid" },
+  { id: "TX-11819", item: "MacBook Pro", amount: "$2,450", status: "Pending" },
+  { id: "TX-11818", item: "Land Rover Evoque", amount: "$31,600", status: "Paid" },
+  { id: "TX-11817", item: "Art Print #441", amount: "$640", status: "Refund" },
+];
+
+const NOTIFICATIONS = [
+  { title: "Webhook latency warning", detail: "Payments endpoint 480ms", tone: "amber" },
+  { title: "Model retrain completed", detail: "Fraud v4.3 live", tone: "emerald" },
+  { title: "Chargeback raised", detail: "TX-11817 opened by bank", tone: "rose" },
+];
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    activeAuctions: 0,
-    usersOnline: 0,
-    revenue: 0,
-    aiAlerts: 9
-  });
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeAuctions, setActiveAuctions] = useState(0);
+
+  const goToCreateAuction = () => router.push("/seller/create-auction");
+  const goToInviteAdmin = () => router.push("/admin/users");
 
   useEffect(() => {
-    // Load real auction count from local storage
-    const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-    const deletedAuctionsRaw = window.localStorage.getItem("deleted_auctions");
-
-    let activeCount = 0;
-
-    if (savedAuctionsRaw) {
-      const savedAuctions = JSON.parse(savedAuctionsRaw);
-      const deletedIds = new Set(deletedAuctionsRaw ? JSON.parse(deletedAuctionsRaw) : []);
-      const validAuctions = savedAuctions.filter((a: any) => !deletedIds.has(a.id));
-      activeCount = validAuctions.length;
-    }
-
-    setStats({
-      activeAuctions: activeCount,
-      // Simulate dynamic users/revenue based on auctions for "aliveness"
-      usersOnline: 600 + Math.floor(Math.random() * 100),
-      revenue: 80000 + (activeCount * 120),
-      aiAlerts: 9
-    });
+    const loadStats = async () => {
+      try {
+        const { auctionAPI } = await import("../../lib/api");
+        const auctions = await auctionAPI.fetchAuctions();
+        setActiveAuctions(auctions.filter((a: any) => a.status === "active").length);
+      } catch (err) {
+        console.error("Failed to load admin stats:", err);
+      }
+    };
+    loadStats();
   }, []);
 
-  const handleDownloadReport = () => {
-    alert("Downloading platform report... (Simulation)");
-  };
+  const kpis = useMemo(() => {
+    return KPI_CARDS.map((card) =>
+      card.label === "Active auctions" ? { ...card, value: activeAuctions } : card
+    );
+  }, [activeAuctions]);
 
   return (
-    <main className="min-h-screen bg-[#040918] px-6 py-12 text-white text-xl lg:px-12 relative overflow-hidden">
-      {/* Ambient Background Glow */}
-      <div className="absolute top-[-20%] left-[-10%] h-[800px] w-[800px] rounded-full bg-indigo-500/10 blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] h-[800px] w-[800px] rounded-full bg-emerald-500/10 blur-[150px] pointer-events-none" />
+    <main className="relative flex min-h-screen items-start gap-6 bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
+      <aside
+        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"
+          }`}
+      >
+        <div className="flex items-center gap-2 pb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
+          {!isCollapsed && (
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-white/50">Admin</p>
+              <p className="text-sm font-semibold">Overview</p>
+            </div>
+          )}
+          <button
+            aria-label="Toggle sidebar"
+            onClick={() => setIsCollapsed((p) => !p)}
+            className="ml-auto rounded-xl border border-white/10 bg-white/5 p-2 text-white hover:border-emerald-400/60"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        </div>
 
-      <div className="mx-auto flex max-w-full flex-col gap-8 relative z-10">
-        {/* Header */}
-        <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">
-              Admin dashboard
-            </p>
-            <h1 className="mt-1 text-4xl font-bold tracking-tight text-white md:text-5xl">
-              Platform Overview
-            </h1>
-            <p className="mt-2 max-w-3xl text-lg text-white/60">
-              Real-time monitoring of auctions, users, AI fraud checks, and system health.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleDownloadReport}
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-white/10 transition"
-            >
-              Download report
+        <nav className="space-y-3 overflow-y-auto pb-4">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = pathname?.startsWith(item.href);
+            return (
+              <Link key={item.href} href={item.href}>
+                <div
+                  className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-sm font-semibold transition ${active
+                    ? "border-emerald-400/70 bg-emerald-500/10 text-white shadow-[0_10px_30px_rgba(16,185,129,0.15)]"
+                    : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
+                    }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {!isCollapsed && (
+          <div className="mt-auto space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-xs uppercase tracking-wide text-white/60">Quick actions</p>
+            <button onClick={goToCreateAuction} className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-black hover:bg-emerald-400">
+              Create auction
             </button>
-            <Link
-              href="/admin/settings"
-              className="rounded-xl border border-transparent bg-emerald-500 px-5 py-2.5 text-base font-bold text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition"
-            >
-              Go to settings
-            </Link>
+            <button onClick={goToInviteAdmin} className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/60">
+              Invite admin
+            </button>
           </div>
-        </header>
+        )}
+      </aside>
 
-        {/* System overview */}
-        <section aria-label="System overview" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">System Overview</h2>
-            <p className="text-sm text-slate-400">Today’s snapshot</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 backdrop-blur-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">
-                Active auctions
-              </p>
-              <p className="mt-2 text-3xl font-bold text-white">{stats.activeAuctions}</p>
-              <p className="text-sm text-emerald-400/80">Live Now</p>
+      <section className="flex-1 w-full overflow-x-hidden">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-2 py-4 sm:px-4 lg:px-6">
+          <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">Overview</p>
+              <h1 className="mt-1 text-4xl font-bold tracking-tight">Admin Dashboard</h1>
+              <p className="mt-2 max-w-3xl text-sm text-white/60">KPI pulse, analytics, live activity, approvals, and quick controls in one responsive view.</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 backdrop-blur-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-400">
-                Users online
-              </p>
-              <p className="mt-2 text-3xl font-bold text-white">{stats.usersOnline}</p>
-              <p className="text-sm text-slate-400">Currently browsing</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:border-emerald-400/60">
+                <Bell className="h-4 w-4" /> Notifications
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 hover:bg-emerald-400">
+                <Zap className="h-4 w-4" /> Quick Action
+              </button>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-5 backdrop-blur-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-purple-400">
-                Est. Revenue
-              </p>
-              <p className="mt-2 text-3xl font-bold text-white">${stats.revenue.toLocaleString()}</p>
-              <p className="text-sm text-slate-400">Daily Volume</p>
-            </div>
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-6 py-5 backdrop-blur-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-amber-400">
-                AI alerts (24h)
-              </p>
-              <p className="mt-2 text-3xl font-bold text-white">{stats.aiAlerts}</p>
-              <p className="text-sm text-amber-400/80">Requires Attention</p>
-            </div>
-          </div>
-        </section>
+          </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1.4fr)]">
-          {/* Left column: Risk & auctions */}
-          <section className="space-y-6">
-            {/* AI fraud detection */}
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3 mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-white">AI Fraud Detection</h2>
-                  <p className="text-sm text-slate-400">
-                    High-risk activity flagged by the model.
-                  </p>
-                </div>
-                <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-3 py-1 text-sm font-semibold text-rose-400">
-                  6 listings, 3 users
-                </span>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 mb-6">
-                <div className="rounded-xl border border-white/5 bg-white/5 px-5 py-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Flagged listings
-                  </p>
-                  <p className="mt-1 text-lg font-bold text-white">
-                    6 under review
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Price jumps, reused photos.
-                  </p>
-                </div>
-                <div className="rounded-xl border border-white/5 bg-white/5 px-5 py-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Suspicious bidding
-                  </p>
-                  <p className="mt-1 text-lg font-bold text-white">
-                    3 bidder groups
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Coordinated bidding patterns.
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-xl border border-white/10">
-                <div className="grid grid-cols-[1.5fr_1.2fr_auto] items-center gap-4 border-b border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300">
-                  <span>Listing</span>
-                  <span>Reason</span>
-                  <span className="text-right">Action</span>
-                </div>
-                <ul className="divide-y divide-white/5">
-                  <li className="grid grid-cols-[1.5fr_1.2fr_auto] items-center gap-4 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#A-4821 · Tesla Model S</span>
-                    <span className="text-sm text-rose-300">Price spike vs recent</span>
-                    <button className="justify-self-end rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition">
-                      Review
-                    </button>
-                  </li>
-                  <li className="grid grid-cols-[1.5fr_1.2fr_auto] items-center gap-4 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#E-9930 · iPhone 15 Pro</span>
-                    <span className="text-sm text-amber-300">Linked to banned IP</span>
-                    <button className="justify-self-end rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition">
-                      Check user
-                    </button>
-                  </li>
-                  <li className="grid grid-cols-[1.5fr_1.2fr_auto] items-center gap-4 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#W-7312 · Rolex Sub</span>
-                    <span className="text-sm text-rose-300">Reused photos</span>
-                    <button className="justify-self-end rounded-lg bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 transition">
-                      Hold
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Auction moderation */}
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3 mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Auction Moderation</h2>
-                  <p className="text-sm text-slate-400">
-                    Flagged auctions needing review.
-                  </p>
-                </div>
-                <span className="rounded-full bg-slate-800 border border-slate-700 px-3 py-1 text-sm font-semibold text-slate-300">
-                  4 waiting
-                </span>
-              </div>
-              <div className="overflow-hidden rounded-xl border border-white/10 text-sm">
-                <div className="grid grid-cols-[1.5fr_1fr_1.2fr_auto] items-center gap-3 border-b border-white/10 bg-white/5 px-4 py-3 font-semibold text-slate-300">
-                  <span>Auction</span>
-                  <span>Reporter</span>
-                  <span>Reason</span>
-                  <span className="text-right">Action</span>
-                </div>
-                <div className="divide-y divide-white/5">
-                  <div className="grid grid-cols-[1.5fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#VEH-220 · BMW X5</span>
-                    <span className="text-slate-400">user_184</span>
-                    <span className="text-slate-300">Misleading desc</span>
-                    <button className="justify-self-end rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition">
-                      Details
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-[1.5fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#ELC-441 · QLED TV</span>
-                    <span className="text-slate-400">creator_92</span>
-                    <span className="text-slate-300">Shipping issue</span>
-                    <button className="justify-self-end rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition">
-                      Resolve
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-[1.5fr_1fr_1.2fr_auto] items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 transition">
-                    <span className="truncate text-white font-medium">#ART-318 · Painting</span>
-                    <span className="text-slate-400">gallery_ad</span>
-                    <span className="text-rose-300">IP Rights</span>
-                    <button className="justify-self-end rounded-lg bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 transition">
-                      Escalate
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <section className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {kpis.map((card) => (
+              <KpiCard key={card.label} card={card} />
+            ))}
           </section>
 
-          {/* Right column: Users, AI models, logs */}
-          <aside className="space-y-6">
-            {/* User management */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">User Management</h2>
-                  <p className="text-sm text-slate-400">
-                    Quick actions for flagged users.
-                  </p>
+          <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="space-y-6 w-full">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">Revenue & Traffic</h2>
+                  <span className="text-xs text-white/60">Last 7 days</span>
                 </div>
-                <span className="rounded-full bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-400 uppercase tracking-wide">
-                  3 High Risk
-                </span>
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <SparkChart title="Revenue" values={[42, 68, 61, 74, 90, 85, 102]} accent="emerald" />
+                  <SparkChart title="Sessions" values={[320, 344, 331, 362, 410, 398, 455]} accent="blue" />
+                </div>
               </div>
-              <ul className="space-y-3">
-                <li className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/5 p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-base font-bold text-white">user_842</p>
-                      <p className="text-xs text-rose-300 mt-1">Multiple chargebacks, 5 flags</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="rounded-lg bg-rose-500 p-2 text-white hover:bg-rose-600 transition" title="Ban User">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                      </button>
-                      <button className="rounded-lg bg-amber-500 p-2 text-white hover:bg-amber-600 transition" title="Suspend User">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      </button>
-                    </div>
-                  </div>
-                </li>
-                <li className="flex flex-col gap-3 rounded-xl border border-white/5 bg-white/5 p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-base font-bold text-white">dealer_hub_21</p>
-                      <p className="text-xs text-amber-300 mt-1">High volume, 2 open disputes</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white hover:bg-white/20 transition">Review</button>
-                    </div>
-                  </div>
-                </li>
-              </ul>
-            </section>
 
-            {/* AI model monitoring */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <h2 className="text-xl font-bold text-white">AI Monitoring</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                Live status of fraud & pricing models.
-              </p>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-white/5">
-                  <div>
-                    <p className="text-sm font-bold text-white">Fraud Detection</p>
-                    <p className="text-xs text-slate-400">92% precision</p>
-                  </div>
-                  <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Healthy
-                  </span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-white/5 p-3 border border-white/5">
-                  <div>
-                    <p className="text-sm font-bold text-white">Price Predictor</p>
-                    <p className="text-xs text-slate-400">MAPE 6.4%</p>
-                  </div>
-                  <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    Watch
-                  </span>
-                </div>
-              </div>
-            </section>
+              <div className="grid w-full gap-4 lg:grid-cols-2">
+                <CardPanel title="Live Activity" actionLabel="View stream">
+                  <ul className="space-y-3 text-sm">
+                    {LIVE_ACTIVITY.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <span className="text-xs text-white/50 w-12">{item.time}</span>
+                        <div className="flex-1 text-white/90">{item.message}</div>
+                        <Badge tone="emerald" label={item.tag} />
+                      </li>
+                    ))}
+                  </ul>
+                </CardPanel>
 
-            {/* Logs & alerts */}
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">Live Logs</h2>
-                </div>
-                <button className="text-xs font-bold text-emerald-400 hover:text-emerald-300">
-                  View full
-                </button>
+                <CardPanel title="Pending Approvals" actionLabel="Open queue">
+                  <ul className="space-y-3 text-sm">
+                    {PENDING_APPROVALS.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">{p.id} · {p.title}</p>
+                          <p className="text-xs text-white/60">Seller: {p.seller}</p>
+                        </div>
+                        <Badge tone="amber" label={p.type} />
+                        <button className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20">Review</button>
+                      </li>
+                    ))}
+                  </ul>
+                </CardPanel>
               </div>
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
-                  <div>
-                    <p className="text-sm font-medium text-white">Fraud spike in Vehicles</p>
-                    <p className="text-xs text-slate-500">5 min ago · cluster F-204</p>
+
+              <CardPanel title="Recent Transactions" actionLabel="View all">
+                <div className="overflow-hidden rounded-2xl border border-white/10">
+                  <div className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/60">
+                    <span>Txn</span>
+                    <span>Item</span>
+                    <span>Amount</span>
+                    <span className="text-right">Status</span>
                   </div>
-                </li>
-                <li className="flex gap-3">
-                  <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                  <div>
-                    <p className="text-sm font-medium text-white">Webhook delay warning</p>
-                    <p className="text-xs text-slate-500">18 min ago · /payments</p>
+                  <div className="divide-y divide-white/5">
+                    {RECENT_TRANSACTIONS.map((tx) => (
+                      <div key={tx.id} className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center px-4 py-3 text-sm hover:bg-white/5">
+                        <span className="font-semibold text-white">{tx.id}</span>
+                        <span className="text-white/80">{tx.item}</span>
+                        <span className="text-white/80">{tx.amount}</span>
+                        <div className="flex justify-end">
+                          <Badge tone={tx.status === "Paid" ? "emerald" : tx.status === "Pending" ? "amber" : "rose"} label={tx.status} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </li>
-                <li className="flex gap-3">
-                  <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-                  <div>
-                    <p className="text-sm font-medium text-white">Model retrain complete</p>
-                    <p className="text-xs text-slate-500">42 min ago · v4.3 deployed</p>
-                  </div>
-                </li>
-              </ul>
-            </section>
-          </aside>
+                </div>
+              </CardPanel>
+            </div>
+
+            <aside className="space-y-6 w-full">
+              <CardPanel title="Notifications" actionLabel="Manage">
+                <div className="space-y-3 text-sm">
+                  {NOTIFICATIONS.map((n, idx) => (
+                    <div key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                      <Bell className={`mt-0.5 h-4 w-4 ${toneIcon(n.tone)}`} />
+                      <div>
+                        <p className="font-semibold text-white">{n.title}</p>
+                        <p className="text-xs text-white/60">{n.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardPanel>
+
+              <CardPanel title="Quick Actions" actionLabel="All actions">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ActionButton label="Create auction" icon={Layers} onClick={goToCreateAuction} />
+                  <ActionButton label="Issue payout" icon={Wallet} />
+                  <ActionButton label="Send notice" icon={Bell} />
+                  <ActionButton label="Export report" icon={BarChart3} />
+                </div>
+              </CardPanel>
+            </aside>
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   );
+}
+
+type Kpi = { label: string; value: string | number; delta: string; accent: "emerald" | "blue" | "purple" | "amber"; icon: React.ComponentType<{ className?: string }> };
+
+function KpiCard({ card }: { card: Kpi }) {
+  const tones: Record<string, { bg: string; text: string }> = {
+    emerald: { bg: "from-emerald-500/25", text: "text-emerald-200" },
+    blue: { bg: "from-blue-500/25", text: "text-blue-200" },
+    purple: { bg: "from-purple-500/25", text: "text-purple-200" },
+    amber: { bg: "from-amber-500/25", text: "text-amber-200" },
+  };
+  const ToneIcon = card.icon;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-4 ring-1 ring-white/5">
+      <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${tones[card.accent].bg}`}>
+        <ToneIcon className={`h-5 w-5 ${tones[card.accent].text}`} />
+      </div>
+      <p className="mt-3 text-xs uppercase tracking-wide text-white/60">{card.label}</p>
+      <p className="mt-1 text-2xl font-bold text-white">{card.value}</p>
+      <p className="text-xs font-semibold text-emerald-300">{card.delta}</p>
+    </div>
+  );
+}
+
+function SparkChart({ title, values, accent }: { title: string; values: number[]; accent: "emerald" | "blue" }) {
+  const max = Math.max(...values);
+  const tone = accent === "emerald" ? "bg-emerald-400" : "bg-blue-400";
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="flex items-center justify-between text-sm text-white/80">
+        <span>{title}</span>
+        <span className="text-xs text-white/50">Sparkline</span>
+      </div>
+      <div className="mt-3 flex items-end gap-2">
+        {values.map((v, idx) => (
+          <div
+            key={idx}
+            className={`w-full rounded-t-lg ${tone}`}
+            style={{ height: `${(v / max) * 120 + 10}px` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CardPanel({ title, actionLabel, children }: { title: string; actionLabel?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-bold text-white">{title}</h3>
+        {actionLabel && <button className="text-xs font-semibold text-emerald-300 hover:text-emerald-200">{actionLabel}</button>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose"; label: string }) {
+  const colors: Record<typeof tone, string> = {
+    emerald: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+    amber: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+    rose: "text-rose-300 bg-rose-500/10 border-rose-500/30",
+  };
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${colors[tone]}`}>{label}</span>;
+}
+
+function ActionButton({ label, icon: Icon, onClick }: { label: string; icon: React.ComponentType<{ className?: string }>; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-white hover:border-emerald-400/60"
+    >
+      <Icon className="h-4 w-4 text-emerald-300" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function toneIcon(tone: string) {
+  if (tone === "emerald") return "text-emerald-300";
+  if (tone === "amber") return "text-amber-300";
+  if (tone === "rose") return "text-rose-300";
+  return "text-white";
 }

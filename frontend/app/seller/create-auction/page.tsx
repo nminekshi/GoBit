@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { categoryFields } from "../../lib/categoryFields";
+import { AuctionType, categoryNameToSlug } from "../../lib/api";
 
 export default function CreateAuctionPage() {
     const router = useRouter();
@@ -12,8 +14,29 @@ export default function CreateAuctionPage() {
         description: "",
         startPrice: "",
     });
+    const [startDateTime, setStartDateTime] = useState(() => {
+        const now = new Date();
+        // round to nearest minute for nicer UI
+        now.setSeconds(0, 0);
+        return now.toISOString().slice(0, 16);
+    });
+    const [auctionType, setAuctionType] = useState<AuctionType>("normal");
+    const [liveSettings, setLiveSettings] = useState({
+        liveDurationSeconds: 60,
+        liveAutoExtendSeconds: 15,
+        liveExtendThresholdSeconds: 10,
+    });
+    const [details, setDetails] = useState<Record<string, string>>({});
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Get fields based on selected category
+    const categorySlug = categoryNameToSlug(formData.category);
+    const currentCategoryFields = categoryFields[categorySlug] || [];
+
+    const liveEnabled = useMemo(() =>
+        ["vehicles", "watches", "art", "electronics"].includes(categorySlug)
+    , [categorySlug]);
 
     // Handle file selection
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,36 +55,39 @@ export default function CreateAuctionPage() {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Mimic API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        const newAuction = {
-            id: Math.random().toString(36).substr(2, 9),
-            title: formData.title,
-            category: formData.category,
-            description: formData.description || "No description provided.",
-            startPrice: Number(formData.startPrice),
-            currentBid: Number(formData.startPrice),
-            status: "active",
-            startTime: new Date(),
-            endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
-            bidsCount: 0,
-            imageUrl: previewUrl || "https://images.unsplash.com/photo-1550259114-ad7188f0a967?auto=format&fit=crop&q=80&w=260&h=200",
-            views: 0,
-            createdAt: new Date(),
-        };
-
-        // Save to LocalStorage
         try {
-            const savedAuctionsRaw = window.localStorage.getItem("global_auctions");
-            const savedAuctions = savedAuctionsRaw ? JSON.parse(savedAuctionsRaw) : [];
-            const newGlobalAuctions = [newAuction, ...savedAuctions];
-            window.localStorage.setItem("global_auctions", JSON.stringify(newGlobalAuctions));
+            const { auctionAPI } = await import("../../lib/api");
+
+            // Create auction via API
+                const payload = {
+                title: formData.title,
+                description: formData.description || "No description provided.",
+                category: categorySlug,
+                startPrice: Number(formData.startPrice),
+                imageUrl: previewUrl || undefined,
+                    startTime: new Date(startDateTime),
+                    endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default 7 days
+                    details: details,
+                    auctionType: auctionType,
+                    ...(auctionType === "live"
+                        ? {
+                            liveDurationSeconds: liveSettings.liveDurationSeconds,
+                            liveAutoExtendSeconds: liveSettings.liveAutoExtendSeconds,
+                            liveExtendThresholdSeconds: liveSettings.liveExtendThresholdSeconds,
+                            liveStartTime: new Date(startDateTime),
+                        }
+                        : {}),
+            };
+            console.log("DEBUG: Creating auction with payload:", payload);
+            console.log("DEBUG: Current Details State:", details);
+
+            const newAuction = await auctionAPI.createAuction(payload);
 
             alert("Auction item added successfully!");
             router.push("/seller/dashboard");
-        } catch (err) {
-            console.error("Failed to save auction locally:", err);
+        } catch (err: any) {
+            console.error("Failed to create auction:", err);
+            alert(err.message || "Failed to create auction. Please try again.");
             setIsSubmitting(false);
         }
     };
@@ -109,7 +135,15 @@ export default function CreateAuctionPage() {
                             </label>
                             <select
                                 value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                onChange={(e) => {
+                                    setFormData({ ...formData, category: e.target.value });
+                                    setDetails({}); // Reset details on category change
+                                    // reset to normal when switching to a non-live category
+                                    const nextSlug = categoryNameToSlug(e.target.value);
+                                    if (!["vehicles", "watches", "art", "electronics"].includes(nextSlug)) {
+                                        setAuctionType("normal");
+                                    }
+                                }}
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition appearance-none [&>option]:bg-[#0B1121]"
                             >
                                 <option value="Watches">Watches</option>
@@ -120,6 +154,104 @@ export default function CreateAuctionPage() {
                                 <option value="Computers">Computers</option>
                             </select>
                         </div>
+
+                        {liveEnabled && (
+                            <div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                                <label className="block text-sm font-semibold text-emerald-200">Auction Type</label>
+                                <div className="flex flex-wrap gap-3">
+                                    {(["normal", "live"] as AuctionType[]).map((type) => (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => setAuctionType(type)}
+                                            className={`rounded-xl px-4 py-2 text-sm font-semibold border transition ${auctionType === type
+                                                ? "border-emerald-400 bg-emerald-400/10 text-emerald-100"
+                                                : "border-white/10 bg-white/5 text-white/70 hover:border-white/30"}`}
+                                        >
+                                            {type === "live" ? "Live Auction (60s)" : "Normal Auction"}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {auctionType === "live" && (
+                                    <div className="grid gap-4 sm:grid-cols-3">
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Countdown (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={30}
+                                                value={liveSettings.liveDurationSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveDurationSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Auto-extend by (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={5}
+                                                value={liveSettings.liveAutoExtendSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveAutoExtendSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-semibold text-slate-200">Extend when under (seconds)</label>
+                                            <input
+                                                type="number"
+                                                min={5}
+                                                value={liveSettings.liveExtendThresholdSeconds}
+                                                onChange={(e) => setLiveSettings({ ...liveSettings, liveExtendThresholdSeconds: Number(e.target.value) })}
+                                                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Dynamic Category Fields */}
+                        {currentCategoryFields.length > 0 && (
+                            <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-6">
+                                <h3 className="text-lg font-semibold text-white">Product Overview</h3>
+                                <div className="grid gap-6 sm:grid-cols-2">
+                                    {currentCategoryFields.map((field) => (
+                                        <div key={field.key} className="space-y-2">
+                                            <label className="block text-sm font-medium text-slate-300">
+                                                {field.label}
+                                            </label>
+                                            {field.type === "select" ? (
+                                                <select
+                                                    value={details[field.key] || ""}
+                                                    onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition [&>option]:bg-[#0B1121]"
+                                                >
+                                                    <option value="">Select {field.label}</option>
+                                                    {field.options?.map((opt) => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="relative">
+                                                    <input
+                                                        type={field.type}
+                                                        value={details[field.key] || ""}
+                                                        onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
+                                                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition"
+                                                        placeholder={field.placeholder}
+                                                    />
+                                                    {field.suffix && (
+                                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                                                            {field.suffix}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Description */}
                         <div className="space-y-2">
@@ -133,6 +265,20 @@ export default function CreateAuctionPage() {
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition resize-none"
                                 placeholder="Luxury SUV with 62,000 miles. Panoramic sunroof, heated seats, and navigation..."
                             />
+                        </div>
+
+                        {/* Start Date & Time */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-slate-300">
+                                Start Date &amp; Time <span className="text-rose-400">*</span>
+                            </label>
+                            <input
+                                type="datetime-local"
+                                value={startDateTime}
+                                onChange={(e) => setStartDateTime(e.target.value)}
+                                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition"
+                            />
+                            <p className="text-xs text-white/60">Bidding opens at this time for both Normal and Live auctions.</p>
                         </div>
 
                         {/* Starting Price */}
@@ -161,8 +307,8 @@ export default function CreateAuctionPage() {
 
                             <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/10 bg-white/5 py-12 text-center transition hover:border-emerald-500/50 hover:bg-white/10">
                                 {previewUrl ? (
-                                    <div className="relative w-64 h-48 overflow-hidden rounded-lg shadow-md group">
-                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <div className="relative w-full max-w-xl aspect-video overflow-hidden rounded-xl shadow-2xl border border-white/10 bg-black/40 group">
+                                        <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                             <button
                                                 type="button"
