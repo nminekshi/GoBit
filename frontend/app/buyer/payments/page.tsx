@@ -16,8 +16,10 @@ type Transaction = {
 type PaymentMethod = {
   id: string;
   brand: string;
+  last4: string;
   expires: string;
   tag?: string;
+  isDefault?: boolean;
 };
 
 type WalletState = {
@@ -36,8 +38,10 @@ export default function BuyerPaymentsPage() {
   const [wallet, setWallet] = useState<WalletState>({ balance: 0, holds: 0, lastSync: "", transactions: [], paymentMethods: [] });
   const [depositAmount, setDepositAmount] = useState("");
   const [cardBrand, setCardBrand] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardTag, setCardTag] = useState("Primary");
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -60,7 +64,17 @@ export default function BuyerPaymentsPage() {
       const mine = parsedWallets?.[id] as WalletState | undefined;
 
       if (mine) {
-        setWallet(mine);
+        const coerced = {
+          balance: mine.balance || 0,
+          holds: mine.holds || 0,
+          lastSync: mine.lastSync || new Date().toISOString(),
+          transactions: Array.isArray(mine.transactions) ? mine.transactions : [],
+          paymentMethods: Array.isArray(mine.paymentMethods)
+            ? mine.paymentMethods.map((m) => ({ ...m, last4: (m as any).last4 || "0000", isDefault: (m as any).isDefault || false }))
+            : [],
+        } as WalletState;
+        setWallet(coerced);
+        setSelectedCardId(coerced.paymentMethods.find((m) => m.isDefault)?.id || coerced.paymentMethods[0]?.id || null);
       } else {
         const fresh: WalletState = {
           balance: 0,
@@ -101,9 +115,14 @@ export default function BuyerPaymentsPage() {
       alert("Enter a valid deposit amount.");
       return;
     }
+    const activeCard = wallet.paymentMethods.find((m) => m.id === selectedCardId) || wallet.paymentMethods[0];
+    if (!activeCard) {
+      alert("Add a card to deposit.");
+      return;
+    }
     const tx: Transaction = {
       id: `TX-${Date.now()}`,
-      label: "Deposit",
+      label: `Deposit • ${activeCard.brand} •••• ${activeCard.last4}`,
       amount,
       status: "Settled",
       time: new Date().toISOString(),
@@ -119,15 +138,18 @@ export default function BuyerPaymentsPage() {
   };
 
   const handleAddCard = () => {
-    if (!cardBrand.trim() || !cardExpiry.trim()) {
-      alert("Add card brand and expiry.");
+    if (!cardBrand.trim() || !cardExpiry.trim() || !cardNumber.trim()) {
+      alert("Add card brand, number, and expiry.");
       return;
     }
+    const last4 = cardNumber.replace(/\D/g, "").slice(-4) || "0000";
     const method: PaymentMethod = {
       id: `PM-${Date.now()}`,
       brand: cardBrand.trim(),
+      last4,
       expires: cardExpiry.trim(),
       tag: cardTag.trim() || "Primary",
+      isDefault: wallet.paymentMethods.length === 0,
     };
     const next: WalletState = {
       ...wallet,
@@ -135,7 +157,9 @@ export default function BuyerPaymentsPage() {
       lastSync: new Date().toISOString(),
     };
     persistWallet(next);
+    setSelectedCardId(method.id);
     setCardBrand("");
+    setCardNumber("");
     setCardExpiry("");
     setCardTag("Secondary");
   };
@@ -168,20 +192,29 @@ export default function BuyerPaymentsPage() {
                   <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/70">No cards saved yet.</div>
                 )}
                 {wallet.paymentMethods.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-white">{m.brand}</p>
-                      <p className="text-xs text-white/60">Expires {m.expires}</p>
+                  <label key={m.id} className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${selectedCardId === m.id ? "border-emerald-400/70 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}>
+                    <div className="flex items-center gap-3">
+                      <input type="radio" checked={selectedCardId === m.id} onChange={() => setSelectedCardId(m.id)} className="h-4 w-4" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-white">{m.brand} •••• {m.last4}</p>
+                        <p className="text-xs text-white/60">Expires {m.expires}</p>
+                      </div>
                     </div>
                     {m.tag && <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">{m.tag}</span>}
-                  </div>
+                  </label>
                 ))}
                 <div className="grid gap-2 rounded-2xl border border-dashed border-emerald-400/50 bg-black/10 p-4 text-sm text-white/80">
-                  <div className="grid gap-2 sm:grid-cols-3 sm:items-center">
+                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center">
                     <input
                       value={cardBrand}
                       onChange={(e) => setCardBrand(e.target.value)}
-                      placeholder="Card brand and last 4 (e.g., Visa •••• 4242)"
+                      placeholder="Card brand (e.g., Visa)"
+                      className="sm:col-span-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-emerald-400 focus:outline-none"
+                    />
+                    <input
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      placeholder="Card number"
                       className="sm:col-span-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-emerald-400 focus:outline-none"
                     />
                     <input
@@ -243,6 +276,18 @@ export default function BuyerPaymentsPage() {
                     placeholder="Amount (USD)"
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-emerald-400 focus:outline-none sm:max-w-[200px]"
                   />
+                  <select
+                    value={selectedCardId || ""}
+                    onChange={(e) => setSelectedCardId(e.target.value)}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-emerald-400 focus:outline-none sm:max-w-[220px]"
+                  >
+                    <option value="" className="bg-[#0b1428]">Select card</option>
+                    {wallet.paymentMethods.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#0b1428]">
+                        {m.brand} •••• {m.last4}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     onClick={handleDeposit}
                     className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"

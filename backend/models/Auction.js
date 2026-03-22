@@ -36,6 +36,29 @@ const auctionSchema = new mongoose.Schema(
             enum: ["active", "completed", "cancelled"],
             default: "active",
         },
+        auctionType: {
+            type: String,
+            enum: ["normal", "live"],
+            default: "normal",
+        },
+        liveDurationSeconds: {
+            type: Number,
+            default: 60,
+        },
+        liveAutoExtendSeconds: {
+            type: Number,
+            default: 15,
+        },
+        liveExtendThresholdSeconds: {
+            type: Number,
+            default: 10,
+        },
+        liveStartTime: {
+            type: Date,
+        },
+        liveEndedAt: {
+            type: Date,
+        },
         startTime: {
             type: Date,
             default: Date.now,
@@ -78,6 +101,48 @@ const auctionSchema = new mongoose.Schema(
                 },
             },
         ],
+        winnerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
+        winnerNotified: {
+            type: Boolean,
+            default: false,
+        },
+        paymentNotified: {
+            type: Boolean,
+            default: false,
+        },
+        saleStatus: {
+            type: String,
+            enum: ["pending", "claim-initiated", "paid"],
+            default: "pending",
+        },
+        paymentOrderId: {
+            type: String,
+        },
+        winnerClaimedAt: {
+            type: Date,
+        },
+        winnerPaidAt: {
+            type: Date,
+        },
+        lastBidAt: {
+            type: Date,
+        },
+        details: {
+            type: Map,
+            of: String,
+            default: {},
+        },
+        commission: {
+            type: Number,
+            default: 0,
+        },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

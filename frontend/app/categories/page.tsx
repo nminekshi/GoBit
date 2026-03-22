@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { auctionAPI, categorySlugToName } from "../lib/api";
 
-type Category = {
+type CategoryAggregate = {
   name: string;
   slug: string;
   description: string;
   heroStat: string;
   lots: number;
-  avgSavings: string;
-  turnTime: string;
+  avgUplift: string;
+  avgDuration: string;
   tags: string[];
   status: "hot" | "steady" | "new";
   trend: string;
@@ -25,100 +26,56 @@ const tagFilters = [
   "Collectibles",
 ];
 
-const categoryShowcase: Category[] = [
-  {
-    name: "Watches",
-    slug: "watches",
-    description: "Swiss complications, indie makers, and auction-only releases with concierge certification included.",
-    heroStat: "Top hammer $420K",
-    lots: 184,
-    avgSavings: "18%",
-    turnTime: "4.5h",
-    tags: ["Luxury", "Collectibles"],
-    status: "hot",
-    trend: "+12% demand",
-  },
-  {
-    name: "Vehicles",
-    slug: "vehicles",
-    description: "Restomod builds, track-ready exotics, and enterprise fleet liquidations updated twice daily.",
-    heroStat: "Cap rate 9.4%",
-    lots: 96,
-    avgSavings: "27%",
-    turnTime: "6.1h",
-    tags: ["Fleet", "Investment"],
-    status: "steady",
-    trend: "+4% bidders",
-  },
-  {
-    name: "Electronics",
-    slug: "electronics",
-    description: "Cinema cameras, mastering decks, and audiophile runs sourced from verified production houses.",
-    heroStat: "Bundles under $9K",
-    lots: 142,
-    avgSavings: "33%",
-    turnTime: "2.9h",
-    tags: ["Tech"],
-    status: "hot",
-    trend: "+19% watchlists",
-  },
-  {
-    name: "Real Estate",
-    slug: "realestate",
-    description: "Prime hospitality, logistics hubs, and coastal residential pads with instant underwriting packs.",
-    heroStat: "Yield up to 12%",
-    lots: 41,
-    avgSavings: "11%",
-    turnTime: "18h",
-    tags: ["Investment"],
-    status: "steady",
-    trend: "Stable demand",
-  },
-  {
-    name: "Art & Editions",
-    slug: "art",
-    description: "Museum-provenanced works, signed editions, and primary drops verified on-chain.",
-    heroStat: "200+ curators",
-    lots: 122,
-    avgSavings: "25%",
-    turnTime: "5.2h",
-    tags: ["Collectibles", "Luxury"],
-    status: "new",
-    trend: "+6% consignors",
-  },
-  {
-    name: "Computers",
-    slug: "computers",
-    description: "GPU clusters, edge-ready servers, and XR dev kits available for instant redeployment.",
-    heroStat: "Overclocked lots",
-    lots: 88,
-    avgSavings: "37%",
-    turnTime: "3.1h",
-    tags: ["Tech", "Investment"],
-    status: "hot",
-    trend: "+15% funding",
-  },
-];
+const categoryTags: Record<string, string[]> = {
+  watches: ["Luxury", "Collectibles"],
+  vehicles: ["Fleet", "Investment"],
+  electronics: ["Tech"],
+  realestate: ["Investment"],
+  art: ["Collectibles", "Luxury"],
+  computers: ["Tech", "Investment"],
+};
 
-const quickCategories = categoryShowcase.map((category) => ({
-  name: category.name,
-  slug: category.slug,
-  href: `/categories/${category.slug}`,
-}));
+const describeCategory = (slug: string) => {
+  switch (slug) {
+    case "watches":
+      return "Certified timepieces and collector releases.";
+    case "vehicles":
+      return "Retail and fleet vehicles with transparent history.";
+    case "electronics":
+      return "Pro audio, video, and consumer tech.";
+    case "realestate":
+      return "Residential and commercial properties.";
+    case "art":
+      return "Original works and editions from verified sellers.";
+    case "computers":
+      return "Laptops, workstations, and compute gear.";
+    default:
+      return "Active lots in this category.";
+  }
+};
 
 export default function CategoriesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState("All");
   const [sortOption, setSortOption] = useState("activity");
+  const [categories, setCategories] = useState<CategoryAggregate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const quickCategories = useMemo(
+    () => categories.map((category) => ({
+      name: category.name,
+      slug: category.slug,
+      href: `/categories/${category.slug}`,
+    })),
+    [categories]
+  );
 
   const filteredCategories = useMemo(() => {
-    return categoryShowcase
+    return categories
       .filter((category) => {
-        const matchesSearch = category.name
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-        const matchesTag =
-          selectedTag === "All" || category.tags.includes(selectedTag);
+        const matchesSearch = category.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesTag = selectedTag === "All" || category.tags.includes(selectedTag);
         return matchesSearch && matchesTag;
       })
       .sort((a, b) => {
@@ -126,11 +83,97 @@ export default function CategoriesPage() {
           return b.lots - a.lots;
         }
         if (sortOption === "savings") {
-          return parseInt(b.avgSavings) - parseInt(a.avgSavings);
+          return parseInt(b.avgUplift) - parseInt(a.avgUplift);
         }
         return b.trend.localeCompare(a.trend);
       });
-  }, [searchTerm, selectedTag, sortOption]);
+  }, [categories, searchTerm, selectedTag, sortOption]);
+
+  const fetchCategories = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await auctionAPI.fetchAuctions();
+      const now = Date.now();
+      const active = (data || []).filter((a) => {
+        const start = a.startTime ? new Date(a.startTime).getTime() : now;
+        const end = a.endTime ? new Date(a.endTime).getTime() : 0;
+        return start <= now && end > now;
+      });
+
+      const grouped: Record<string, any[]> = {};
+      active.forEach((a: any) => {
+        const slug = a.category;
+        if (!grouped[slug]) grouped[slug] = [];
+        grouped[slug].push(a);
+      });
+
+      const aggregates: CategoryAggregate[] = Object.entries(grouped).map(([slug, items]) => {
+        const name = categorySlugToName(slug) || slug;
+        const lots = items.length;
+        const avgUpliftNum = Math.round(
+          items.reduce((sum: number, a: any) => {
+            const start = a.startPrice || 1;
+            const current = a.currentBid || start;
+            const uplift = ((current - start) / start) * 100;
+            return sum + uplift;
+          }, 0) / Math.max(1, lots)
+        );
+        const avgDurationMs = items.reduce((sum: number, a: any) => {
+          const start = a.startTime ? new Date(a.startTime).getTime() : now;
+          const end = a.endTime ? new Date(a.endTime).getTime() : now;
+          return sum + Math.max(0, end - start);
+        }, 0) / Math.max(1, lots);
+        const avgHours = Math.max(1, Math.round(avgDurationMs / 3600000));
+        const status: CategoryAggregate["status"] = lots > 10 ? "hot" : lots > 3 ? "steady" : "new";
+        const tags = categoryTags[slug] || ["Collectibles"];
+        return {
+          name,
+          slug,
+          description: describeCategory(slug),
+          heroStat: `${lots} active lots`,
+          lots,
+          avgUplift: `${avgUpliftNum}%`,
+          avgDuration: `${avgHours}h avg`,
+          tags,
+          status,
+          trend: `${items[0]?.auctionType === "live" ? "Live" : "Normal"} · ${avgUpliftNum}% uplift`,
+        };
+      });
+
+      setCategories(aggregates);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load categories");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#040918] text-white flex items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#040918] text-white flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-lg text-rose-300">{error}</p>
+        <button
+          onClick={() => fetchCategories()}
+          className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#040918] text-white">
@@ -223,20 +266,22 @@ export default function CategoriesPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <p className="text-sm text-white/60">Browse by vertical</p>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {quickCategories.map((category) => (
-                <Link
-                  key={category.slug}
-                  href={category.href}
-                  className="rounded-[999px] border border-emerald-400/60 bg-emerald-500/15 px-8 py-5 text-lg font-semibold text-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.25)] transition hover:border-emerald-300 hover:bg-emerald-500/30 hover:text-white"
-                >
-                  {category.name}
-                </Link>
-              ))}
+          {quickCategories.length > 0 && (
+            <div className="space-y-4">
+              <p className="text-sm text-white/60">Browse by vertical</p>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {quickCategories.map((category) => (
+                  <Link
+                    key={category.slug}
+                    href={category.href}
+                    className="rounded-[999px] border border-emerald-400/60 bg-emerald-500/15 px-8 py-5 text-lg font-semibold text-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.25)] transition hover:border-emerald-300 hover:bg-emerald-500/30 hover:text-white"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -278,15 +323,15 @@ export default function CategoriesPage() {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-white/50">
-                    Avg savings
+                    Avg uplift
                   </p>
-                  <p className="text-xl font-semibold">{category.avgSavings}</p>
+                  <p className="text-xl font-semibold">{category.avgUplift}</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                   <p className="text-xs uppercase tracking-wide text-white/50">
-                    Turn time
+                    Avg duration
                   </p>
-                  <p className="text-xl font-semibold">{category.turnTime}</p>
+                  <p className="text-xl font-semibold">{category.avgDuration}</p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">

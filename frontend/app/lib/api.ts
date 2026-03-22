@@ -1,5 +1,10 @@
 // API base URL - adjust based on environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+export const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    "http://localhost:4000";
+
+export type AuctionType = "normal" | "live";
 
 // Helper function to get user ID from localStorage
 const getUserId = (): string | null => {
@@ -17,11 +22,17 @@ const getUserId = (): string | null => {
 // Auction API functions
 export const auctionAPI = {
     // Fetch all auctions or filter by category
-    async fetchAuctions(category?: string): Promise<any[]> {
+    async fetchAuctions(category?: string, status?: string, auctionType?: AuctionType): Promise<any[]> {
         try {
-            const url = category
-                ? `${API_BASE_URL}/auctions?category=${category}`
-                : `${API_BASE_URL}/auctions`;
+            let url = `${API_BASE_URL}/auctions`;
+            const params = new URLSearchParams();
+            if (category) params.append("category", category);
+            if (status) params.append("status", status);
+            if (auctionType) params.append("auctionType", auctionType);
+
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
 
             const response = await fetch(url);
             if (!response.ok) {
@@ -70,6 +81,12 @@ export const auctionAPI = {
         startPrice: number;
         imageUrl?: string;
         endTime?: Date;
+        details?: Record<string, string>;
+        auctionType?: AuctionType;
+        liveDurationSeconds?: number;
+        liveAutoExtendSeconds?: number;
+        liveExtendThresholdSeconds?: number;
+        liveStartTime?: Date;
     }): Promise<any | null> {
         try {
             const userId = getUserId();
@@ -109,6 +126,8 @@ export const auctionAPI = {
             imageUrl?: string;
             status?: string;
             endTime?: Date;
+            commission?: number;
+            isVerified?: boolean;
         }
     ): Promise<any | null> {
         try {
@@ -227,6 +246,66 @@ export const auctionAPI = {
             console.error("Error toggling watchlist:", error);
             throw error;
         }
+    },
+
+    async claimAuction(id: string): Promise<{ message: string; claimedAt?: string; checkoutPath?: string }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/claim`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Failed to claim item");
+        }
+        return data;
+    },
+
+    async payAuction(id: string): Promise<{ message: string; orderId?: string; paidAt?: string }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/pay`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Payment failed");
+        }
+        return data;
+    },
+
+    // Create PayHere sandbox payment session
+    async createPayHereSession(id: string): Promise<{
+        merchantId: string;
+        hash: string;
+        orderId: string;
+        amount: string;
+        currency: string;
+        items: string;
+        firstName: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+    }> {
+        const userId = getUserId();
+        if (!userId) throw new Error("User not authenticated");
+
+        const res = await fetch(`${API_BASE_URL}/auctions/${id}/payhere/session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-user-id": userId },
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data?.error || "Failed to create PayHere session");
+        }
+        return data;
     },
 
     // Fetch auctions where user has bid
