@@ -74,7 +74,10 @@ export default function AdminDashboard() {
       try {
         const { auctionAPI } = await import("../../lib/api");
         const auctions = await auctionAPI.fetchAuctions();
-        setActiveAuctions(auctions.filter((a: any) => a.status === "active").length);
+        const activeCount = Array.isArray(auctions)
+          ? auctions.filter((a: { status?: string }) => a?.status === "active").length
+          : 0;
+        setActiveAuctions(activeCount);
       } catch (err) {
         console.error("Failed to load admin stats:", err);
       }

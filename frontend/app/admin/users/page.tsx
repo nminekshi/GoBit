@@ -14,6 +14,16 @@ type AdminUser = {
   createdAt?: string;
 };
 
+type BackendUser = {
+  _id?: string;
+  id?: string;
+  username: string;
+  email: string;
+  role: string;
+  mobile?: string;
+  createdAt?: string;
+};
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +39,7 @@ export default function AdminUsersPage() {
   const [banLoadingId, setBanLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const parseJsonSafe = async (res: Response) => {
+  const parseJsonSafe = async (res: Response): Promise<unknown> => {
     const contentType = res.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       return res.json();
@@ -62,7 +72,7 @@ export default function AdminUsersPage() {
         },
       });
 
-      const data = await parseJsonSafe(res);
+      const data = (await parseJsonSafe(res)) as { users?: BackendUser[]; message?: string };
 
       if (!res.ok) {
         setError(data?.message || "Failed to fetch users");
@@ -72,8 +82,8 @@ export default function AdminUsersPage() {
       }
 
       const mapped = Array.isArray(data?.users)
-        ? data.users.map((u: any) => ({
-            id: u._id || u.id,
+        ? data.users.map((u) => ({
+            id: u._id || u.id || "",
             username: u.username,
             email: u.email,
             role: u.role,
