@@ -5,8 +5,20 @@ import Link from "next/link";
 import { Layers, Plus, Filter, Search, Eye, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { auctionAPI } from "../../lib/api";
 
+type AdminAuction = {
+  _id: string;
+  title: string;
+  sellerId?: { username?: string; email?: string } | null;
+  commission?: number;
+  startPrice?: number;
+  currentBid?: number;
+  imageUrl?: string;
+  status?: string;
+  isVerified?: boolean;
+};
+
 export default function AdminAuctionsPage() {
-  const [auctions, setAuctions] = useState<any[]>([]);
+  const [auctions, setAuctions] = useState<AdminAuction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -16,7 +28,20 @@ export default function AdminAuctionsPage() {
     try {
       setLoading(true);
       const data = await auctionAPI.fetchAuctions(undefined, statusFilter);
-      setAuctions(data);
+      const normalized: AdminAuction[] = Array.isArray(data)
+        ? (data as (Partial<AdminAuction> & { id?: string })[]).map((a) => ({
+            _id: a._id || a.id || "",
+            title: a.title || "Untitled",
+            sellerId: a.sellerId ?? null,
+            commission: a.commission ?? 0,
+            startPrice: a.startPrice ?? 0,
+            currentBid: a.currentBid ?? a.startPrice ?? 0,
+            imageUrl: a.imageUrl,
+            status: a.status,
+            isVerified: a.isVerified,
+          }))
+        : [];
+      setAuctions(normalized);
     } catch (err) {
       console.error("Failed to load auctions:", err);
     } finally {

@@ -26,14 +26,29 @@ export default function AdminPayoutsPage() {
       setError(null);
       try {
         const data = await auctionAPI.fetchAuctions(undefined, "completed");
-        const mapped: PayoutRow[] = (data || []).map((a: any) => {
-          const latestBid = a.bids?.length ? a.bids[a.bids.length - 1] : null;
-          const amount = latestBid?.bidAmount || a.currentBid || a.startPrice || 0;
-          const status: PayoutStatus = a.saleStatus === "paid" ? "Paid" : a.saleStatus === "claim-initiated" ? "Processing" : "Pending";
-          const buyerName = a.winnerId?.username || a.winnerId?.email || "Unknown";
-          const sellerName = a.sellerId?.username || a.sellerId?.email || undefined;
+        type AuctionLike = {
+          _id?: string;
+          id?: string;
+          bids?: { bidAmount?: number }[];
+          currentBid?: number;
+          startPrice?: number;
+          saleStatus?: string;
+          winnerId?: { username?: string; email?: string } | string;
+          sellerId?: { username?: string; email?: string };
+        };
+
+        const mapped: PayoutRow[] = (Array.isArray(data) ? data : []).map((a) => {
+          const auction = a as AuctionLike;
+          const latestBid = auction.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+          const amount = latestBid?.bidAmount || auction.currentBid || auction.startPrice || 0;
+          const status: PayoutStatus = auction.saleStatus === "paid" ? "Paid" : auction.saleStatus === "claim-initiated" ? "Processing" : "Pending";
+          const winner = typeof auction.winnerId === "object" && auction.winnerId !== null ? auction.winnerId : undefined;
+          const buyerName = winner?.username || winner?.email || "Unknown";
+          const sellerName = auction.sellerId?.username || auction.sellerId?.email || undefined;
+          const idBase = auction._id || auction.id || "0000";
+
           return {
-            id: `P-${(a._id || a.id || "0000").toString().slice(-4)}`,
+            id: `P-${idBase.toString().slice(-4)}`,
             buyer: buyerName,
             seller: sellerName,
             amount,
@@ -42,8 +57,8 @@ export default function AdminPayoutsPage() {
           };
         });
         setRows(mapped);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load payouts");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load payouts");
       } finally {
         setLoading(false);
       }
