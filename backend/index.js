@@ -74,6 +74,16 @@ io.on("connection", (socket) => {
       }
       const updatedAuction = await placeBid({ auctionId, bidderId: userId, bidAmount });
       io.to(`auction:${auctionId}`).emit("auction:update", updatedAuction);
+      
+      const lastBid = updatedAuction.bids[updatedAuction.bids.length - 1];
+      if (lastBid && lastBid.isSuspicious) {
+          io.emit("admin:fraud_alert", {
+              auctionId: updatedAuction._id,
+              auctionTitle: updatedAuction.title,
+              bid: lastBid
+          });
+      }
+
       socket.emit("bid:ok", { auctionId });
     } catch (err) {
       socket.emit("bid:error", { auctionId: payload?.auctionId, message: err.message || "Bid failed" });

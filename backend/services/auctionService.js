@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
 const User = require("../models/User");
 const nodemailer = require("nodemailer");
+const { detectBidFraud } = require("../utils/fraudDetection");
 
 const LIVE_ENABLED_CATEGORIES = ["vehicles", "watches", "art", "electronics"];
 
@@ -81,13 +82,17 @@ async function placeBid({ auctionId, bidderId, bidAmount, user }) {
         }
     }
 
+    const fraudResult = await detectBidFraud(auction, numericBid, bidderId);
+
     auction.bids.push({
         bidderId: new mongoose.Types.ObjectId(bidderId),
         bidAmount: numericBid,
         timestamp: now,
+        ...fraudResult,
     });
 
     auction.currentBid = numericBid;
+
     auction.bidsCount += 1;
     auction.lastBidAt = now;
 

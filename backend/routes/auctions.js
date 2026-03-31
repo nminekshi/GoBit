@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
+const nodemailer = require("nodemailer");
 const Auction = require("../models/Auction");
 const {
     placeBid: placeBidService,
@@ -65,6 +66,15 @@ const authenticate = async (req, res, next) => {
     }
 };
 
+// Middleware for Admin access
+const isAdmin = async (req, res, next) => {
+    if (req.user && req.user.role === "admin") {
+        next();
+    } else {
+        res.status(403).json({ error: "Access denied. Admins only." });
+    }
+};
+
 // Helper to compute MD5 uppercase signatures (used for PayHere callbacks)
 const md5Upper = (text) => crypto.createHash("md5").update(text).digest("hex").toUpperCase();
 
@@ -80,6 +90,221 @@ router.get("/debug/auth-status", authenticate, (req, res) => {
             _id: req.user?._id
         }
     });
+});
+
+// POST /auctions/admin/send-report
+router.post("/admin/send-report", authenticate, isAdmin, async (req, res) => {
+    try {
+        const { email, report, frequency } = req.body;
+        if (!email || !report) return res.status(400).json({ error: "Missing parameters" });
+
+        // Transport config
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        let csvContent = "";
+        let filename = "";
+        let subject = "";
+
+        // Build report text just like the frontend
+        if (report === "R-2201") {
+            const auctions = await Auction.find({}).lean();
+            csvContent = "Auction ID,Title,Status,Category,Start Price (USD),Current Bid (USD),Total Bids,End Time\n";
+            auctions.forEach(a => {
+                csvContent += `${a._id},"${a.title}",${a.status},${a.category},${a.startPrice},${a.currentBid},${a.bids?.length || 0},${a.endTime}\n`;
+            });
+            filename = "gobit-weekly-performance.csv";
+            subject = "GoBit Admin Report: Weekly Performance CRON";
+        } else if (report === "R-2200") {
+            const auctions = await Auction.find({ "bids.isSuspicious": true }).populate("bids.bidderId", "username email");
+            csvContent = "Bid ID,Auction ID,Auction Title,Bidder Username,Bid Amount (USD),ML Risk Score,Triggered Flags\n";
+            auctions.forEach(a => {
+                const flags = a.bids.filter(b => b.isSuspicious);
+                flags.forEach(b => {
+                    csvContent += `${b._id},${a._id},"${a.title}",${b.bidderId?.username || "Unknown"},${b.bidAmount},${b.riskScore},"${b.flags.join(" | ")}"\n`;
+                });
+            });
+            filename = "gobit-ml-fraud-report.csv";
+            subject = "GoBit Admin Report: Machine Learning Fraud Intercepts CRON";
+        } else {
+            const auctions = await Auction.find({ currentBid: { $gt: 0 } }).lean();
+            csvContent = "Auction ID,Title,Seller ID,Winner ID,Status,Gross Merchandise Value (USD)\n";
+            auctions.forEach(a => {
+                csvContent += `${a._id},"${a.title}",${a.seller},${a.winner || "None"},${a.status},${a.currentBid}\n`;
+            });
+            filename = "gobit-financial-revenue.csv";
+            subject = "GoBit Admin Report: Gross Merchandise Volume (GMV) CRON";
+        }
+
+        // Setup email payload
+        const mailOptions = {
+            from: process.env.EMAIL_USER || "admin@gobit.com",
+            to: email,
+            subject: subject,
+            text: `Hello Admin,\n\nYour automated ${frequency} report has been generated directly from the MongoDB cluster.\n\nAttached is the requested data CSV file.\n\nBest,\nGoBit Automated CRON System`,
+            attachments: [
+                {
+                    filename: filename,
+                    content: csvContent,
+                    contentType: 'text/csv'
+                }
+            ]
+        };
+
+        // Send email
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: "Email sent successfully" });
+
+    } catch (error) {
+        console.error("Error sending report email:", error);
+        res.status(500).json({ error: "Failed to dispatch email. Please ensure .env EMAIL_USER and EMAIL_PASS are configured." });
+    }
+});
+
+// GET /auctions/admin/dashboard-stats
+router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => {
+    try {
+        const activeAuctions = await Auction.countDocuments({ status: "active" });
+        const totalUsers = await User.countDocuments();
+        
+        // Sum currentBid for GMV
+        const gmvResult = await Auction.aggregate([
+            { $match: { currentBid: { $gt: 0 } } },
+            { $group: { _id: null, totalVolume: { $sum: "$currentBid" } } }
+        ]);
+        const gmv = gmvResult.length > 0 ? gmvResult[0].totalVolume : 0;
+
+        // ML Intercepts count
+        const flaggedAuctions = await Auction.find({ "bids.isSuspicious": true });
+        let totalIntercepts = 0;
+        flaggedAuctions.forEach(auction => {
+            const flags = auction.bids.filter(b => b.isSuspicious);
+            totalIntercepts += flags.length;
+        });
+
+        // Live Activity: getting recent bids
+        let allBids = [];
+        const allAuctions = await Auction.find({ "bids.0": { $exists: true } }).select("title bids").lean();
+        allAuctions.forEach(a => {
+            if (a.bids) {
+                a.bids.forEach(b => {
+                    allBids.push({
+                        time: new Date(b.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        fullTime: new Date(b.timestamp).toISOString(),
+                        message: `New bid $${b.bidAmount} on ${a.title}`,
+                        tag: b.isSuspicious ? "Security" : "Live"
+                    });
+                });
+            }
+        });
+        
+        allBids.sort((a, b) => new Date(b.fullTime) - new Date(a.fullTime));
+        const liveActivity = allBids.slice(0, 4);
+
+        // Recent Transactions: Top active/closed auctions
+        const recentTransactions = await Auction.find({}, "title currentBid status")
+            .sort({ currentBid: -1 })
+            .limit(4)
+            .lean()
+            .then(docs => docs.map(d => ({
+                id: d._id.toString().substring(18).toUpperCase(),
+                item: d.title,
+                amount: `$${(d.currentBid || 0).toLocaleString()}`,
+                status: d.status === "closed" ? "Paid" : "Pending"
+            })));
+
+        // Pending Approvals (Active Auctions or Pending Users proxy)
+        const pendingAuctions = await Auction.find({ status: "pending" }, "title seller")
+            .populate("seller", "username").lean().limit(4);
+            
+        let pendingApprovals = pendingAuctions.map(a => ({
+            id: "A-" + a._id.toString().substring(18).toUpperCase(),
+            title: a.title,
+            seller: a.seller?.username || "Unknown",
+            type: "Auction"
+        }));
+
+        // CHART DATA: Top 5 auctions by current bid for bar chart
+        const topAuctions = await Auction.find({ currentBid: { $gt: 0 } }, "title currentBid category")
+            .sort({ currentBid: -1 })
+            .limit(5)
+            .lean()
+            .then(docs => docs.map(d => ({
+                title: d.title?.length > 20 ? d.title.substring(0, 20) + "..." : d.title,
+                value: d.currentBid || 0,
+                category: d.category || "other"
+            })));
+
+        // CHART DATA: ML Risk Score Distribution
+        const riskBuckets = { "0-20": 0, "20-40": 0, "40-60": 0, "60-80": 0, "80-100": 0 };
+        const allAuctionsForRisk = await Auction.find({ "bids.0": { $exists: true } }).select("bids").lean();
+        allAuctionsForRisk.forEach(a => {
+            if (a.bids) {
+                a.bids.forEach(b => {
+                    const score = b.riskScore || 0;
+                    if (score < 20) riskBuckets["0-20"]++;
+                    else if (score < 40) riskBuckets["20-40"]++;
+                    else if (score < 60) riskBuckets["40-60"]++;
+                    else if (score < 80) riskBuckets["60-80"]++;
+                    else riskBuckets["80-100"]++;
+                });
+            }
+        });
+        const riskDistribution = Object.entries(riskBuckets).map(([range, count]) => ({ range, count }));
+
+        res.json({
+            activeAuctions,
+            totalUsers,
+            gmv,
+            totalIntercepts,
+            liveActivity,
+            recentTransactions,
+            pendingApprovals,
+            topAuctions,
+            riskDistribution
+        });
+    } catch (error) {
+        console.error("Dashboard Stats Error:", error);
+        res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+});
+
+// GET /auctions/admin/suspicious-bids - Get all suspicious bids
+router.get("/admin/suspicious-bids", authenticate, isAdmin, async (req, res) => {
+    try {
+        const auctions = await Auction.find({ "bids.isSuspicious": true })
+            .populate("bids.bidderId", "username email");
+
+        let suspiciousBids = [];
+        auctions.forEach(auction => {
+            const flags = auction.bids.filter(b => b.isSuspicious);
+            flags.forEach(bid => {
+                suspiciousBids.push({
+                    _id: bid._id,
+                    auctionId: auction._id,
+                    auctionTitle: auction.title,
+                    bidder: bid.bidderId,
+                    bidAmount: bid.bidAmount,
+                    riskScore: bid.riskScore,
+                    flags: bid.flags,
+                    timestamp: bid.timestamp,
+                });
+            });
+        });
+
+        // Sort by highest risk score first
+        suspiciousBids.sort((a, b) => b.riskScore - a.riskScore);
+        
+        res.json(suspiciousBids);
+    } catch (error) {
+        console.error("Error fetching suspicious bids:", error);
+        res.status(500).json({ error: "Failed to fetch suspicious bids" });
+    }
 });
 
 // GET /auctions - Get all auctions (with optional category filter)
@@ -413,6 +638,14 @@ router.post("/:id/bid", authenticate, async (req, res) => {
         const io = req.app.get("io");
         if (io) {
             io.to(`auction:${updatedAuction._id}`).emit("auction:update", updatedAuction);
+            const lastBid = updatedAuction.bids[updatedAuction.bids.length - 1];
+            if (lastBid && lastBid.isSuspicious) {
+                io.emit("admin:fraud_alert", {
+                    auctionId: updatedAuction._id,
+                    auctionTitle: updatedAuction.title,
+                    bid: lastBid
+                });
+            }
         }
 
         res.json(updatedAuction);

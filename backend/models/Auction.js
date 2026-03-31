@@ -99,6 +99,19 @@ const auctionSchema = new mongoose.Schema(
                     type: Date,
                     default: Date.now,
                 },
+                riskScore: {
+                    type: Number,
+                    default: 0,
+                },
+                isSuspicious: {
+                    type: Boolean,
+                    default: false,
+                },
+                flags: [
+                    {
+                        type: String,
+                    },
+                ],
             },
         ],
         winnerId: {

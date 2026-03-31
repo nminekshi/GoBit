@@ -358,6 +358,63 @@ export const auctionAPI = {
             return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
         }
     },
+
+    // Fetch suspicious bids for admin dashboard
+    async fetchSuspiciousBids(): Promise<any[]> {
+        try {
+            const userId = getUserId();
+            if (!userId) return [];
+
+            const response = await fetch(`${API_BASE_URL}/auctions/admin/suspicious-bids`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch suspicious bids");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching suspicious bids:", error);
+            return [];
+        }
+    },
+
+    // Fetch live dashboard stats for Admin
+    async fetchDashboardStats(): Promise<any> {
+        try {
+            const userId = getUserId();
+            if (!userId) return null;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/admin/dashboard-stats`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch dashboard stats");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching dashboard stats:", error);
+            return null;
+        }
+    },
+
+    // Trigger backend to send email with generated CSV
+    async sendReportEmail(email: string, report: string, frequency: string): Promise<boolean> {
+        try {
+            const userId = getUserId();
+            if (!userId) return false;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/admin/send-report`, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "x-user-id": userId 
+                },
+                body: JSON.stringify({ email, report, frequency }),
+            });
+            
+            if (!response.ok) throw new Error("Failed to send report email");
+            return true;
+        } catch (error) {
+            console.error("Error sending report email:", error);
+            return false;
+        }
+    },
 };
 
 // Helper function to map category display names to slugs
