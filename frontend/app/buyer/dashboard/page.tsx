@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Eye, Bookmark, Wallet, Settings, Menu, Star } from "lucide-react";
+import { LayoutDashboard, Eye, Bookmark, Settings, Menu, Star, Bot } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -75,7 +75,7 @@ const NAV_ITEMS = [
   { label: "Active Bids", icon: Eye, tab: "bidding" as const },
   { label: "Watchlist", icon: Bookmark, tab: "watchlist" as const },
   { label: "My Reviews", icon: Star, tab: "reviews" as const },
-  { label: "Payments", icon: Wallet, href: "/buyer/payments" },
+  { label: "Smart Agent", icon: Bot, href: "/buyer/smart-auto-bidding" },
   { label: "Settings", icon: Settings, href: "/buyer/settings" },
 ];
 
@@ -321,10 +321,10 @@ export default function BuyerDashboard() {
               </button>
             </Link>
             <button
-              onClick={() => router.push("/buyer/payments")}
+              onClick={() => router.push("/buyer/smart-auto-bidding")}
               className="rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-600"
             >
-              Deposit Funds
+              Smart Agent
             </button>
           </div>
         </header>
@@ -351,7 +351,7 @@ export default function BuyerDashboard() {
         ) : (
           <div className="flex w-full flex-col gap-6 lg:flex-row">
             <aside
-              className={`relative shrink-0 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
+              className={`relative shrink-0 rounded-3xl border border-white/10 bg-linear-to-b from-[#0b1324] to-[#050914] backdrop-blur transition-all duration-300 ${isCollapsed ? "w-28 p-2" : "w-full lg:w-72 p-3"
                 } min-h-[80vh]`}
             >
               <div className="flex h-full flex-col gap-3">
@@ -421,7 +421,7 @@ export default function BuyerDashboard() {
                 </nav>
 
                 {!isCollapsed && (
-                  <div className="mt-auto rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-cyan-500/15 to-indigo-500/20 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)]">
+                  <div className="mt-auto rounded-2xl border border-white/10 bg-linear-to-br from-emerald-500/20 via-cyan-500/15 to-indigo-500/20 p-3 text-sm text-emerald-50 shadow-[0_12px_28px_rgba(16,185,129,0.16)]">
                     <p className="text-xs uppercase tracking-wide text-emerald-50/80">Save more</p>
                     <p className="mt-1 text-sm font-semibold text-white">Enable alerts</p>
                     <p className="mt-1 text-emerald-50/80">Get notified when bids move or auctions end.</p>
@@ -613,13 +613,13 @@ function AuctionCard({
       </div>
 
       <Link href={`/auctions/${auction.id}`} className="block">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+        <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
           <img
             src={auction.imageUrl}
             alt={auction.title}
             className="absolute inset-0 h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#040918] via-transparent to-transparent opacity-70" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-[#040918] via-transparent to-transparent opacity-70" />
         </div>
       </Link>
 
