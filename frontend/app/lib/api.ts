@@ -401,17 +401,144 @@ export const auctionAPI = {
 
             const response = await fetch(`${API_BASE_URL}/auctions/admin/send-report`, {
                 method: "POST",
-                headers: { 
+                headers: {
                     "Content-Type": "application/json",
-                    "x-user-id": userId 
+                    "x-user-id": userId
                 },
                 body: JSON.stringify({ email, report, frequency }),
             });
-            
+
             if (!response.ok) throw new Error("Failed to send report email");
             return true;
         } catch (error) {
             console.error("Error sending report email:", error);
+            return false;
+        }
+    },
+
+    // Set or update auto-bid
+    async setAutoBid(auctionId: string, maxBid: number, increment: number): Promise<boolean> {
+        try {
+            const userId = getUserId();
+            if (!userId) return false;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/${auctionId}/auto-bid`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": userId,
+                },
+                body: JSON.stringify({ maxBid, increment }),
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Error setting auto-bid:", error);
+            return false;
+        }
+    },
+
+    // Get auto-bid status for an auction
+    async getAutoBidStatus(auctionId: string): Promise<any> {
+        try {
+            const userId = getUserId();
+            if (!userId) return null;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/${auctionId}/auto-bid`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching auto-bid status:", error);
+            return null;
+        }
+    },
+
+    // Disable auto-bid
+    async disableAutoBid(auctionId: string): Promise<boolean> {
+        try {
+            const userId = getUserId();
+            if (!userId) return false;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/${auctionId}/auto-bid`, {
+                method: "DELETE",
+                headers: { "x-user-id": userId },
+            });
+            return response.ok;
+        } catch (error) {
+            console.error("Error disabling auto-bid:", error);
+            return false;
+        }
+    },
+
+    // Save category-level smart auto-bid agent
+    async saveSmartAutoAgent(data: {
+        category: string;
+        maxBudget: number;
+        bidIncrement: number;
+        maxConcurrentAuctions: number;
+        isEnabled?: boolean;
+    }): Promise<any | null> {
+        try {
+            const userId = getUserId();
+            if (!userId) return null;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/auto-agent`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": userId,
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error?.error || "Failed to save smart auto-bid agent");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error saving smart auto-bid agent:", error);
+            return null;
+        }
+    },
+
+    // Fetch all smart auto-bid agent settings for current user
+    async fetchSmartAutoAgents(): Promise<any[]> {
+        try {
+            const userId = getUserId();
+            if (!userId) return [];
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/auto-agent`, {
+                headers: { "x-user-id": userId },
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch smart auto-bid agents");
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching smart auto-bid agents:", error);
+            return [];
+        }
+    },
+
+    // Disable smart auto-bid agent by category
+    async disableSmartAutoAgent(category: string): Promise<boolean> {
+        try {
+            const userId = getUserId();
+            if (!userId) return false;
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/auto-agent/${category}`, {
+                method: "DELETE",
+                headers: { "x-user-id": userId },
+            });
+
+            return response.ok;
+        } catch (error) {
+            console.error("Error disabling smart auto-bid agent:", error);
             return false;
         }
     },
