@@ -112,6 +112,10 @@ const auctionSchema = new mongoose.Schema(
                         type: String,
                     },
                 ],
+                isAutoBid: {
+                    type: Boolean,
+                    default: false,
+                },
             },
         ],
         winnerId: {
