@@ -9,7 +9,11 @@ const {
     LIVE_ENABLED_CATEGORIES,
     completeAuction,
     sendPaymentConfirmationEmailOnce,
+    processSmartAgentsByAuction,
+    processSmartAgentBySetting,
+    getSmartAgentOverviewForUser,
 } = require("../services/auctionService");
+const SmartAutoBidAgent = require("../models/SmartAutoBidAgent");
 
 const mongoose = require("mongoose");
 const User = require("../models/User");
@@ -648,10 +652,173 @@ router.post("/:id/bid", authenticate, async (req, res) => {
             }
         }
 
+        // Trigger auto-bid bot check
+        const { processAutoBids } = require("../services/auctionService");
+        await processAutoBids(updatedAuction._id, io);
+        await processSmartAgentsByAuction(updatedAuction._id, io);
+
         res.json(updatedAuction);
     } catch (error) {
         console.error("Error placing bid:", error);
         res.status(error.statusCode || 500).json({ error: error.message || "Failed to place bid" });
+    }
+});
+
+// POST /auctions/:id/auto-bid - Set auto-bid for item
+router.post("/:id/auto-bid", authenticate, async (req, res) => {
+    try {
+        const { maxBid, increment } = req.body;
+        const AutoBidSetting = require("../models/AutoBidSetting");
+
+        const parsedMaxBid = Number(maxBid);
+        const parsedIncrement = Number(increment) || 10;
+
+        if (!parsedMaxBid || Number.isNaN(parsedMaxBid) || parsedMaxBid <= 0) {
+            return res.status(400).json({ error: "Valid Max Bid is required" });
+        }
+
+        if (!parsedIncrement || Number.isNaN(parsedIncrement) || parsedIncrement <= 0) {
+            return res.status(400).json({ error: "Valid increment is required" });
+        }
+
+        const auction = await Auction.findById(req.params.id);
+        if (!auction) return res.status(404).json({ error: "Auction not found" });
+
+        if (parsedMaxBid <= Number(auction.currentBid)) {
+            return res.status(400).json({ error: "Max Bid must be higher than current bid" });
+        }
+
+        const setting = await AutoBidSetting.findOneAndUpdate(
+            { userId: req.userId, auctionId: req.params.id },
+            {
+                maxBid: parsedMaxBid,
+                increment: parsedIncrement,
+                isActive: true,
+                category: auction.category
+            },
+            { upsert: true, new: true }
+        );
+
+        // Immediate bot check (in case user sets bot when they are ALREADY outbid)
+        const { processAutoBids } = require("../services/auctionService");
+        const io = req.app.get("io");
+        processAutoBids(req.params.id, io);
+
+        res.json({ message: "Auto-bid setting saved", setting });
+    } catch (error) {
+        console.error("Error saving auto-bid:", error);
+        res.status(500).json({ error: "Failed to save auto-bid" });
+    }
+});
+
+// GET /auctions/:id/auto-bid - Get current user auto-bid for item
+router.get("/:id/auto-bid", authenticate, async (req, res) => {
+    try {
+        const AutoBidSetting = require("../models/AutoBidSetting");
+        const setting = await AutoBidSetting.findOne({
+            userId: req.userId,
+            auctionId: req.params.id
+        });
+        res.json(setting);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch auto-bid status" });
+    }
+});
+
+// DELETE /auctions/:id/auto-bid - Disable auto-bid
+router.delete("/:id/auto-bid", authenticate, async (req, res) => {
+    try {
+        const AutoBidSetting = require("../models/AutoBidSetting");
+        await AutoBidSetting.findOneAndDelete({
+            userId: req.userId,
+            auctionId: req.params.id
+        });
+        res.json({ message: "Auto-bid disabled" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to disable auto-bid" });
+    }
+});
+
+// POST /auctions/my/auto-agent - Create or update smart category auto-bidding agent
+router.post("/my/auto-agent", authenticate, async (req, res) => {
+    try {
+        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled } = req.body;
+
+        if (!category || typeof category !== "string") {
+            return res.status(400).json({ error: "Category is required" });
+        }
+
+        const normalizedCategory = category.toLowerCase();
+        const parsedBudget = Number(maxBudget);
+        const parsedIncrement = Number(bidIncrement) || 10;
+        const parsedMaxConcurrent = Number(maxConcurrentAuctions) || 3;
+
+        if (!parsedBudget || Number.isNaN(parsedBudget) || parsedBudget <= 0) {
+            return res.status(400).json({ error: "Valid max budget is required" });
+        }
+
+        if (!parsedIncrement || Number.isNaN(parsedIncrement) || parsedIncrement <= 0) {
+            return res.status(400).json({ error: "Valid bid increment is required" });
+        }
+
+        if (!parsedMaxConcurrent || Number.isNaN(parsedMaxConcurrent) || parsedMaxConcurrent <= 0) {
+            return res.status(400).json({ error: "Valid max concurrent auctions value is required" });
+        }
+
+        const setting = await SmartAutoBidAgent.findOneAndUpdate(
+            { userId: req.userId, category: normalizedCategory },
+            {
+                maxBudget: parsedBudget,
+                bidIncrement: parsedIncrement,
+                maxConcurrentAuctions: Math.min(10, parsedMaxConcurrent),
+                isEnabled: isEnabled !== false,
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+        if (setting.isEnabled) {
+            const io = req.app.get("io");
+            await processSmartAgentBySetting(setting, io);
+        }
+
+        const overview = await getSmartAgentOverviewForUser(req.userId);
+        res.json({ message: "Smart auto-bid agent saved", setting, overview });
+    } catch (error) {
+        console.error("Error saving smart auto-bid agent:", error);
+        res.status(500).json({ error: "Failed to save smart auto-bid agent" });
+    }
+});
+
+// GET /auctions/my/auto-agent - Get smart auto-bid agent overview for current user
+router.get("/my/auto-agent", authenticate, async (req, res) => {
+    try {
+        const overview = await getSmartAgentOverviewForUser(req.userId);
+        res.json(overview);
+    } catch (error) {
+        console.error("Error fetching smart auto-bid overview:", error);
+        res.status(500).json({ error: "Failed to fetch smart auto-bid overview" });
+    }
+});
+
+// DELETE /auctions/my/auto-agent/:category - Disable smart auto-bid for category
+router.delete("/my/auto-agent/:category", authenticate, async (req, res) => {
+    try {
+        const category = req.params.category.toLowerCase();
+        const setting = await SmartAutoBidAgent.findOneAndUpdate(
+            { userId: req.userId, category },
+            { isEnabled: false },
+            { new: true }
+        );
+
+        if (!setting) {
+            return res.status(404).json({ error: "Smart auto-bid setting not found" });
+        }
+
+        const overview = await getSmartAgentOverviewForUser(req.userId);
+        res.json({ message: "Smart auto-bid disabled", setting, overview });
+    } catch (error) {
+        console.error("Error disabling smart auto-bid:", error);
+        res.status(500).json({ error: "Failed to disable smart auto-bid" });
     }
 });
 
