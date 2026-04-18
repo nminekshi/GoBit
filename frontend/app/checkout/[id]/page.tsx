@@ -187,10 +187,10 @@ export default function CheckoutPage() {
           {/* Left Column - Product & Summary */}
           <div className="xl:col-span-8 flex flex-col gap-6">
             
-            {/* Aspect Ratio adjusted correctly, smaller font scaling */}
-            <div className="group relative w-full aspect-[21/10] sm:aspect-[24/9] lg:aspect-[28/9] overflow-hidden rounded-3xl border border-white/10 bg-[#040918] shadow-2xl backdrop-blur-lg">
+            {/* Aspect Ratio adjusted to be taller so the full image is visible */}
+            <div className="group relative w-full aspect-video lg:aspect-[16/8] xl:aspect-[21/10] overflow-hidden rounded-[2rem] border border-white/10 bg-[#040918] shadow-2xl backdrop-blur-lg">
                  {auction.imageUrl ? (
-                   <Image src={auction.imageUrl} alt={auction.title} fill className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105 group-hover:brightness-110" />
+                   <Image src={auction.imageUrl} alt={auction.title} fill className="object-cover object-center transition-transform duration-[1.5s] ease-out group-hover:scale-105 group-hover:brightness-110" />
                  ) : (
                    <div className="w-full h-full flex flex-col items-center justify-center bg-black/50 text-white/30 gap-3">
                      <svg className="w-12 h-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
