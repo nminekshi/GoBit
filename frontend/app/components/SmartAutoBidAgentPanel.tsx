@@ -81,15 +81,22 @@ export default function SmartAutoBidAgentPanel() {
     setOverview(Array.isArray(data) ? data : []);
 
     if (Array.isArray(data) && data.length > 0) {
-      const chosen = data.find((item) => item.category === category) || data[0];
+      const chosen = data.find((item) => item.category === category);
       if (chosen) {
-        setCategory(chosen.category);
         setMaxBudget(Number(chosen.maxBudget));
         setBidIncrement(Number(chosen.bidIncrement));
         setMaxConcurrentAuctions(Number(chosen.maxConcurrentAuctions));
         setStrategy(chosen.strategy || "standard");
         setTargetWinCount(Number(chosen.targetWinCount) || 1);
         setIsEnabled(Boolean(chosen.isEnabled));
+      } else {
+        // Reset to defaults for new categories
+        setMaxBudget(30000);
+        setBidIncrement(10);
+        setMaxConcurrentAuctions(3);
+        setStrategy("standard");
+        setTargetWinCount(1);
+        setIsEnabled(false);
       }
     }
   };
