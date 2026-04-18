@@ -7,6 +7,7 @@ import Link from "next/link";
 import { auctionAPI, categoryNameToSlug } from "../../lib/api";
 import { getSocket } from "../../lib/socket";
 import { categoryFields } from "../../lib/categoryFields";
+import { Zap } from "lucide-react";
 
 type Auction = {
     _id: string;
@@ -44,6 +45,7 @@ type Auction = {
         bidderId: string | { _id: string; username: string };
         bidAmount: number;
         timestamp: string;
+        isAutoBid?: boolean;
     }[];
 };
 
@@ -64,8 +66,19 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [claimMessage, setClaimMessage] = useState<string | null>(null);
     const [relatedAuctions, setRelatedAuctions] = useState<Auction[]>([]);
     const [relatedLoading, setRelatedLoading] = useState(false);
+    const [notifications, setNotifications] = useState<Array<{ id: number; message: string; tone: "success" | "info" | "warning" }>>([]);
+    const [smartSuggestedBid, setSmartSuggestedBid] = useState<number | null>(null);
 
     const isLoaded = useRef(false);
+    const lastSuggestedBidRef = useRef<string | null>(null);
+
+    const pushNotification = (message: string, tone: "success" | "info" | "warning" = "info") => {
+        const id = Date.now() + Math.floor(Math.random() * 1000);
+        setNotifications((prev) => [...prev, { id, message, tone }]);
+        setTimeout(() => {
+            setNotifications((prev) => prev.filter((item) => item.id !== id));
+        }, 4000);
+    };
 
     const fetchAuction = async () => {
         try {
@@ -147,15 +160,120 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             setBidError(payload?.message || "Bid failed");
         };
 
+        const handleAutoBidPlaced = (payload: any) => {
+            if (payload?.auctionId !== auction._id) return;
+            pushNotification(payload?.message || `Auto-bid placed at $${payload?.bidAmount}.`, "success");
+        };
+
+        const handleAutoBidMaxReached = (payload: any) => {
+            if (payload?.auctionId !== auction._id) return;
+            pushNotification(payload?.message || "Auto-bid stopped: max limit reached.", "warning");
+        };
+
+        const handleSmartAgentBidPlaced = (payload: any) => {
+            if (payload?.auctionId !== auction._id) return;
+            pushNotification(payload?.message || "Smart agent placed a bid.", "success");
+        };
+
+        const handleSmartAgentOutbid = (payload: any) => {
+            if (payload?.auctionId !== auction._id) return;
+            pushNotification(payload?.message || "You were outbid.", "warning");
+        };
+
+        const handleSmartAgentWon = (payload: any) => {
+            pushNotification(payload?.message || "You won an auction. Smart agent stopped.", "success");
+        };
+
+        const handleSmartAgentBudgetReached = (payload: any) => {
+            pushNotification(payload?.message || "Budget reached. Smart agent stopped.", "warning");
+        };
+
         socket.on("auction:update", handleUpdate);
         socket.on("bid:error", handleBidError);
+        socket.on("auto-bid:placed", handleAutoBidPlaced);
+        socket.on("auto-bid:max-reached", handleAutoBidMaxReached);
+        socket.on("smart-agent:bid-placed", handleSmartAgentBidPlaced);
+        socket.on("smart-agent:outbid", handleSmartAgentOutbid);
+        socket.on("smart-agent:won", handleSmartAgentWon);
+        socket.on("smart-agent:budget-reached", handleSmartAgentBudgetReached);
 
         return () => {
             socket.emit("leave-auction", auction._id);
             socket.off("auction:update", handleUpdate);
             socket.off("bid:error", handleBidError);
+            socket.off("auto-bid:placed", handleAutoBidPlaced);
+            socket.off("auto-bid:max-reached", handleAutoBidMaxReached);
+            socket.off("smart-agent:bid-placed", handleSmartAgentBidPlaced);
+            socket.off("smart-agent:outbid", handleSmartAgentOutbid);
+            socket.off("smart-agent:won", handleSmartAgentWon);
+            socket.off("smart-agent:budget-reached", handleSmartAgentBudgetReached);
         };
     }, [auction?._id]);
+
+    useEffect(() => {
+        if (!currentUserId) return;
+        const socket = getSocket();
+        socket.emit("join-user", currentUserId);
+
+        return () => {
+            socket.emit("leave-user", currentUserId);
+        };
+    }, [currentUserId]);
+
+    useEffect(() => {
+        const loadSmartSuggestion = async () => {
+            if (!auction?._id || !currentUserId) {
+                setSmartSuggestedBid(null);
+                return;
+            }
+
+            try {
+                const smartAgents = await auctionAPI.fetchSmartAutoAgents();
+                const matched = smartAgents.find(
+                    (item: any) => item.category === auction.category
+                );
+
+                if (!matched) {
+                    setSmartSuggestedBid(null);
+                    return;
+                }
+
+                let nextBid: number | null = null;
+                const target = Array.isArray(matched.targets)
+                    ? matched.targets.find((t: any) => String(t.auctionId) === String(auction._id))
+                    : null;
+
+                if (target?.nextBid) {
+                    nextBid = Number(target.nextBid);
+                } else {
+                    const fallback = Number(auction.currentBid) + (Number(matched.bidIncrement) || 1);
+                    const withinCategoryBudget = fallback <= Number(matched.maxBudget);
+                    const withinRemaining = fallback <= Number(matched.remainingBudget || 0);
+                    const notOwnAuction = auction.sellerId?._id !== currentUserId;
+                    if (withinCategoryBudget && withinRemaining && notOwnAuction) {
+                        nextBid = fallback;
+                    }
+                }
+
+                if (!nextBid || Number.isNaN(nextBid)) {
+                    setSmartSuggestedBid(null);
+                    return;
+                }
+
+                setSmartSuggestedBid(nextBid);
+
+                const nextBidStr = String(nextBid);
+                if (bidAmount.trim() === "" || bidAmount === lastSuggestedBidRef.current) {
+                    setBidAmount(nextBidStr);
+                }
+                lastSuggestedBidRef.current = nextBidStr;
+            } catch {
+                setSmartSuggestedBid(null);
+            }
+        };
+
+        loadSmartSuggestion();
+    }, [auction?._id, auction?.currentBid, auction?.category, currentUserId]);
 
     useEffect(() => {
         if (!auction) return;
@@ -332,6 +450,25 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+            {notifications.length > 0 && (
+                <div className="fixed right-4 top-24 z-50 w-[min(92vw,360px)] space-y-2">
+                    {notifications.map((item) => (
+                        <div
+                            key={item.id}
+                            className={`rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur ${
+                                item.tone === "success"
+                                    ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+                                    : item.tone === "warning"
+                                    ? "border-amber-400/40 bg-amber-500/20 text-amber-100"
+                                    : "border-white/20 bg-white/10 text-white"
+                            }`}
+                        >
+                            {item.message}
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <div className="max-w-7xl mx-auto">
                 {/* Breadcrumb / Back Navigation */}
                 <div className="mb-8">
@@ -349,7 +486,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Left Column: Image */}
                     <div className="space-y-4">
-                        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+                        <div className="relative aspect-4/3 w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5">
                             <Image
                                 src={auction.imageUrl}
                                 alt={auction.title}
@@ -524,6 +661,11 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             {/* Add + button logic if needed, simplied to basic input for now */}
                         </form>
                         {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
+                        {smartSuggestedBid && (
+                            <p className="text-emerald-300 text-xs">
+                                Smart agent suggested next bid: ${smartSuggestedBid.toLocaleString()}
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -637,7 +779,12 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                                         <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
                                                     </div>
                                                 </div>
-                                                <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
+                                                    {bid.isAutoBid && (
+                                                        <Zap className="h-3 w-3 text-emerald-400/60" />
+                                                    )}
+                                                </div>
                                             </div>
                                         )
                                     })}
@@ -662,7 +809,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                         const id = (item as any)._id || (item as any).id;
                                         return (
                                             <Link key={id} href={`/auctions/${id}`} className="group block rounded-2xl border border-white/10 bg-white/5 p-3 hover:border-emerald-400/60 transition">
-                                                <div className="aspect-[4/3] w-full overflow-hidden rounded-xl bg-white/5">
+                                                <div className="aspect-4/3 w-full overflow-hidden rounded-xl bg-white/5">
                                                     <Image
                                                         src={(item as any).imageUrl || RELATED_FALLBACK_IMAGE}
                                                         alt={(item as any).title}

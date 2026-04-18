@@ -1,9 +1,359 @@
 const mongoose = require("mongoose");
 const Auction = require("../models/Auction");
 const User = require("../models/User");
+const AutoBidSetting = require("../models/AutoBidSetting");
+const SmartAutoBidAgent = require("../models/SmartAutoBidAgent");
+const BotActivityLog = require("../models/BotActivityLog");
 const nodemailer = require("nodemailer");
+const { detectBidFraud } = require("../utils/fraudDetection");
 
 const LIVE_ENABLED_CATEGORIES = ["vehicles", "watches", "art", "electronics"];
+const processingAutoBidAuctions = new Set();
+const pendingAutoBidAuctions = new Set();
+const processingSmartAgentKeys = new Set();
+const pendingSmartAgentKeys = new Set();
+
+function getAutoBidCooldownMs(auctionType) {
+    if (process.env.NODE_ENV === "test") return 0;
+    const liveMs = Number(process.env.AUTO_BID_COOLDOWN_MS_LIVE) || 1200;
+    const normalMs = Number(process.env.AUTO_BID_COOLDOWN_MS_NORMAL) || 700;
+    return auctionType === "live" ? liveMs : normalMs;
+}
+
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function notifyUser(io, userId, eventName, payload) {
+    if (!io || !userId) return;
+    io.to(`user:${userId.toString()}`).emit(eventName, payload);
+}
+
+function getLatestBid(auction) {
+    return auction?.bids?.length ? auction.bids[auction.bids.length - 1] : null;
+}
+
+function prioritizeAuctions(auctions) {
+    return [...auctions].sort((a, b) => {
+        const priceDiff = Number(a.currentBid || 0) - Number(b.currentBid || 0);
+        if (priceDiff !== 0) return priceDiff;
+        const endA = new Date(a.endTime).getTime();
+        const endB = new Date(b.endTime).getTime();
+        return endA - endB;
+    });
+}
+
+function calculateCommittedFromAuctions(auctions, userId) {
+    const committedAuctions = [];
+    let committedBudget = 0;
+
+    for (const auction of auctions) {
+        const latestBid = getLatestBid(auction);
+        if (latestBid?.bidderId?.toString() === userId.toString()) {
+            const amount = Number(latestBid.bidAmount || auction.currentBid || 0);
+            committedBudget += amount;
+            committedAuctions.push({
+                auctionId: auction._id,
+                title: auction.title,
+                amount,
+                endTime: auction.endTime,
+            });
+        }
+    }
+
+    return { committedBudget, committedAuctions };
+}
+
+function isAuctionEligibleForUserBidding(auction, userId) {
+    const now = new Date();
+    if (!auction || auction.status !== "active") return false;
+    if (auction.sellerId?.toString() === userId.toString()) return false;
+    if (auction.startTime && now < new Date(auction.startTime)) return false;
+    if (auction.endTime && now >= new Date(auction.endTime)) return false;
+    return true;
+}
+
+async function processSmartAgentBySetting(setting, io) {
+    if (!setting?.isEnabled) return;
+    const userId = setting.userId.toString();
+
+    const lockedAgent = await SmartAutoBidAgent.findOneAndUpdate(
+        { _id: setting._id, isProcessing: false, isEnabled: true },
+        { isProcessing: true },
+        { new: true }
+    );
+
+    if (!lockedAgent) return;
+
+    try {
+        const freshSetting = lockedAgent;
+
+        const wonCount = await Auction.countDocuments({
+            winnerId: freshSetting.userId,
+            category: freshSetting.category,
+            status: "completed",
+        });
+
+        const targetWinCount = Number(freshSetting.targetWinCount) || 1;
+
+        if (wonCount >= targetWinCount) {
+            freshSetting.isEnabled = false;
+            await freshSetting.save();
+            await BotActivityLog.create({
+                userId: freshSetting.userId,
+                category: freshSetting.category,
+                action: "paused",
+                message: `Smart auto-bidding stopped because you reached your target win count (${targetWinCount}).`
+            });
+            notifyUser(io, freshSetting.userId, "smart-agent:won", {
+                message: `Smart auto-bidding stopped because you reached your target win count (${targetWinCount}).`,
+            });
+            return;
+        }
+
+        let keepRunning = true;
+        let safetyCount = 0;
+        const outbidNotified = new Set();
+
+        while (keepRunning && safetyCount < 30) {
+            safetyCount += 1;
+
+            const activeAuctions = await Auction.find({
+                status: "active",
+                category: freshSetting.category,
+            });
+
+            if (!activeAuctions.length) break;
+
+            const { committedBudget } = calculateCommittedFromAuctions(activeAuctions, freshSetting.userId);
+            const remainingBudget = Number(freshSetting.maxBudget) - committedBudget;
+
+            if (remainingBudget <= 0) {
+                freshSetting.isEnabled = false;
+                freshSetting.lastBudgetReachedAt = new Date();
+                await freshSetting.save();
+                await BotActivityLog.create({
+                    userId: freshSetting.userId,
+                    category: freshSetting.category,
+                    action: "budget_reached",
+                    message: "Smart auto-bidding stopped because your budget is fully committed."
+                });
+                notifyUser(io, freshSetting.userId, "smart-agent:budget-reached", {
+                    category: freshSetting.category,
+                    maxBudget: Number(freshSetting.maxBudget),
+                    committedBudget,
+                    message: "Smart auto-bidding stopped because your budget is fully committed.",
+                });
+                break;
+            }
+
+            const prioritized = prioritizeAuctions(activeAuctions);
+            const candidates = [];
+            const now = new Date();
+
+            for (const auction of prioritized) {
+                if (!isAuctionEligibleForUserBidding(auction, userId)) continue;
+
+                const latestBid = getLatestBid(auction);
+                const leaderId = latestBid?.bidderId?.toString() || null;
+                const userHasBid = auction.bids?.some((b) => b.bidderId?.toString() === userId);
+
+                if (leaderId === userId) continue;
+
+                const strategy = freshSetting.strategy || "standard";
+                if (strategy === "sniper") {
+                    const timeLeft = auction.endTime ? new Date(auction.endTime).getTime() - now.getTime() : 0;
+                    if (timeLeft > 180000) {
+                        continue;
+                    }
+                }
+
+                if (userHasBid && !outbidNotified.has(auction._id.toString())) {
+                    outbidNotified.add(auction._id.toString());
+                    notifyUser(io, freshSetting.userId, "smart-agent:outbid", {
+                        auctionId: auction._id,
+                        title: auction.title,
+                        currentBid: Number(auction.currentBid),
+                        message: `You were outbid on ${auction.title}.`,
+                    });
+                }
+
+                let baseIncrement = Number(freshSetting.bidIncrement) || 1;
+                
+                const currentBidNum = Number(auction.currentBid) || 0;
+                if (currentBidNum > 500 && currentBidNum <= 2500) baseIncrement = Math.max(baseIncrement, 5);
+                if (currentBidNum > 2500 && currentBidNum <= 10000) baseIncrement = Math.max(baseIncrement, 25);
+                if (currentBidNum > 10000) baseIncrement = Math.max(baseIncrement, 100);
+
+                if (strategy === "aggressive") {
+                    baseIncrement = baseIncrement * 3;
+                }
+
+                const nextBid = currentBidNum + baseIncrement;
+
+                if (nextBid > Number(freshSetting.maxBudget)) continue;
+                if (nextBid > remainingBudget) {
+                    await BotActivityLog.create({
+                        userId: freshSetting.userId,
+                        category: freshSetting.category,
+                        auctionId: auction._id,
+                        action: "skipped",
+                        message: `Skipped ${auction.title}: next bid $${nextBid} exceeds remaining budget $${remainingBudget}.`
+                    }).catch(()=>null);
+                    continue;
+                }
+
+                candidates.push({ auction, nextBid });
+            }
+
+            if (!candidates.length) {
+                keepRunning = false;
+                break;
+            }
+
+            const maxConcurrent = Math.max(1, Number(freshSetting.maxConcurrentAuctions) || 3);
+            const picked = candidates.slice(0, maxConcurrent);
+            let placed = false;
+
+            for (const candidate of picked) {
+                try {
+                    const bidder = await User.findById(freshSetting.userId);
+                    if (!bidder) {
+                        freshSetting.isEnabled = false;
+                        await freshSetting.save();
+                        keepRunning = false;
+                        break;
+                    }
+
+                    const updated = await placeBid({
+                        auctionId: candidate.auction._id,
+                        bidderId: freshSetting.userId.toString(),
+                        bidAmount: candidate.nextBid,
+                        user: bidder,
+                        isAutoBid: true,
+                    });
+
+                    if (io) {
+                        io.to(`auction:${candidate.auction._id}`).emit("auction:update", updated);
+                    }
+
+                    await BotActivityLog.create({
+                        userId: freshSetting.userId,
+                        category: freshSetting.category,
+                        auctionId: candidate.auction._id,
+                        action: "bid_placed",
+                        message: `Placed $${candidate.nextBid} on ${candidate.auction.title}.`
+                    });
+
+                    notifyUser(io, freshSetting.userId, "smart-agent:bid-placed", {
+                        auctionId: candidate.auction._id,
+                        title: candidate.auction.title,
+                        bidAmount: candidate.nextBid,
+                        currentBid: updated.currentBid,
+                        category: freshSetting.category,
+                        message: `Smart agent placed $${candidate.nextBid} on ${candidate.auction.title}.`,
+                    });
+
+                    const cooldown = getAutoBidCooldownMs(candidate.auction.auctionType);
+                    if (cooldown > 0) {
+                        await wait(cooldown);
+                    }
+
+                    placed = true;
+                    break;
+                } catch (err) {
+                    await BotActivityLog.create({
+                        userId: freshSetting.userId,
+                        category: freshSetting.category,
+                        auctionId: candidate.auction._id,
+                        action: "error",
+                        message: `Failed to place bid: ${err.message}`
+                    }).catch(()=>null);
+                    console.warn(`[SmartAutoBid] Failed for ${freshSetting.userId} on ${candidate.auction._id}: ${err.message}`);
+                }
+            }
+
+            if (!placed) {
+                keepRunning = false;
+            }
+        }
+    } finally {
+        await SmartAutoBidAgent.findByIdAndUpdate(setting._id, { isProcessing: false });
+    }
+}
+
+async function processSmartAgentsByAuction(auctionId, io) {
+    const auction = await Auction.findById(auctionId);
+    if (!auction || auction.status !== "active") return;
+
+    const enabledSettings = await SmartAutoBidAgent.find({
+        category: auction.category,
+        isEnabled: true,
+    });
+
+    for (const setting of enabledSettings) {
+        await processSmartAgentBySetting(setting, io);
+    }
+}
+
+async function processAllSmartAgents(io) {
+    const enabledSettings = await SmartAutoBidAgent.find({ isEnabled: true });
+    for (const setting of enabledSettings) {
+        await processSmartAgentBySetting(setting, io);
+    }
+}
+
+async function getSmartAgentOverviewForUser(userId) {
+    const settings = await SmartAutoBidAgent.find({ userId }).sort({ updatedAt: -1 });
+    const output = [];
+
+    for (const setting of settings) {
+        const activeAuctions = await Auction.find({
+            status: "active",
+            category: setting.category,
+        }).sort({ endTime: 1 });
+
+        const { committedBudget, committedAuctions } = calculateCommittedFromAuctions(activeAuctions, setting.userId);
+        const remainingBudget = Math.max(0, Number(setting.maxBudget) - committedBudget);
+        const prioritized = prioritizeAuctions(activeAuctions);
+
+        const targets = prioritized
+            .filter((auction) => {
+                if (!isAuctionEligibleForUserBidding(auction, setting.userId)) return false;
+                const latestBid = getLatestBid(auction);
+                const leaderId = latestBid?.bidderId?.toString();
+                if (leaderId === setting.userId.toString()) return false;
+                const nextBid = Number(auction.currentBid) + (Number(setting.bidIncrement) || 1);
+                return nextBid <= Number(setting.maxBudget) && nextBid <= remainingBudget;
+            })
+            .slice(0, Math.max(1, Number(setting.maxConcurrentAuctions) || 3))
+            .map((auction) => ({
+                auctionId: auction._id,
+                title: auction.title,
+                imageUrl: auction.imageUrl,
+                currentBid: Number(auction.currentBid),
+                auctionType: auction.auctionType,
+                endTime: auction.endTime,
+                nextBid: Number(auction.currentBid) + (Number(setting.bidIncrement) || 1),
+            }));
+
+        output.push({
+            _id: setting._id,
+            category: setting.category,
+            maxBudget: Number(setting.maxBudget),
+            bidIncrement: Number(setting.bidIncrement),
+            maxConcurrentAuctions: Number(setting.maxConcurrentAuctions),
+            isEnabled: setting.isEnabled,
+            committedBudget,
+            remainingBudget,
+            committedAuctions,
+            targets,
+            updatedAt: setting.updatedAt,
+        });
+    }
+
+    return output;
+}
 
 // Normalize and clamp live auction defaults
 function buildLiveAuctionConfig(payload = {}) {
@@ -24,7 +374,7 @@ function buildLiveAuctionConfig(payload = {}) {
     };
 }
 
-async function placeBid({ auctionId, bidderId, bidAmount, user }) {
+async function placeBid({ auctionId, bidderId, bidAmount, user, isAutoBid = false }) {
     const numericBid = Number(bidAmount);
     if (!numericBid || Number.isNaN(numericBid)) {
         const err = new Error("Bid amount is required");
@@ -81,13 +431,18 @@ async function placeBid({ auctionId, bidderId, bidAmount, user }) {
         }
     }
 
+    const fraudResult = await detectBidFraud(auction, numericBid, bidderId);
+
     auction.bids.push({
         bidderId: new mongoose.Types.ObjectId(bidderId),
         bidAmount: numericBid,
         timestamp: now,
+        isAutoBid: isAutoBid,
+        ...fraudResult,
     });
 
     auction.currentBid = numericBid;
+
     auction.bidsCount += 1;
     auction.lastBidAt = now;
 
@@ -96,6 +451,131 @@ async function placeBid({ auctionId, bidderId, bidAmount, user }) {
     await auction.populate("bids.bidderId", "username");
 
     return auction;
+}
+
+/**
+ * processAutoBids
+ * Scans for users who have set a Max Bid for this item/category
+ * and places a new bid if they are currently outbid.
+ */
+async function processAutoBids(auctionId, io) {
+    const auctionKey = auctionId.toString();
+
+    if (processingAutoBidAuctions.has(auctionKey)) {
+        pendingAutoBidAuctions.add(auctionKey);
+        return;
+    }
+
+    processingAutoBidAuctions.add(auctionKey);
+
+    try {
+        do {
+            pendingAutoBidAuctions.delete(auctionKey);
+
+            const maxReachedNotifiedUsers = new Set();
+            let didPlaceBidInCycle = false;
+            let canContinue = true;
+
+            while (canContinue) {
+                const auction = await Auction.findById(auctionId);
+                if (!auction || auction.status !== "active") break;
+
+                const latestBid = auction.bids.length > 0 ? auction.bids[auction.bids.length - 1] : null;
+                const currentLeaderId = latestBid?.bidderId ? latestBid.bidderId.toString() : null;
+
+                const activeBots = await AutoBidSetting.find({
+                    auctionId: auction._id,
+                    isActive: true,
+                }).sort({ updatedAt: 1, _id: 1 });
+
+                if (!activeBots.length) break;
+
+                let placedInRound = false;
+
+                for (const bot of activeBots) {
+                    const botUserId = bot.userId?.toString();
+                    if (!botUserId) continue;
+
+                    if (currentLeaderId && botUserId === currentLeaderId) {
+                        continue;
+                    }
+
+                    const increment = Number(bot.increment) || 1;
+                    const nextBid = Number(auction.currentBid) + increment;
+
+                    if (nextBid > Number(bot.maxBid)) {
+                        if (!maxReachedNotifiedUsers.has(botUserId)) {
+                            maxReachedNotifiedUsers.add(botUserId);
+                            notifyUser(io, botUserId, "auto-bid:max-reached", {
+                                auctionId: auction._id,
+                                currentBid: Number(auction.currentBid),
+                                maxBid: Number(bot.maxBid),
+                                message: "Auto-bid paused because your maximum bid was reached.",
+                            });
+                        }
+                        continue;
+                    }
+
+                    const lastBid = auction.bids.length > 0 ? auction.bids[auction.bids.length - 1] : null;
+                    if (
+                        lastBid?.bidderId?.toString() === botUserId &&
+                        Number(lastBid?.bidAmount) === nextBid
+                    ) {
+                        continue;
+                    }
+
+                    try {
+                        const botUser = await User.findById(bot.userId);
+                        if (!botUser) continue;
+
+                        console.log(`[AutoBid] Bot for user ${botUserId} placing bid $${nextBid} on auction ${auctionId}`);
+
+                        const updated = await placeBid({
+                            auctionId: auction._id,
+                            bidderId: botUserId,
+                            bidAmount: nextBid,
+                            user: botUser,
+                            isAutoBid: true,
+                        });
+
+                        if (io) {
+                            io.to(`auction:${auction._id}`).emit("auction:update", updated);
+                        }
+
+                        notifyUser(io, botUserId, "auto-bid:placed", {
+                            auctionId: auction._id,
+                            bidAmount: nextBid,
+                            currentBid: updated.currentBid,
+                            message: `Your auto-bid placed $${nextBid}.`,
+                        });
+
+                        const cooldown = getAutoBidCooldownMs(auction.auctionType);
+                        if (cooldown > 0) {
+                            await wait(cooldown);
+                        }
+
+                        placedInRound = true;
+                        didPlaceBidInCycle = true;
+                        break;
+                    } catch (err) {
+                        console.warn(`[AutoBid] Failed for ${botUserId}: ${err.message}`);
+                        continue;
+                    }
+                }
+
+                if (!placedInRound) {
+                    canContinue = false;
+                }
+            }
+
+            if (!didPlaceBidInCycle) {
+                break;
+            }
+        } while (pendingAutoBidAuctions.has(auctionKey));
+    } finally {
+        processingAutoBidAuctions.delete(auctionKey);
+        pendingAutoBidAuctions.delete(auctionKey);
+    }
 }
 
 async function completeAuction(auction) {
@@ -114,6 +594,13 @@ async function completeAuction(auction) {
 
     if (auction.winnerId && !auction.winnerNotified) {
         await sendWinnerEmailOnce(auction);
+    }
+
+    if (auction.winnerId) {
+        await SmartAutoBidAgent.updateMany(
+            { userId: auction.winnerId, isEnabled: true },
+            { isEnabled: false }
+        );
     }
 
     return auction;
@@ -275,4 +762,9 @@ module.exports = {
     closeExpiredNormalAuctions,
     sendWinnerEmailOnce,
     sendPaymentConfirmationEmailOnce,
+    processAutoBids,
+    processSmartAgentsByAuction,
+    processAllSmartAgents,
+    processSmartAgentBySetting,
+    getSmartAgentOverviewForUser,
 };
