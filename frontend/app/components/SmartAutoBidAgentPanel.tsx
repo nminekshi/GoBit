@@ -464,14 +464,14 @@ export default function SmartAutoBidAgentPanel() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {selected.targets.map((target) => (
               <Link
                 key={target.auctionId}
                 href={`/auctions/${target.auctionId}`}
-                className="group relative flex flex-col rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
+                className="group relative flex flex-row items-stretch rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
               >
-                <div className="h-48 w-full overflow-hidden">
+                <div className="relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44">
                   <img
                     src={getRelevantImage(target.imageUrl, selected.category)}
                     alt={target.title}
@@ -480,25 +480,28 @@ export default function SmartAutoBidAgentPanel() {
                       (e.currentTarget as HTMLImageElement).src = CATEGORY_FALLBACKS[selected.category] || FALLBACK_IMAGE;
                     }}
                   />
-                  <div className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                  <div className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
                     {target.auctionType}
                   </div>
                 </div>
                 
-                <div className="flex flex-1 flex-col justify-between p-4">
+                <div className="flex flex-1 flex-col justify-between p-4 px-5">
                   <div>
-                    <h4 className="font-semibold text-white line-clamp-1">{target.title}</h4>
-                    <p className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-white/60">Current</span>
-                      <span className="font-medium text-white">${target.currentBid.toLocaleString()}</span>
-                    </p>
-                    <p className="mt-1 flex items-center justify-between text-sm">
-                      <span className="text-emerald-400/80">Next Projected</span>
-                      <span className="font-semibold text-emerald-400">${target.nextBid.toLocaleString()}</span>
-                    </p>
+                    <h4 className="font-bold text-white line-clamp-1 tracking-tight group-hover:text-emerald-300 transition-colors uppercase text-sm">{target.title}</h4>
+                    <div className="mt-3 space-y-2">
+                      <p className="flex items-center justify-between text-xs">
+                        <span className="text-white/50">Current</span>
+                        <span className="font-semibold text-white/90">${target.currentBid.toLocaleString()}</span>
+                      </p>
+                      <p className="flex items-center justify-between text-xs">
+                        <span className="text-emerald-400/60 font-medium italic">Projected</span>
+                        <span className="font-bold text-emerald-400/90 tracking-tighter">${target.nextBid.toLocaleString()}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-4 pt-4 border-t border-white/10 text-xs text-white/40">
-                    Closes: {new Date(target.endTime).toLocaleString()}
+                  <div className="mt-4 pt-3 border-t border-white/5 text-[10px] font-mono text-white/30 flex items-center justify-between">
+                    <span>ENDS_IN:</span>
+                    <span className="text-white/40">{new Date(target.endTime).toLocaleDateString()}</span>
                   </div>
                 </div>
               </Link>
