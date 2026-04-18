@@ -478,6 +478,8 @@ export const auctionAPI = {
         bidIncrement: number;
         maxConcurrentAuctions: number;
         isEnabled?: boolean;
+        strategy?: string;
+        targetWinCount?: number;
     }): Promise<any | null> {
         try {
             const userId = getUserId();
@@ -540,6 +542,26 @@ export const auctionAPI = {
         } catch (error) {
             console.error("Error disabling smart auto-bid agent:", error);
             return false;
+        }
+    },
+
+    // Fetch bot activity logs by category
+    async fetchBotLogs(category: string): Promise<any[]> {
+        try {
+            const userId = getUserId();
+            if (!userId) return [];
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/auto-agent/logs/${category}`, {
+                headers: { "x-user-id": userId },
+            });
+
+            if (!response.ok) {
+                return [];
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching bot logs:", error);
+            return [];
         }
     },
 };

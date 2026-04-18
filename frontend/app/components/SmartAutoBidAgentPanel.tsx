@@ -12,6 +12,8 @@ type AgentOverview = {
   bidIncrement: number;
   maxConcurrentAuctions: number;
   isEnabled: boolean;
+  strategy?: string;
+  targetWinCount?: number;
   committedBudget: number;
   remainingBudget: number;
   targets: Array<{
@@ -55,9 +57,12 @@ export default function SmartAutoBidAgentPanel() {
   const [maxBudget, setMaxBudget] = useState<number>(30000);
   const [bidIncrement, setBidIncrement] = useState<number>(10);
   const [maxConcurrentAuctions, setMaxConcurrentAuctions] = useState<number>(3);
+  const [strategy, setStrategy] = useState<string>("standard");
+  const [targetWinCount, setTargetWinCount] = useState<number>(1);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [overview, setOverview] = useState<AgentOverview[]>([]);
+  const [botLogs, setBotLogs] = useState<any[]>([]);
   const [message, setMessage] = useState<string>("");
   const [notifications, setNotifications] = useState<string[]>([]);
 
@@ -81,14 +86,22 @@ export default function SmartAutoBidAgentPanel() {
         setMaxBudget(Number(chosen.maxBudget));
         setBidIncrement(Number(chosen.bidIncrement));
         setMaxConcurrentAuctions(Number(chosen.maxConcurrentAuctions));
+        setStrategy(chosen.strategy || "standard");
+        setTargetWinCount(Number(chosen.targetWinCount) || 1);
         setIsEnabled(Boolean(chosen.isEnabled));
       }
     }
   };
 
+  const loadLogs = async () => {
+    const logs = await auctionAPI.fetchBotLogs(category);
+    setBotLogs(logs);
+  };
+
   useEffect(() => {
     loadOverview();
-  }, []);
+    loadLogs();
+  }, [category]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -151,6 +164,8 @@ export default function SmartAutoBidAgentPanel() {
     setMaxBudget(Number(selected.maxBudget));
     setBidIncrement(Number(selected.bidIncrement));
     setMaxConcurrentAuctions(Number(selected.maxConcurrentAuctions));
+    setStrategy(selected.strategy || "standard");
+    setTargetWinCount(Number(selected.targetWinCount) || 1);
     setIsEnabled(Boolean(selected.isEnabled));
   }, [selected?._id]);
 
@@ -179,6 +194,8 @@ export default function SmartAutoBidAgentPanel() {
       bidIncrement,
       maxConcurrentAuctions,
       isEnabled,
+      strategy,
+      targetWinCount,
     });
 
     if (result) {
@@ -249,6 +266,33 @@ export default function SmartAutoBidAgentPanel() {
             value={maxConcurrentAuctions}
             onChange={(e) => setMaxConcurrentAuctions(Number(e.target.value))}
             className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
+          />
+        </label>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
+        <label className="text-sm text-white/80">
+          Strategy
+          <select
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
+          >
+            <option value="standard">Standard (Instant fixed increment)</option>
+            <option value="sniper">Sniper (Final 3 minutes)</option>
+            <option value="aggressive">Aggressive (Jump bids)</option>
+          </select>
+        </label>
+
+        <label className="text-sm text-white/80">
+          Target Win Count
+          <input
+            type="number"
+            value={targetWinCount}
+            min={1}
+            disabled={!isEnabled}
+            onChange={(e) => setTargetWinCount(Number(e.target.value))}
+            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white disabled:opacity-50"
           />
         </label>
       </div>
@@ -355,6 +399,22 @@ export default function SmartAutoBidAgentPanel() {
               {item}
             </div>
           ))}
+        </div>
+      )}
+
+      {botLogs.length > 0 && (
+        <div className="mt-5 space-y-2">
+          <p className="text-sm font-semibold text-white">Detailed Activity Log</p>
+          <div className="max-h-60 overflow-y-auto rounded-lg border border-white/10 bg-black/40 p-2">
+            {botLogs.map((log) => (
+              <div key={log._id} className="border-b border-white/5 p-2 text-xs text-white/70 last:border-b-0">
+                <span className="mb-1 block font-semibold text-emerald-400">
+                  {new Date(log.createdAt).toLocaleString()} <span className="text-white/40 ml-1 uppercase">[{log.action}]</span>
+                </span>
+                {log.message}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>

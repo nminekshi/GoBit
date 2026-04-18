@@ -742,7 +742,7 @@ router.delete("/:id/auto-bid", authenticate, async (req, res) => {
 // POST /auctions/my/auto-agent - Create or update smart category auto-bidding agent
 router.post("/my/auto-agent", authenticate, async (req, res) => {
     try {
-        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled } = req.body;
+        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled, strategy, targetWinCount } = req.body;
 
         if (!category || typeof category !== "string") {
             return res.status(400).json({ error: "Category is required" });
@@ -772,6 +772,8 @@ router.post("/my/auto-agent", authenticate, async (req, res) => {
                 bidIncrement: parsedIncrement,
                 maxConcurrentAuctions: Math.min(10, parsedMaxConcurrent),
                 isEnabled: isEnabled !== false,
+                strategy: ["standard", "sniper", "aggressive"].includes(strategy) ? strategy : "standard",
+                targetWinCount: Math.max(1, Number(targetWinCount) || 1),
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -797,6 +799,21 @@ router.get("/my/auto-agent", authenticate, async (req, res) => {
     } catch (error) {
         console.error("Error fetching smart auto-bid overview:", error);
         res.status(500).json({ error: "Failed to fetch smart auto-bid overview" });
+    }
+});
+
+// GET /auctions/my/auto-agent/logs/:category - Get logs for agent
+router.get("/my/auto-agent/logs/:category", authenticate, async (req, res) => {
+    try {
+        const BotActivityLog = require("../models/BotActivityLog");
+        const logs = await BotActivityLog.find({
+            userId: req.userId,
+            category: req.params.category.toLowerCase()
+        }).sort({ createdAt: -1 }).limit(50);
+        res.json(logs);
+    } catch (error) {
+        console.error("Error fetching bot logs:", error);
+        res.status(500).json({ error: "Failed to fetch bot logs" });
     }
 });
 
