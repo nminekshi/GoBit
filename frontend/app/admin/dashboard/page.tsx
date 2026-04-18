@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -16,6 +16,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
+import { auctionAPI } from "../../lib/api";
 
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, href: "/admin/dashboard" },
@@ -27,80 +28,51 @@ const NAV_ITEMS = [
   { label: "Security", icon: ShieldCheck, href: "/admin/security" },
 ];
 
-const KPI_CARDS: Kpi[] = [
-  { label: "Active auctions", value: 126, delta: "+12%", accent: "emerald", icon: Activity },
-  { label: "GMV (24h)", value: "$842k", delta: "+6.1%", accent: "blue", icon: Wallet },
-  { label: "New users", value: 384, delta: "+9%", accent: "purple", icon: Users },
-  { label: "Disputes", value: 7, delta: "-2", accent: "amber", icon: ShieldCheck },
-];
-
-const LIVE_ACTIVITY = [
-  { time: "10:12", message: "New bid $1,250 on Tesla Model S", tag: "Live" },
-  { time: "10:08", message: "Payout initiated to seller_21 ($4,900)", tag: "Payout" },
-  { time: "09:58", message: "2FA challenge passed by admin_lee", tag: "Security" },
-  { time: "09:50", message: "New auction submitted: Vintage Omega", tag: "Review" },
-];
-
-const PENDING_APPROVALS = [
-  { id: "A-9921", title: "Vintage Omega Seamaster", seller: "watch_vault", type: "Auction" },
-  { id: "U-2204", title: "KYC verification", seller: "dealer_hub_21", type: "User" },
-  { id: "A-4810", title: "Gaming PC Bundle", seller: "pixel_parts", type: "Auction" },
-];
-
-const RECENT_TRANSACTIONS = [
-  { id: "TX-11820", item: "Rolex Submariner", amount: "$9,800", status: "Paid" },
-  { id: "TX-11819", item: "MacBook Pro", amount: "$2,450", status: "Pending" },
-  { id: "TX-11818", item: "Land Rover Evoque", amount: "$31,600", status: "Paid" },
-  { id: "TX-11817", item: "Art Print #441", amount: "$640", status: "Refund" },
-];
-
-const NOTIFICATIONS = [
-  { title: "Webhook latency warning", detail: "Payments endpoint 480ms", tone: "amber" },
-  { title: "Model retrain completed", detail: "Fraud v4.3 live", tone: "emerald" },
-  { title: "Chargeback raised", detail: "TX-11817 opened by bank", tone: "rose" },
-];
-
 export default function AdminDashboard() {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [activeAuctions, setActiveAuctions] = useState(0);
+  
+  const [stats, setStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const goToCreateAuction = () => router.push("/seller/create-auction");
   const goToInviteAdmin = () => router.push("/admin/users");
 
   useEffect(() => {
+    let mounted = true;
     const loadStats = async () => {
       try {
-        const { auctionAPI } = await import("../../lib/api");
-        const auctions = await auctionAPI.fetchAuctions();
-        const activeCount = Array.isArray(auctions)
-          ? auctions.filter((a: { status?: string }) => a?.status === "active").length
-          : 0;
-        setActiveAuctions(activeCount);
+        const data = await auctionAPI.fetchDashboardStats();
+        if (mounted) setStats(data);
       } catch (err) {
         console.error("Failed to load admin stats:", err);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     };
     loadStats();
+    return () => { mounted = false; };
   }, []);
 
-  const kpis = useMemo(() => {
-    return KPI_CARDS.map((card) =>
-      card.label === "Active auctions" ? { ...card, value: activeAuctions } : card
-    );
-  }, [activeAuctions]);
+  const kpis = [
+    { label: "Active auctions", value: stats?.activeAuctions || 0, delta: "Live Market", accent: "emerald", icon: Activity },
+    { label: "GMV (Platform)", value: `$${(stats?.gmv || 0).toLocaleString()}`, delta: "Total USD Flow", accent: "blue", icon: Wallet },
+    { label: "Total users", value: stats?.totalUsers || 0, delta: "Registered", accent: "purple", icon: Users },
+    { label: "ML Intercepts", value: stats?.totalIntercepts || 0, delta: "AI Interdictions", accent: "amber", icon: ShieldCheck },
+  ] as const;
+
+  const liveActivity = stats?.liveActivity || [];
+  const pendingApprovals = stats?.pendingApprovals || [];
+  const recentTransactions = stats?.recentTransactions || [];
 
   return (
     <main className="relative flex min-h-screen items-start gap-6 bg-[#050915] px-4 py-6 text-white sm:px-6 lg:px-8">
-      <aside
-        className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"
-          }`}
-      >
-        <div className="flex items-center gap-2 pb-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
+      <aside className={`sticky top-0 z-20 flex min-h-[80vh] shrink-0 flex-col rounded-3xl border border-white/10 bg-gradient-to-b from-[#0b1326] to-[#050915] p-3 transition-all duration-300 ${isCollapsed ? "w-20" : "w-72"}`}>
+         <div className="flex items-center gap-2 pb-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold">ADM</div>
           {!isCollapsed && (
-            <div>
+            <div className="truncate">
               <p className="text-[10px] uppercase tracking-[0.25em] text-white/50">Admin</p>
               <p className="text-sm font-semibold">Overview</p>
             </div>
@@ -126,7 +98,7 @@ export default function AdminDashboard() {
                     : "border-white/10 text-white/70 hover:border-emerald-400/50 hover:text-white"
                     }`}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5 shrink-0" />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </div>
               </Link>
@@ -147,120 +119,180 @@ export default function AdminDashboard() {
         )}
       </aside>
 
-      <section className="flex-1 w-full overflow-x-hidden">
-        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-2 py-4 sm:px-4 lg:px-6">
+      <section className="flex-1 w-full overflow-x-hidden pt-2">
+        <div className="mx-auto flex w-full max-w-none flex-col gap-8 px-2 sm:px-4 lg:px-6">
           <header className="flex flex-col gap-3 border-b border-white/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">Overview</p>
               <h1 className="mt-1 text-4xl font-bold tracking-tight">Admin Dashboard</h1>
-              <p className="mt-2 max-w-3xl text-sm text-white/60">KPI pulse, analytics, live activity, approvals, and quick controls in one responsive view.</p>
+              <p className="mt-2 max-w-3xl text-sm text-white/60">Live MongoDB analytics, ML intercepts, and system pulse mapping.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:border-emerald-400/60">
-                <Bell className="h-4 w-4" /> Notifications
-              </button>
-              <button className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 hover:bg-emerald-400">
-                <Zap className="h-4 w-4" /> Quick Action
-              </button>
+              <Link href="/admin/security" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:border-emerald-400/60">
+                <ShieldCheck className="h-4 w-4" /> Security Ops
+              </Link>
+              <Link href="/admin/reports" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 hover:bg-emerald-400">
+                <Zap className="h-4 w-4" /> Export Report
+              </Link>
             </div>
           </header>
 
           <section className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {kpis.map((card) => (
-              <KpiCard key={card.label} card={card} />
+              <KpiCard key={card.label} card={card} isLoading={isLoading} />
             ))}
           </section>
 
-          <div className="grid w-full gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            <div className="space-y-6 w-full">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold">Revenue & Traffic</h2>
-                  <span className="text-xs text-white/60">Last 7 days</span>
-                </div>
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                  <SparkChart title="Revenue" values={[42, 68, 61, 74, 90, 85, 102]} accent="emerald" />
-                  <SparkChart title="Sessions" values={[320, 344, 331, 362, 410, 398, 455]} accent="blue" />
-                </div>
+          {/* ── Analytics Charts ── */}
+          <section className="grid w-full gap-6 lg:grid-cols-2">
+            {/* Chart 1: Highest Volume Auctions */}
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+              <div className="mb-5 flex items-center justify-between border-b border-white/5 pb-4">
+                <h3 className="text-base font-bold text-white tracking-wide">Highest Volume Auctions</h3>
+                <span className="text-[10px] uppercase tracking-wider text-white/40 font-bold">Live · MongoDB</span>
               </div>
-
-              <div className="grid w-full gap-4 lg:grid-cols-2">
-                <CardPanel title="Live Activity" actionLabel="View stream">
-                  <ul className="space-y-3 text-sm">
-                    {LIVE_ACTIVITY.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
-                        <span className="text-xs text-white/50 w-12">{item.time}</span>
-                        <div className="flex-1 text-white/90">{item.message}</div>
-                        <Badge tone="emerald" label={item.tag} />
-                      </li>
-                    ))}
-                  </ul>
-                </CardPanel>
-
-                <CardPanel title="Pending Approvals" actionLabel="Open queue">
-                  <ul className="space-y-3 text-sm">
-                    {PENDING_APPROVALS.map((p) => (
-                      <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
-                        <div className="flex-1">
-                          <p className="font-semibold text-white">{p.id} · {p.title}</p>
-                          <p className="text-xs text-white/60">Seller: {p.seller}</p>
+              {isLoading ? (
+                <div className="py-12 text-center text-white/50 text-sm">Loading chart data...</div>
+              ) : (stats?.topAuctions || []).length > 0 ? (
+                <div className="space-y-4">
+                  {(stats.topAuctions as any[]).map((auction: any, idx: number) => {
+                    const max = stats.topAuctions[0]?.value || 1;
+                    const pct = Math.max((auction.value / max) * 100, 8);
+                    const colors = [
+                      "from-emerald-500 to-emerald-400",
+                      "from-blue-500 to-blue-400",
+                      "from-purple-500 to-purple-400",
+                      "from-amber-500 to-amber-400",
+                      "from-rose-500 to-rose-400",
+                    ];
+                    return (
+                      <div key={idx}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-semibold text-white/80 truncate max-w-[200px]">{auction.title}</span>
+                          <span className="text-xs font-bold font-mono text-white">${auction.value.toLocaleString()}</span>
                         </div>
-                        <Badge tone="amber" label={p.type} />
-                        <button className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20">Review</button>
-                      </li>
-                    ))}
-                  </ul>
-                </CardPanel>
-              </div>
-
-              <CardPanel title="Recent Transactions" actionLabel="View all">
-                <div className="overflow-hidden rounded-2xl border border-white/10">
-                  <div className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white/60">
-                    <span>Txn</span>
-                    <span>Item</span>
-                    <span>Amount</span>
-                    <span className="text-right">Status</span>
-                  </div>
-                  <div className="divide-y divide-white/5">
-                    {RECENT_TRANSACTIONS.map((tx) => (
-                      <div key={tx.id} className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr] items-center px-4 py-3 text-sm hover:bg-white/5">
-                        <span className="font-semibold text-white">{tx.id}</span>
-                        <span className="text-white/80">{tx.item}</span>
-                        <span className="text-white/80">{tx.amount}</span>
-                        <div className="flex justify-end">
-                          <Badge tone={tx.status === "Paid" ? "emerald" : tx.status === "Pending" ? "amber" : "rose"} label={tx.status} />
+                        <div className="h-5 w-full rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${colors[idx % colors.length]} transition-all duration-700 ease-out`}
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              </CardPanel>
+              ) : (
+                <div className="py-12 text-center text-white/50 text-sm italic">No auction volume data available.</div>
+              )}
             </div>
 
-            <aside className="space-y-6 w-full">
-              <CardPanel title="Notifications" actionLabel="Manage">
-                <div className="space-y-3 text-sm">
-                  {NOTIFICATIONS.map((n, idx) => (
-                    <div key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
-                      <Bell className={`mt-0.5 h-4 w-4 ${toneIcon(n.tone)}`} />
-                      <div>
-                        <p className="font-semibold text-white">{n.title}</p>
-                        <p className="text-xs text-white/60">{n.detail}</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Chart 2: ML Risk Score Distribution */}
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
+              <div className="mb-5 flex items-center justify-between border-b border-white/5 pb-4">
+                <h3 className="text-base font-bold text-white tracking-wide">ML Risk Score Distribution</h3>
+                <span className="text-[10px] uppercase tracking-wider text-white/40 font-bold">Isolation Forest</span>
+              </div>
+              {isLoading ? (
+                <div className="py-12 text-center text-white/50 text-sm">Loading risk analysis...</div>
+              ) : (stats?.riskDistribution || []).length > 0 ? (
+                <div>
+                  <div className="flex items-end gap-3 justify-between" style={{ height: "160px" }}>
+                    {(stats.riskDistribution as any[]).map((bucket: any, idx: number) => {
+                      const maxCount = Math.max(...stats.riskDistribution.map((b: any) => b.count), 1);
+                      const heightPct = Math.max((bucket.count / maxCount) * 100, 6);
+                      const barColors = [
+                        "bg-emerald-400",
+                        "bg-blue-400",
+                        "bg-amber-400",
+                        "bg-orange-400",
+                        "bg-rose-500",
+                      ];
+                      const labelColors = [
+                        "text-emerald-300",
+                        "text-blue-300",
+                        "text-amber-300",
+                        "text-orange-300",
+                        "text-rose-300",
+                      ];
+                      return (
+                        <div key={idx} className="flex flex-1 flex-col items-center gap-2">
+                          <span className={`text-xs font-bold ${labelColors[idx]}`}>{bucket.count}</span>
+                          <div className="w-full flex items-end justify-center" style={{ height: "120px" }}>
+                            <div
+                              className={`w-full max-w-[40px] rounded-t-lg ${barColors[idx]} transition-all duration-700 ease-out`}
+                              style={{ height: `${heightPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-3 justify-between mt-3 border-t border-white/5 pt-3">
+                    {(stats.riskDistribution as any[]).map((bucket: any, idx: number) => {
+                      const riskLabels = ["Safe", "Low", "Medium", "High", "Critical"];
+                      return (
+                        <div key={idx} className="flex-1 text-center">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">{bucket.range}</p>
+                          <p className="text-[9px] text-white/25 mt-0.5">{riskLabels[idx]}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-white/50 text-sm italic">No risk data available.</div>
+              )}
+            </div>
+          </section>
+
+          <div className="grid w-full gap-6 lg:grid-cols-3">
+              <CardPanel title="Live Activity" actionLabel="View network" showAction={false}>
+                {isLoading ? (
+                  <div className="py-8 text-center text-white/50 text-sm">Loading activity stream...</div>
+                ) : liveActivity.length > 0 ? (
+                  <ul className="space-y-3 text-sm">
+                    {liveActivity.map((item: any, idx: number) => (
+                      <li key={idx} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <span className="text-xs text-white/50 w-12 pt-1">{item.time}</span>
+                        <div className="flex-1 text-white/90">{item.message}</div>
+                        <Badge tone={item.tag === "Security" ? "amber" : "emerald"} label={item.tag} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                   <div className="py-8 text-center text-white/50 text-sm italic border border-dashed border-white/5 rounded-2xl">No recent network activity.</div>
+                )}
+              </CardPanel>
+
+              <CardPanel title="System Status" actionLabel="" showAction={false}>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm py-2.5 border-b border-white/10">
+                    <span className="text-white/60">Node.js Main API</span>
+                    <span className="text-emerald-400 font-semibold">Online</span>
+                  </div>
+                  <div className="flex justify-between text-sm py-2.5 border-b border-white/10">
+                    <span className="text-white/60">MongoDB Cluster</span>
+                    <span className="text-emerald-400 font-semibold">Connected</span>
+                  </div>
+                  <div className="flex justify-between text-sm py-2.5 border-b border-white/10">
+                    <span className="text-white/60">WebSocket Feed</span>
+                    <span className="text-emerald-400 font-semibold">Streaming</span>
+                  </div>
+                  <div className="flex justify-between text-sm py-2.5">
+                    <span className="text-white/60">Python ML Engine</span>
+                    <span className="text-emerald-400 font-semibold text-xs border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">Port 8000</span>
+                  </div>
                 </div>
               </CardPanel>
 
-              <CardPanel title="Quick Actions" actionLabel="All actions">
-                <div className="grid gap-3 sm:grid-cols-2">
+              <CardPanel title="Quick Actions" actionLabel="All actions" showAction={false}>
+                <div className="grid gap-3 grid-cols-2">
                   <ActionButton label="Create auction" icon={Layers} onClick={goToCreateAuction} />
-                  <ActionButton label="Issue payout" icon={Wallet} />
-                  <ActionButton label="Send notice" icon={Bell} />
-                  <ActionButton label="Export report" icon={BarChart3} />
+                  <ActionButton label="Manage users" icon={Users} onClick={goToInviteAdmin} />
+                  <ActionButton label="Fraud alerts" icon={Bell} onClick={() => router.push('/admin/security/fraud')} />
+                  <ActionButton label="View reports" icon={BarChart3} onClick={() => router.push('/admin/reports')} />
                 </div>
               </CardPanel>
-            </aside>
           </div>
         </div>
       </section>
@@ -268,9 +300,7 @@ export default function AdminDashboard() {
   );
 }
 
-type Kpi = { label: string; value: string | number; delta: string; accent: "emerald" | "blue" | "purple" | "amber"; icon: React.ComponentType<{ className?: string }> };
-
-function KpiCard({ card }: { card: Kpi }) {
+function KpiCard({ card, isLoading }: { card: any, isLoading: boolean }) {
   const tones: Record<string, { bg: string; text: string }> = {
     emerald: { bg: "from-emerald-500/25", text: "text-emerald-200" },
     blue: { bg: "from-blue-500/25", text: "text-blue-200" },
@@ -279,45 +309,25 @@ function KpiCard({ card }: { card: Kpi }) {
   };
   const ToneIcon = card.icon;
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-4 ring-1 ring-white/5">
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 p-4 ring-1 ring-white/5 transition-all hover:bg-white/5">
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${tones[card.accent].bg}`}>
         <ToneIcon className={`h-5 w-5 ${tones[card.accent].text}`} />
       </div>
       <p className="mt-3 text-xs uppercase tracking-wide text-white/60">{card.label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{card.value}</p>
-      <p className="text-xs font-semibold text-emerald-300">{card.delta}</p>
+      <p className="mt-1 text-2xl font-bold text-white tracking-tight">
+          {isLoading ? <span className="text-white/20 animate-pulse">...</span> : card.value}
+      </p>
+      <p className="text-[10px] uppercase font-bold text-white/40 mt-1">{card.delta}</p>
     </div>
   );
 }
 
-function SparkChart({ title, values, accent }: { title: string; values: number[]; accent: "emerald" | "blue" }) {
-  const max = Math.max(...values);
-  const tone = accent === "emerald" ? "bg-emerald-400" : "bg-blue-400";
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <div className="flex items-center justify-between text-sm text-white/80">
-        <span>{title}</span>
-        <span className="text-xs text-white/50">Sparkline</span>
-      </div>
-      <div className="mt-3 flex items-end gap-2">
-        {values.map((v, idx) => (
-          <div
-            key={idx}
-            className={`w-full rounded-t-lg ${tone}`}
-            style={{ height: `${(v / max) * 120 + 10}px` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CardPanel({ title, actionLabel, children }: { title: string; actionLabel?: string; children: React.ReactNode }) {
+function CardPanel({ title, actionLabel, showAction = true, children }: { title: string; actionLabel?: string; showAction?: boolean, children: React.ReactNode }) {
   return (
     <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white">{title}</h3>
-        {actionLabel && <button className="text-xs font-semibold text-emerald-300 hover:text-emerald-200">{actionLabel}</button>}
+      <div className="mb-5 flex items-center justify-between border-b border-white/5 pb-4">
+        <h3 className="text-base font-bold text-white tracking-wide">{title}</h3>
+        {showAction && actionLabel && <button className="text-xs font-semibold text-emerald-300 hover:text-emerald-200">{actionLabel}</button>}
       </div>
       {children}
     </div>
@@ -330,24 +340,17 @@ function Badge({ tone, label }: { tone: "emerald" | "amber" | "rose"; label: str
     amber: "text-amber-300 bg-amber-500/10 border-amber-500/30",
     rose: "text-rose-300 bg-rose-500/10 border-rose-500/30",
   };
-  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold capitalize ${colors[tone]}`}>{label}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${colors[tone]}`}>{label}</span>;
 }
 
 function ActionButton({ label, icon: Icon, onClick }: { label: string; icon: React.ComponentType<{ className?: string }>; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-sm font-semibold text-white hover:border-emerald-400/60"
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm font-semibold text-white hover:border-emerald-400/60 hover:bg-white/5 transition-all text-center"
     >
-      <Icon className="h-4 w-4 text-emerald-300" />
-      <span>{label}</span>
+      <Icon className="h-6 w-6 text-emerald-300" />
+      <span className="text-[11px] uppercase tracking-wider opacity-80">{label}</span>
     </button>
   );
-}
-
-function toneIcon(tone: string) {
-  if (tone === "emerald") return "text-emerald-300";
-  if (tone === "amber") return "text-amber-300";
-  if (tone === "rose") return "text-rose-300";
-  return "text-white";
 }
