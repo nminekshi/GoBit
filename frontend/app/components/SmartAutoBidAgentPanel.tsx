@@ -42,7 +42,10 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
 
 const getRelevantImage = (imageUrl: string | undefined, category: string) => {
   if (imageUrl && imageUrl.trim()) {
-    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("data:")) {
+      return imageUrl;
+    }
+    if (imageUrl.startsWith("/images/")) {
       return imageUrl;
     }
     if (imageUrl.startsWith("/")) {
@@ -468,7 +471,7 @@ export default function SmartAutoBidAgentPanel() {
                 href={`/auctions/${target.auctionId}`}
                 className="group relative flex flex-col rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
               >
-                <div className="h-32 w-full overflow-hidden">
+                <div className="h-48 w-full overflow-hidden">
                   <img
                     src={getRelevantImage(target.imageUrl, selected.category)}
                     alt={target.title}
