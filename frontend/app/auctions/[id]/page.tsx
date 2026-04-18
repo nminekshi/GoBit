@@ -449,7 +449,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     };
 
     return (
-        <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-[#040918] text-white pt-24 pb-12 px-4 sm:px-8 xl:px-12">
             {notifications.length > 0 && (
                 <div className="fixed right-4 top-24 z-50 w-[min(92vw,360px)] space-y-2">
                     {notifications.map((item) => (
@@ -469,7 +469,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                 </div>
             )}
 
-            <div className="max-w-7xl mx-auto">
+            <div className="w-full">
                 {/* Breadcrumb / Back Navigation */}
                 <div className="mb-8">
                     <Link
@@ -485,13 +485,13 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Left Column: Image */}
-                    <div className="space-y-4">
-                        <div className="relative aspect-4/3 w-full overflow-hidden rounded-3xl border border-white/10 bg-white/5">
+                    <div className="flex flex-col items-center justify-start lg:items-start lg:pr-8">
+                        <div className="relative w-full aspect-video md:aspect-[16/10] max-w-3xl max-h-[550px] overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm">
                             <Image
                                 src={auction.imageUrl}
                                 alt={auction.title}
                                 fill
-                                className="object-cover"
+                                className="object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
                                 priority
                             />
                         </div>
