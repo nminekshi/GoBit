@@ -58,6 +58,7 @@ const getRelevantImage = (imageUrl: string | undefined, category: string) => {
 
 export default function SmartAutoBidAgentPanel() {
   const [category, setCategory] = useState<string>("watches");
+  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [maxBudget, setMaxBudget] = useState<number>(30000);
   const [bidIncrement, setBidIncrement] = useState<number>(10);
   const [maxConcurrentAuctions, setMaxConcurrentAuctions] = useState<number>(3);
@@ -69,6 +70,39 @@ export default function SmartAutoBidAgentPanel() {
   const [botLogs, setBotLogs] = useState<any[]>([]);
   const [message, setMessage] = useState<string>("");
   const [notifications, setNotifications] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedCategory = localStorage.getItem("smartAutoBidCategory");
+      const initialCat = (savedCategory && CATEGORIES.includes(savedCategory)) ? savedCategory : "watches";
+      setCategory(initialCat);
+
+      const raw = localStorage.getItem(`smartAutoBidDraft_${initialCat}`);
+      if (raw) {
+        try {
+          const draft = JSON.parse(raw);
+          if (draft.maxBudget) setMaxBudget(draft.maxBudget);
+          if (draft.bidIncrement) setBidIncrement(draft.bidIncrement);
+          if (draft.maxConcurrentAuctions) setMaxConcurrentAuctions(draft.maxConcurrentAuctions);
+          if (draft.strategy) setStrategy(draft.strategy);
+          if (draft.targetWinCount) setTargetWinCount(draft.targetWinCount);
+        } catch (e) {}
+      }
+    }
+    setIsMounted(true);
+  }, []);
+
+  const saveDraft = (field: string, value: any) => {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem(`smartAutoBidDraft_${category}`);
+      let draft: any = {};
+      if (raw) {
+        try { draft = JSON.parse(raw); } catch (e) {}
+      }
+      draft[field] = value;
+      localStorage.setItem(`smartAutoBidDraft_${category}`, JSON.stringify(draft));
+    }
+  };
 
   const selected = useMemo(
     () => overview.find((item) => item.category === category),
@@ -83,7 +117,7 @@ export default function SmartAutoBidAgentPanel() {
     const data = await auctionAPI.fetchSmartAutoAgents();
     setOverview(Array.isArray(data) ? data : []);
 
-    if (Array.isArray(data) && data.length > 0) {
+    if (Array.isArray(data)) {
       const chosen = data.find((item) => item.category === category);
       if (chosen) {
         setMaxBudget(Number(chosen.maxBudget));
@@ -93,13 +127,8 @@ export default function SmartAutoBidAgentPanel() {
         setTargetWinCount(Number(chosen.targetWinCount) || 1);
         setIsEnabled(Boolean(chosen.isEnabled));
       } else {
-        // Reset to defaults for new categories
-        setMaxBudget(30000);
-        setBidIncrement(10);
-        setMaxConcurrentAuctions(3);
-        setStrategy("standard");
-        setTargetWinCount(1);
         setIsEnabled(false);
+        // Do not force-reset inputs here, let them keep their drafted changes.
       }
     }
   };
@@ -110,9 +139,10 @@ export default function SmartAutoBidAgentPanel() {
   };
 
   useEffect(() => {
+    if (!isMounted) return;
     loadOverview();
     loadLogs();
-  }, [category]);
+  }, [category, isMounted]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -265,7 +295,33 @@ export default function SmartAutoBidAgentPanel() {
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Target Category</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      setCategory(newCat);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("smartAutoBidCategory", newCat);
+                        
+                        // Load draft for new category
+                        const raw = localStorage.getItem(`smartAutoBidDraft_${newCat}`);
+                        if (raw) {
+                          try {
+                            const draft = JSON.parse(raw);
+                            setMaxBudget(draft.maxBudget || 30000);
+                            setBidIncrement(draft.bidIncrement || 10);
+                            setMaxConcurrentAuctions(draft.maxConcurrentAuctions || 3);
+                            setStrategy(draft.strategy || "standard");
+                            setTargetWinCount(draft.targetWinCount || 1);
+                          } catch (e) {}
+                        } else {
+                          // Defaults if no draft
+                          setMaxBudget(30000);
+                          setBidIncrement(10);
+                          setMaxConcurrentAuctions(3);
+                          setStrategy("standard");
+                          setTargetWinCount(1);
+                        }
+                      }
+                    }}
                     className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                   >
                     {CATEGORIES.map((cat) => (
@@ -281,7 +337,10 @@ export default function SmartAutoBidAgentPanel() {
                     <input
                       type="number"
                       value={maxBudget}
-                      onChange={(e) => setMaxBudget(Number(e.target.value))}
+                      onChange={(e) => {
+                        setMaxBudget(Number(e.target.value));
+                        saveDraft("maxBudget", Number(e.target.value));
+                      }}
                       className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
@@ -294,7 +353,10 @@ export default function SmartAutoBidAgentPanel() {
                     <input
                       type="number"
                       value={bidIncrement}
-                      onChange={(e) => setBidIncrement(Number(e.target.value))}
+                      onChange={(e) => {
+                        setBidIncrement(Number(e.target.value));
+                        saveDraft("bidIncrement", Number(e.target.value));
+                      }}
                       className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
@@ -311,7 +373,10 @@ export default function SmartAutoBidAgentPanel() {
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Bidding Behaviour</label>
                   <select
                     value={strategy}
-                    onChange={(e) => setStrategy(e.target.value)}
+                    onChange={(e) => {
+                      setStrategy(e.target.value);
+                      saveDraft("strategy", e.target.value);
+                    }}
                     className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                   >
                     <option value="standard">Standard (Instant increments)</option>
@@ -325,7 +390,10 @@ export default function SmartAutoBidAgentPanel() {
                   <input
                     type="number"
                     value={maxConcurrentAuctions}
-                    onChange={(e) => setMaxConcurrentAuctions(Number(e.target.value))}
+                    onChange={(e) => {
+                      setMaxConcurrentAuctions(Number(e.target.value));
+                      saveDraft("maxConcurrentAuctions", Number(e.target.value));
+                    }}
                     className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                   />
                 </div>
@@ -337,7 +405,10 @@ export default function SmartAutoBidAgentPanel() {
                     value={targetWinCount}
                     min={1}
                     disabled={!isEnabled}
-                    onChange={(e) => setTargetWinCount(Number(e.target.value))}
+                    onChange={(e) => {
+                      setTargetWinCount(Number(e.target.value));
+                      saveDraft("targetWinCount", Number(e.target.value));
+                    }}
                     className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white disabled:opacity-40 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                   />
                 </div>
