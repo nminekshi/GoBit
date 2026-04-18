@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { API_BASE_URL, auctionAPI, categorySlugToName } from "../lib/api";
 import { getSocket } from "../lib/socket";
+import { Bot, Settings, Zap, TrendingUp, DollarSign, Activity, Target, Power, Plus, Trash2, CheckCircle2, ShieldAlert } from "lucide-react";
 
 type AgentOverview = {
   _id: string;
@@ -12,6 +13,8 @@ type AgentOverview = {
   bidIncrement: number;
   maxConcurrentAuctions: number;
   isEnabled: boolean;
+  strategy?: string;
+  targetWinCount?: number;
   committedBudget: number;
   remainingBudget: number;
   targets: Array<{
@@ -39,7 +42,10 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
 
 const getRelevantImage = (imageUrl: string | undefined, category: string) => {
   if (imageUrl && imageUrl.trim()) {
-    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://") || imageUrl.startsWith("data:")) {
+      return imageUrl;
+    }
+    if (imageUrl.startsWith("/images/")) {
       return imageUrl;
     }
     if (imageUrl.startsWith("/")) {
@@ -51,15 +57,52 @@ const getRelevantImage = (imageUrl: string | undefined, category: string) => {
 };
 
 export default function SmartAutoBidAgentPanel() {
-  const [category, setCategory] = useState<string>("vehicles");
+  const [category, setCategory] = useState<string>("watches");
+  const [isMounted, setIsMounted] = useState<boolean>(false);
   const [maxBudget, setMaxBudget] = useState<number>(30000);
   const [bidIncrement, setBidIncrement] = useState<number>(10);
   const [maxConcurrentAuctions, setMaxConcurrentAuctions] = useState<number>(3);
+  const [strategy, setStrategy] = useState<string>("standard");
+  const [targetWinCount, setTargetWinCount] = useState<number>(1);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [overview, setOverview] = useState<AgentOverview[]>([]);
+  const [botLogs, setBotLogs] = useState<any[]>([]);
   const [message, setMessage] = useState<string>("");
   const [notifications, setNotifications] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedCategory = localStorage.getItem("smartAutoBidCategory");
+      const initialCat = (savedCategory && CATEGORIES.includes(savedCategory)) ? savedCategory : "watches";
+      setCategory(initialCat);
+
+      const raw = localStorage.getItem(`smartAutoBidDraft_${initialCat}`);
+      if (raw) {
+        try {
+          const draft = JSON.parse(raw);
+          if (draft.maxBudget) setMaxBudget(draft.maxBudget);
+          if (draft.bidIncrement) setBidIncrement(draft.bidIncrement);
+          if (draft.maxConcurrentAuctions) setMaxConcurrentAuctions(draft.maxConcurrentAuctions);
+          if (draft.strategy) setStrategy(draft.strategy);
+          if (draft.targetWinCount) setTargetWinCount(draft.targetWinCount);
+        } catch (e) {}
+      }
+    }
+    setIsMounted(true);
+  }, []);
+
+  const saveDraft = (field: string, value: any) => {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem(`smartAutoBidDraft_${category}`);
+      let draft: any = {};
+      if (raw) {
+        try { draft = JSON.parse(raw); } catch (e) {}
+      }
+      draft[field] = value;
+      localStorage.setItem(`smartAutoBidDraft_${category}`, JSON.stringify(draft));
+    }
+  };
 
   const selected = useMemo(
     () => overview.find((item) => item.category === category),
@@ -74,21 +117,32 @@ export default function SmartAutoBidAgentPanel() {
     const data = await auctionAPI.fetchSmartAutoAgents();
     setOverview(Array.isArray(data) ? data : []);
 
-    if (Array.isArray(data) && data.length > 0) {
-      const chosen = data.find((item) => item.category === category) || data[0];
+    if (Array.isArray(data)) {
+      const chosen = data.find((item) => item.category === category);
       if (chosen) {
-        setCategory(chosen.category);
         setMaxBudget(Number(chosen.maxBudget));
         setBidIncrement(Number(chosen.bidIncrement));
         setMaxConcurrentAuctions(Number(chosen.maxConcurrentAuctions));
+        setStrategy(chosen.strategy || "standard");
+        setTargetWinCount(Number(chosen.targetWinCount) || 1);
         setIsEnabled(Boolean(chosen.isEnabled));
+      } else {
+        setIsEnabled(false);
+        // Do not force-reset inputs here, let them keep their drafted changes.
       }
     }
   };
 
+  const loadLogs = async () => {
+    const logs = await auctionAPI.fetchBotLogs(category);
+    setBotLogs(logs);
+  };
+
   useEffect(() => {
+    if (!isMounted) return;
     loadOverview();
-  }, []);
+    loadLogs();
+  }, [category, isMounted]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -151,6 +205,8 @@ export default function SmartAutoBidAgentPanel() {
     setMaxBudget(Number(selected.maxBudget));
     setBidIncrement(Number(selected.bidIncrement));
     setMaxConcurrentAuctions(Number(selected.maxConcurrentAuctions));
+    setStrategy(selected.strategy || "standard");
+    setTargetWinCount(Number(selected.targetWinCount) || 1);
     setIsEnabled(Boolean(selected.isEnabled));
   }, [selected?._id]);
 
@@ -179,10 +235,12 @@ export default function SmartAutoBidAgentPanel() {
       bidIncrement,
       maxConcurrentAuctions,
       isEnabled,
+      strategy,
+      targetWinCount,
     });
 
     if (result) {
-      setMessage("Smart auto-bid agent saved.");
+      setMessage("Smart auto-bid agent saved and activated.");
       await loadOverview();
     } else {
       setMessage("Failed to save smart auto-bid agent.");
@@ -194,151 +252,327 @@ export default function SmartAutoBidAgentPanel() {
   const handleDisable = async () => {
     setIsSaving(true);
     const ok = await auctionAPI.disableSmartAutoAgent(category);
-    setMessage(ok ? "Smart auto-bid disabled." : "Failed to disable smart auto-bid.");
+    setMessage(ok ? "Smart auto-bid disabled successfully." : "Failed to disable smart auto-bid.");
     await loadOverview();
     setIsSaving(false);
   };
 
   return (
-    <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 backdrop-blur-sm">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col items-start gap-4 border-b border-white/10 pb-6 md:flex-row md:items-center">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-xl shadow-emerald-500/20">
+          <Bot className="h-7 w-7 text-white" />
+        </div>
         <div>
-          <h2 className="text-xl font-semibold text-white">Smart Auto-Bidding Agent</h2>
-          <p className="text-sm text-white/70">Set one budget for a category and let the agent compete across multiple auctions.</p>
+          <h2 className="bg-gradient-to-r from-white to-white/70 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
+            Smart Auto-Bidding Agent
+          </h2>
+          <p className="mt-1 text-sm text-emerald-200/70">
+            Configure automated tactical bidding tailored to your budget constraints.
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <label className="text-sm text-white/80">
-          Category
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{categorySlugToName(cat)}</option>
-            ))}
-          </select>
-        </label>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Left Column: Configuration Form */}
+        <div className="space-y-6 lg:col-span-8">
+          <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 p-6 shadow-2xl backdrop-blur-md">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+                <Settings className="h-5 w-5 text-emerald-400" />
+                Agent Configuration
+              </h3>
+            </div>
 
-        <label className="text-sm text-white/80">
-          Max Budget
-          <input
-            type="number"
-            value={maxBudget}
-            onChange={(e) => setMaxBudget(Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
-          />
-        </label>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              {/* Box 1: Core Financials */}
+              <div className="space-y-4 rounded-xl border border-white/5 bg-white/5 p-4">
+                <h4 className="flex items-center gap-2 text-sm font-medium text-emerald-300">
+                  <DollarSign className="h-4 w-4" /> Core Financials
+                </h4>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Target Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      const newCat = e.target.value;
+                      setCategory(newCat);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("smartAutoBidCategory", newCat);
+                        
+                        // Load draft for new category
+                        const raw = localStorage.getItem(`smartAutoBidDraft_${newCat}`);
+                        if (raw) {
+                          try {
+                            const draft = JSON.parse(raw);
+                            setMaxBudget(draft.maxBudget || 30000);
+                            setBidIncrement(draft.bidIncrement || 10);
+                            setMaxConcurrentAuctions(draft.maxConcurrentAuctions || 3);
+                            setStrategy(draft.strategy || "standard");
+                            setTargetWinCount(draft.targetWinCount || 1);
+                          } catch (e) {}
+                        } else {
+                          // Defaults if no draft
+                          setMaxBudget(30000);
+                          setBidIncrement(10);
+                          setMaxConcurrentAuctions(3);
+                          setStrategy("standard");
+                          setTargetWinCount(1);
+                        }
+                      }
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{categorySlugToName(cat)}</option>
+                    ))}
+                  </select>
+                </div>
 
-        <label className="text-sm text-white/80">
-          Bid Increment
-          <input
-            type="number"
-            value={bidIncrement}
-            onChange={(e) => setBidIncrement(Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
-          />
-        </label>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Maximum Overall Budget</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <input
+                      type="number"
+                      value={maxBudget}
+                      onChange={(e) => {
+                        setMaxBudget(Number(e.target.value));
+                        saveDraft("maxBudget", Number(e.target.value));
+                      }}
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                    />
+                  </div>
+                </div>
 
-        <label className="text-sm text-white/80">
-          Max Concurrent
-          <input
-            type="number"
-            value={maxConcurrentAuctions}
-            onChange={(e) => setMaxConcurrentAuctions(Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-white"
-          />
-        </label>
-      </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Base Bid Increment</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <input
+                      type="number"
+                      value={bidIncrement}
+                      onChange={(e) => {
+                        setBidIncrement(Number(e.target.value));
+                        saveDraft("bidIncrement", Number(e.target.value));
+                      }}
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                    />
+                  </div>
+                </div>
+              </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="inline-flex items-center gap-2 text-sm text-white/90">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => setIsEnabled(e.target.checked)}
-          />
-          Enable smart auto-bidding
-        </label>
+              {/* Box 2: Tactical Strategy */}
+              <div className="space-y-4 rounded-xl border border-white/5 bg-white/5 p-4">
+                <h4 className="flex items-center gap-2 text-sm font-medium text-emerald-300">
+                  <Zap className="h-4 w-4" /> Tactical Strategy
+                </h4>
+                
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Bidding Behaviour</label>
+                  <select
+                    value={strategy}
+                    onChange={(e) => {
+                      setStrategy(e.target.value);
+                      saveDraft("strategy", e.target.value);
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  >
+                    <option value="standard">Standard (Instant increments)</option>
+                    <option value="sniper">Sniper (Strike in final 3 mins)</option>
+                    <option value="aggressive">Aggressive (Jump bid dominance)</option>
+                  </select>
+                </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-50"
-        >
-          Save Agent
-        </button>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Max Concurrent Operations</label>
+                  <input
+                    type="number"
+                    value={maxConcurrentAuctions}
+                    onChange={(e) => {
+                      setMaxConcurrentAuctions(Number(e.target.value));
+                      saveDraft("maxConcurrentAuctions", Number(e.target.value));
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  />
+                </div>
 
-        <button
-          type="button"
-          onClick={handleDisable}
-          disabled={isSaving}
-          className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50"
-        >
-          Disable Category Agent
-        </button>
-      </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Target Win Count Limit</label>
+                  <input
+                    type="number"
+                    value={targetWinCount}
+                    min={1}
+                    disabled={!isEnabled}
+                    onChange={(e) => {
+                      setTargetWinCount(Number(e.target.value));
+                      saveDraft("targetWinCount", Number(e.target.value));
+                    }}
+                    className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white disabled:opacity-40 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  />
+                </div>
+              </div>
+            </div>
 
-      {message && <p className="mt-2 text-sm text-emerald-200">{message}</p>}
+            {/* Actions */}
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <label className="flex cursor-pointer items-center gap-3">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={isEnabled}
+                    onChange={(e) => setIsEnabled(e.target.checked)}
+                  />
+                  <div className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-emerald-500"></div>
+                  <div className="absolute left-[2px] top-[2px] h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-full"></div>
+                </div>
+                <span className="text-sm font-medium text-white/90">Enable Smart Engine</span>
+              </label>
 
-      {selected && (
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="rounded-lg border border-white/10 bg-[#0b1220] p-3">
-            <p className="text-xs text-white/60">Committed Budget</p>
-            <p className="text-lg font-semibold text-white">${selected.committedBudget.toLocaleString()}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-[#0b1220] p-3">
-            <p className="text-xs text-white/60">Remaining Budget</p>
-            <p className="text-lg font-semibold text-emerald-300">${selected.remainingBudget.toLocaleString()}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-[#0b1220] p-3">
-            <p className="text-xs text-white/60">Status</p>
-            <p className="text-lg font-semibold text-white">{selected.isEnabled ? "Enabled" : "Disabled"}</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleDisable}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
+                >
+                  <Power className="h-4 w-4" /> Desactivate
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-bold text-black transition hover:bg-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Save Configuration
+                </button>
+              </div>
+            </div>
+
+            {message && (
+              <div className="mt-4 rounded-lg bg-emerald-500/20 p-3 text-center text-sm font-medium text-emerald-200">
+                {message}
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      <div className="mt-5">
-        <p className="mb-2 text-sm font-semibold text-white">Targeted Auctions</p>
+        {/* Right Column: Telemetry & Log */}
+        <div className="space-y-6 lg:col-span-4">
+          <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 p-6 shadow-2xl backdrop-blur-md">
+            <h3 className="mb-6 flex items-center gap-2 text-lg font-semibold text-white">
+              <Activity className="h-5 w-5 text-emerald-400" /> Live Telemetry
+            </h3>
+
+            {!selected ? (
+              <div className="text-sm text-white/50">No agent configured for this category yet. Save your settings to activate telemetry.</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-xl border border-white/5 bg-black/20 p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{selected.isEnabled ? 'Engine Active' : 'Engine Standing By'}</p>
+                    <p className="mt-1 text-xs text-white/50">{selected.isEnabled ? 'Monitoring live auctions' : 'Awaiting activation'}</p>
+                  </div>
+                  <div className={`h-3 w-3 rounded-full ${selected.isEnabled ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]' : 'bg-white/20'}`}></div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="rounded-xl border border-white/5 bg-white/5 p-4 transition hover:bg-white/10">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-white/50">Committed Portfolio</p>
+                    <p className="mt-1 text-2xl font-bold text-white">${selected.committedBudget.toLocaleString()}</p>
+                  </div>
+                  
+                  <div className={`rounded-xl border p-4 transition ${selected.remainingBudget === 0 ? 'border-red-500/30 bg-red-500/10' : 'border-emerald-500/20 bg-emerald-500/10'}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${selected.remainingBudget === 0 ? 'text-red-300' : 'text-emerald-200/70'}`}>
+                      Available Firepower
+                    </p>
+                    <p className={`mt-1 text-2xl font-bold ${selected.remainingBudget === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                      ${selected.remainingBudget.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 p-6 shadow-2xl backdrop-blur-md">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+              <TrendingUp className="h-5 w-5 text-emerald-400" /> Event Feed
+            </h3>
+            
+            {notifications.length === 0 ? (
+              <p className="text-sm text-white/40 text-center py-4 italic">No recent events logged.</p>
+            ) : (
+              <div className="space-y-3">
+                {notifications.map((item, index) => (
+                  <div key={index} className="flex gap-3 rounded-lg border border-white/5 bg-white/5 p-3 text-sm text-white/80">
+                    <ShieldAlert className="h-5 w-5 shrink-0 text-emerald-500" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Target Radar */}
+      <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 p-6 shadow-2xl backdrop-blur-md">
+        <h3 className="mb-6 flex items-center gap-2 text-lg font-semibold text-white">
+          <Target className="h-5 w-5 text-emerald-400" /> Target Radar
+        </h3>
+        
         {!selected || selected.targets.length === 0 ? (
-          <p className="text-sm text-white/60">No active targets right now.</p>
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 py-12">
+            <Target className="mb-3 h-10 w-10 text-white/20" />
+            <p className="text-white/60">No targets currently acquired.</p>
+            {selected && selected.remainingBudget === 0 && (
+              <p className="mt-2 text-sm text-red-400 text-center max-w-sm">
+                Warning: You have no remaining budget for further acquisitions. Increase your max budget to capture more targets.
+              </p>
+            )}
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {selected.targets.map((target) => (
               <Link
                 key={target.auctionId}
                 href={`/auctions/${target.auctionId}`}
-                className="block rounded-lg border border-white/10 bg-[#0b1220] p-3 transition hover:border-emerald-400/40"
+                className="group relative flex flex-row items-stretch rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
               >
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="rounded-full border border-white/15 bg-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
-                    {categorySlugToName(selected.category)}
-                  </span>
-                  <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                    Active
-                  </span>
-                </div>
-
-                <div className="flex items-start gap-3">
+                <div className="relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44">
                   <img
                     src={getRelevantImage(target.imageUrl, selected.category)}
                     alt={target.title}
-                    className="h-20 w-28 shrink-0 rounded-md border border-white/10 bg-black/30 object-cover"
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = CATEGORY_FALLBACKS[selected.category] || FALLBACK_IMAGE;
                     }}
                   />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-semibold text-white">{target.title}</p>
-                    <p className="mt-1 text-xs text-white/70">
-                      Current: ${target.currentBid.toLocaleString()} | Next: ${target.nextBid.toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-xs text-white/55">
-                      Ends: {new Date(target.endTime).toLocaleString()}
-                    </p>
+                  <div className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                    {target.auctionType}
+                  </div>
+                </div>
+                
+                <div className="flex flex-1 flex-col justify-between p-4 px-5">
+                  <div>
+                    <h4 className="font-bold text-white line-clamp-1 tracking-tight group-hover:text-emerald-300 transition-colors uppercase text-sm">{target.title}</h4>
+                    <div className="mt-3 space-y-2">
+                      <p className="flex items-center justify-between text-xs">
+                        <span className="text-white/50">Current</span>
+                        <span className="font-semibold text-white/90">${target.currentBid.toLocaleString()}</span>
+                      </p>
+                      <p className="flex items-center justify-between text-xs">
+                        <span className="text-emerald-400/60 font-medium italic">Projected</span>
+                        <span className="font-bold text-emerald-400/90 tracking-tighter">${target.nextBid.toLocaleString()}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/5 text-[10px] font-mono text-white/30 flex items-center justify-between">
+                    <span>ENDS_IN:</span>
+                    <span className="text-white/40">{new Date(target.endTime).toLocaleDateString()}</span>
                   </div>
                 </div>
               </Link>
@@ -347,16 +581,33 @@ export default function SmartAutoBidAgentPanel() {
         )}
       </div>
 
-      {notifications.length > 0 && (
-        <div className="mt-5 space-y-2">
-          <p className="text-sm font-semibold text-white">Agent Notifications</p>
-          {notifications.map((item, index) => (
-            <div key={`${item}-${index}`} className="rounded-lg border border-white/10 bg-[#0b1220] px-3 py-2 text-sm text-white/90">
-              {item}
-            </div>
-          ))}
+      {botLogs.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-[#060a13] p-0 shadow-2xl overflow-hidden font-mono text-sm leading-relaxed">
+          <div className="bg-[#0b1220] border-b border-white/10 px-4 py-3 flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-red-500"></div>
+            <div className="h-3 w-3 rounded-full bg-amber-500"></div>
+            <div className="h-3 w-3 rounded-full bg-emerald-500"></div>
+            <span className="ml-2 text-white/50 text-xs tracking-wider">AGENT_SYS_LOG</span>
+          </div>
+          <div className="max-h-80 overflow-y-auto p-4 space-y-2">
+            {botLogs.map((log) => (
+              <div key={log._id} className="flex flex-col md:flex-row md:gap-4 md:items-start text-white/70 hover:bg-white/5 rounded px-2 py-1 transition">
+                <span className="text-emerald-400/80 shrink-0">
+                  {new Date(log.createdAt).toISOString().split('T')[1].slice(0, 8)}
+                </span>
+                <span className={`shrink-0 w-24 uppercase font-bold tracking-wider text-xs flex items-center ${
+                  log.action === 'error' ? 'text-red-400' : 
+                  log.action === 'skipped' ? 'text-amber-400' : 
+                  log.action === 'bid_placed' ? 'text-emerald-400' : 'text-blue-400'
+                }`}>
+                  [{log.action}]
+                </span>
+                <span className="text-white/80 mt-1 md:mt-0">{log.message}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

@@ -35,6 +35,20 @@ const smartAutoBidAgentSchema = new mongoose.Schema(
             default: true,
             index: true,
         },
+        strategy: {
+            type: String,
+            enum: ["standard", "sniper", "aggressive"],
+            default: "standard",
+        },
+        targetWinCount: {
+            type: Number,
+            default: 1,
+            min: 1,
+        },
+        isProcessing: {
+            type: Boolean,
+            default: false,
+        },
         lastBudgetReachedAt: {
             type: Date,
         },
