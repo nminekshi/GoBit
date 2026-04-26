@@ -230,7 +230,23 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             try {
                 const smartAgents = await auctionAPI.fetchSmartAutoAgents();
                 const matched = smartAgents.find(
-                    (item: any) => item.category === auction.category
+                    (item: any) => {
+                        if (item.category !== auction.category) return false;
+                        if (!item.isEnabled) return false;
+
+                        // Check dynamic fields match
+                        if (item.filters?.dynamicFields) {
+                            for (const [key, val] of Object.entries(item.filters.dynamicFields)) {
+                                if (val) {
+                                    const auctionVal = auction.details?.[key];
+                                    if (!auctionVal || String(auctionVal).toLowerCase() !== String(val).toLowerCase()) {
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                        return true;
+                    }
                 );
 
                 if (!matched) {
@@ -273,7 +289,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         };
 
         loadSmartSuggestion();
-    }, [auction?._id, auction?.currentBid, auction?.category, currentUserId]);
+    }, [auction?._id, auction?.currentBid, auction?.category, currentUserId, auction?.details]);
 
     useEffect(() => {
         if (!auction) return;
@@ -642,29 +658,41 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             <p className="text-xs text-white/40">Start Price: ${auction.startPrice.toLocaleString()}</p>
                         </div>
 
-                        <form onSubmit={handleBid} className="flex gap-2">
-                            <input
-                                type="number"
-                                min={auction.currentBid + 1}
-                                value={bidAmount}
-                                onChange={(e) => setBidAmount(e.target.value)}
-                                placeholder={`${auction.currentBid + 1}`}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
-                            />
-                            <button
-                                type="submit"
-                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={auction.status !== "active" || countdownPhase !== "running"}
-                            >
-                                Submit
-                            </button>
-                            {/* Add + button logic if needed, simplied to basic input for now */}
-                        </form>
-                        {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
-                        {smartSuggestedBid && (
-                            <p className="text-emerald-300 text-xs">
-                                Smart agent suggested next bid: ${smartSuggestedBid.toLocaleString()}
-                            </p>
+                        {smartSuggestedBid ? (
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-5 text-emerald-300 shadow-inner">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="text-2xl">🤖</span>
+                                    <h3 className="font-bold text-emerald-400 text-lg">Smart Auto-Bid Active</h3>
+                                </div>
+                                <p className="text-sm text-emerald-200/80 leading-relaxed">
+                                    Your Smart Agent is handling this auction for you automatically. You don't need to manually submit bids—just wait for the confirmation email if you win!
+                                </p>
+                                <div className="mt-3 inline-flex items-center gap-2 bg-emerald-500/20 px-3 py-1.5 rounded-lg">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                                    <p className="text-xs font-semibold">Monitoring (Next bid: ${smartSuggestedBid.toLocaleString()})</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <form onSubmit={handleBid} className="flex gap-2">
+                                    <input
+                                        type="number"
+                                        min={auction.currentBid + 1}
+                                        value={bidAmount}
+                                        onChange={(e) => setBidAmount(e.target.value)}
+                                        placeholder={`${auction.currentBid + 1}`}
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={auction.status !== "active" || countdownPhase !== "running"}
+                                    >
+                                        Submit
+                                    </button>
+                                </form>
+                                {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
+                            </>
                         )}
                     </div>
                 </div>

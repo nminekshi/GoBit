@@ -346,6 +346,13 @@ async function getSmartAgentOverviewForUser(userId) {
         const { committedBudget, committedAuctions } = calculateCommittedFromAuctions(activeAuctions, setting.userId);
         const remainingBudget = Math.max(0, Number(setting.maxBudget) - committedBudget);
         const prioritized = prioritizeAuctions(activeAuctions);
+        const dynamicFields = setting.filters?.dynamicFields;
+        const normalizedDynamicFields =
+            dynamicFields instanceof Map
+                ? Object.fromEntries(dynamicFields.entries())
+                : dynamicFields && typeof dynamicFields === "object"
+                    ? dynamicFields
+                    : undefined;
 
         const targets = prioritized
             .filter((auction) => {
@@ -374,6 +381,13 @@ async function getSmartAgentOverviewForUser(userId) {
             bidIncrement: Number(setting.bidIncrement),
             maxConcurrentAuctions: Number(setting.maxConcurrentAuctions),
             isEnabled: setting.isEnabled,
+            strategy: setting.strategy || "standard",
+            targetWinCount: Math.max(1, Number(setting.targetWinCount) || 1),
+            filters: {
+                priceMin: setting.filters?.priceMin,
+                priceMax: setting.filters?.priceMax,
+                dynamicFields: normalizedDynamicFields,
+            },
             committedBudget,
             remainingBudget,
             committedAuctions,
@@ -795,10 +809,6 @@ module.exports = {
     processAutoBids,
     processSmartAgentsByAuction,
     processAllSmartAgents,
-    processSmartAgentBySetting,
-    getSmartAgentOverviewForUser,
-};
-processAllSmartAgents,
     processSmartAgentBySetting,
     getSmartAgentOverviewForUser,
 };

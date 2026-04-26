@@ -742,7 +742,7 @@ router.delete("/:id/auto-bid", authenticate, async (req, res) => {
 // POST /auctions/my/auto-agent - Create or update smart category auto-bidding agent
 router.post("/my/auto-agent", authenticate, async (req, res) => {
     try {
-        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled, strategy, targetWinCount } = req.body;
+        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled, strategy, targetWinCount, filters } = req.body;
 
         if (!category || typeof category !== "string") {
             return res.status(400).json({ error: "Category is required" });
@@ -774,6 +774,7 @@ router.post("/my/auto-agent", authenticate, async (req, res) => {
                 isEnabled: isEnabled !== false,
                 strategy: ["standard", "sniper", "aggressive"].includes(strategy) ? strategy : "standard",
                 targetWinCount: Math.max(1, Number(targetWinCount) || 1),
+                filters: filters,
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -1101,16 +1102,6 @@ router.get("/seller/:sellerId", async (req, res) => {
         console.error("Error fetching seller auctions:", error);
         res.status(500).json({ error: "Failed to fetch seller auctions" });
     }
-});
-
-module.exports = router;
-            .sort({ createdAt: -1 });
-
-res.json(auctions);
-    } catch (error) {
-    console.error("Error fetching seller auctions:", error);
-    res.status(500).json({ error: "Failed to fetch seller auctions" });
-}
 });
 
 module.exports = router;
