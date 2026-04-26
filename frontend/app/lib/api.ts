@@ -120,12 +120,11 @@ export const auctionAPI = {
         id: string,
         data: {
             title?: string;
-            description?: string;
-            category?: string;
-            startPrice?: number;
-            imageUrl?: string;
-            status?: string;
-            endTime?: Date;
+            filters?: {
+            priceMin?: number;
+            priceMax?: number;
+            dynamicFields?: Record<string, string>;
+        };    endTime?: Date;
             commission?: number;
             isVerified?: boolean;
         }
@@ -480,6 +479,11 @@ export const auctionAPI = {
         isEnabled?: boolean;
         strategy?: string;
         targetWinCount?: number;
+        filters?: {
+            priceMin?: number;
+            priceMax?: number;
+            dynamicFields?: Record<string, string>;
+        };
     }): Promise<any | null> {
         try {
             const userId = getUserId();

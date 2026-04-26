@@ -175,7 +175,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
     try {
         const activeAuctions = await Auction.countDocuments({ status: "active" });
         const totalUsers = await User.countDocuments();
-        
+
         // Sum currentBid for GMV
         const gmvResult = await Auction.aggregate([
             { $match: { currentBid: { $gt: 0 } } },
@@ -206,7 +206,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
                 });
             }
         });
-        
+
         allBids.sort((a, b) => new Date(b.fullTime) - new Date(a.fullTime));
         const liveActivity = allBids.slice(0, 4);
 
@@ -225,7 +225,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
         // Pending Approvals (Active Auctions or Pending Users proxy)
         const pendingAuctions = await Auction.find({ status: "pending" }, "title seller")
             .populate("seller", "username").lean().limit(4);
-            
+
         let pendingApprovals = pendingAuctions.map(a => ({
             id: "A-" + a._id.toString().substring(18).toUpperCase(),
             title: a.title,
@@ -303,7 +303,7 @@ router.get("/admin/suspicious-bids", authenticate, isAdmin, async (req, res) => 
 
         // Sort by highest risk score first
         suspiciousBids.sort((a, b) => b.riskScore - a.riskScore);
-        
+
         res.json(suspiciousBids);
     } catch (error) {
         console.error("Error fetching suspicious bids:", error);
@@ -1101,6 +1101,16 @@ router.get("/seller/:sellerId", async (req, res) => {
         console.error("Error fetching seller auctions:", error);
         res.status(500).json({ error: "Failed to fetch seller auctions" });
     }
+});
+
+module.exports = router;
+            .sort({ createdAt: -1 });
+
+res.json(auctions);
+    } catch (error) {
+    console.error("Error fetching seller auctions:", error);
+    res.status(500).json({ error: "Failed to fetch seller auctions" });
+}
 });
 
 module.exports = router;

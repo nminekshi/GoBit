@@ -45,12 +45,24 @@ const smartAutoBidAgentSchema = new mongoose.Schema(
             default: 1,
             min: 1,
         },
+        currentWinCount: {
+            type: Number,
+            default: 0,
+        },
         isProcessing: {
             type: Boolean,
             default: false,
         },
         lastBudgetReachedAt: {
             type: Date,
+        },
+        filters: {
+            priceMin: { type: Number, min: 0 },
+            priceMax: { type: Number, min: 0 },
+            dynamicFields: {
+                type: Map,
+                of: String
+            }
         },
     },
     { timestamps: true }

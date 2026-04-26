@@ -118,10 +118,25 @@ async function processSmartAgentBySetting(setting, io) {
         while (keepRunning && safetyCount < 30) {
             safetyCount += 1;
 
-            const activeAuctions = await Auction.find({
+            const query = {
                 status: "active",
                 category: freshSetting.category,
-            });
+            };
+
+            if (freshSetting.filters && freshSetting.filters.dynamicFields) {
+                const dynamicFields = freshSetting.filters.dynamicFields;
+                if (dynamicFields instanceof Map) {
+                    dynamicFields.forEach((val, key) => {
+                        if (val) query[`details.${key}`] = new RegExp(val, "i");
+                    });
+                } else if (typeof dynamicFields === 'object') {
+                    for (const [key, val] of Object.entries(dynamicFields)) {
+                        if (val) query[`details.${key}`] = new RegExp(val, "i");
+                    }
+                }
+            }
+
+            const activeAuctions = await Auction.find(query);
 
             if (!activeAuctions.length) break;
 
@@ -179,7 +194,7 @@ async function processSmartAgentBySetting(setting, io) {
                 }
 
                 let baseIncrement = Number(freshSetting.bidIncrement) || 1;
-                
+
                 const currentBidNum = Number(auction.currentBid) || 0;
                 if (currentBidNum > 500 && currentBidNum <= 2500) baseIncrement = Math.max(baseIncrement, 5);
                 if (currentBidNum > 2500 && currentBidNum <= 10000) baseIncrement = Math.max(baseIncrement, 25);
@@ -199,7 +214,7 @@ async function processSmartAgentBySetting(setting, io) {
                         auctionId: auction._id,
                         action: "skipped",
                         message: `Skipped ${auction.title}: next bid $${nextBid} exceeds remaining budget $${remainingBudget}.`
-                    }).catch(()=>null);
+                    }).catch(() => null);
                     continue;
                 }
 
@@ -268,7 +283,7 @@ async function processSmartAgentBySetting(setting, io) {
                         auctionId: candidate.auction._id,
                         action: "error",
                         message: `Failed to place bid: ${err.message}`
-                    }).catch(()=>null);
+                    }).catch(() => null);
                     console.warn(`[SmartAutoBid] Failed for ${freshSetting.userId} on ${candidate.auction._id}: ${err.message}`);
                 }
             }
@@ -308,10 +323,25 @@ async function getSmartAgentOverviewForUser(userId) {
     const output = [];
 
     for (const setting of settings) {
-        const activeAuctions = await Auction.find({
+        const query = {
             status: "active",
             category: setting.category,
-        }).sort({ endTime: 1 });
+        };
+
+        if (setting.filters && setting.filters.dynamicFields) {
+            const dynamicFields = setting.filters.dynamicFields;
+            if (dynamicFields instanceof Map) {
+                dynamicFields.forEach((val, key) => {
+                    if (val) query[`details.${key}`] = new RegExp(val, "i");
+                });
+            } else if (typeof dynamicFields === 'object') {
+                for (const [key, val] of Object.entries(dynamicFields)) {
+                    if (val) query[`details.${key}`] = new RegExp(val, "i");
+                }
+            }
+        }
+
+        const activeAuctions = await Auction.find(query).sort({ endTime: 1 });
 
         const { committedBudget, committedAuctions } = calculateCommittedFromAuctions(activeAuctions, setting.userId);
         const remainingBudget = Math.max(0, Number(setting.maxBudget) - committedBudget);
@@ -765,6 +795,10 @@ module.exports = {
     processAutoBids,
     processSmartAgentsByAuction,
     processAllSmartAgents,
+    processSmartAgentBySetting,
+    getSmartAgentOverviewForUser,
+};
+processAllSmartAgents,
     processSmartAgentBySetting,
     getSmartAgentOverviewForUser,
 };
