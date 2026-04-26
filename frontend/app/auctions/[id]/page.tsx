@@ -68,9 +68,14 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const [relatedLoading, setRelatedLoading] = useState(false);
     const [notifications, setNotifications] = useState<Array<{ id: number; message: string; tone: "success" | "info" | "warning" }>>([]);
     const [smartSuggestedBid, setSmartSuggestedBid] = useState<number | null>(null);
+    const [projectedBid, setProjectedBid] = useState<number | null>(null);
+    const [isPlacingBid, setIsPlacingBid] = useState(false);
 
     const isLoaded = useRef(false);
     const lastSuggestedBidRef = useRef<string | null>(null);
+    const lastProjectedBidRef = useRef<string | null>(null);
+    const lastAutoSubmitKeyRef = useRef<string | null>(null);
+    const manualBidEditRef = useRef(false);
 
     const pushNotification = (message: string, tone: "success" | "info" | "warning" = "info") => {
         const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -224,27 +229,51 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         const loadSmartSuggestion = async () => {
             if (!auction?._id || !currentUserId) {
                 setSmartSuggestedBid(null);
+                setProjectedBid(null);
                 return;
             }
 
             try {
                 const smartAgents = await auctionAPI.fetchSmartAutoAgents();
-                const matched = smartAgents.find(
-                    (item: any) => {
-                        if (item.category !== auction.category) return false;
-                        if (!item.isEnabled) return false;
+                const matchesAuctionFilters = (item: any) => {
+                    if (item.category !== auction.category) return false;
 
-                        // Check dynamic fields match
-                        if (item.filters?.dynamicFields) {
-                            for (const [key, val] of Object.entries(item.filters.dynamicFields)) {
-                                if (val) {
-                                    const auctionVal = auction.details?.[key];
-                                    if (!auctionVal || String(auctionVal).toLowerCase() !== String(val).toLowerCase()) {
-                                        return false;
-                                    }
+                    if (item.filters?.dynamicFields) {
+                        for (const [key, val] of Object.entries(item.filters.dynamicFields)) {
+                            if (val) {
+                                const auctionVal = auction.details?.[key];
+                                if (!auctionVal || String(auctionVal).toLowerCase() !== String(val).toLowerCase()) {
+                                    return false;
                                 }
                             }
                         }
+                    }
+
+                    return true;
+                };
+
+                const projectedCandidate = smartAgents.find(
+                    (item: any) =>
+                        matchesAuctionFilters(item) &&
+                        Array.isArray(item.targets) &&
+                        item.targets.some((t: any) => String(t.auctionId) === String(auction._id))
+                );
+
+                const projectedTarget = projectedCandidate?.targets?.find(
+                    (t: any) => String(t.auctionId) === String(auction._id)
+                );
+
+                if (projectedTarget?.nextBid) {
+                    const projected = Number(projectedTarget.nextBid);
+                    setProjectedBid(Number.isNaN(projected) ? null : projected);
+                } else {
+                    setProjectedBid(null);
+                }
+
+                const matched = smartAgents.find(
+                    (item: any) => {
+                        if (!matchesAuctionFilters(item)) return false;
+                        if (!item.isEnabled) return false;
                         return true;
                     }
                 );
@@ -277,19 +306,38 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                 }
 
                 setSmartSuggestedBid(nextBid);
-
-                const nextBidStr = String(nextBid);
-                if (bidAmount.trim() === "" || bidAmount === lastSuggestedBidRef.current) {
-                    setBidAmount(nextBidStr);
-                }
-                lastSuggestedBidRef.current = nextBidStr;
             } catch {
                 setSmartSuggestedBid(null);
+                setProjectedBid(null);
             }
         };
 
         loadSmartSuggestion();
     }, [auction?._id, auction?.currentBid, auction?.category, currentUserId, auction?.details]);
+
+    useEffect(() => {
+        if (!auction || countdownPhase !== "running" || auction.auctionType !== "live") return;
+
+        const preferredBid = smartSuggestedBid || projectedBid;
+        if (!preferredBid || Number.isNaN(preferredBid)) return;
+
+        const preferredBidStr = String(preferredBid);
+        if (
+            bidAmount.trim() === "" ||
+            bidAmount === lastSuggestedBidRef.current ||
+            bidAmount === lastProjectedBidRef.current ||
+            Number(bidAmount) <= Number(auction.currentBid)
+        ) {
+            manualBidEditRef.current = false;
+            setBidAmount(preferredBidStr);
+        }
+
+        if (smartSuggestedBid) {
+            lastSuggestedBidRef.current = preferredBidStr;
+        } else {
+            lastProjectedBidRef.current = preferredBidStr;
+        }
+    }, [auction, smartSuggestedBid, projectedBid, countdownPhase, bidAmount]);
 
     useEffect(() => {
         if (!auction) return;
@@ -351,6 +399,67 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         return () => clearInterval(timer);
     }, [auction]);
 
+    const placeBid = async (amount: number, options?: { silent?: boolean }) => {
+        if (!auction) return;
+
+        // Check if user is logged in (basic check)
+        const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
+        if (!rawAuth) {
+            setBidError("You must be logged in to place a bid.");
+            return;
+        }
+
+        setIsPlacingBid(true);
+
+        try {
+            // Place bid via API
+            const updatedAuction = await auctionAPI.placeBid(auction._id, amount);
+
+            // Update state with response from backend
+            setAuction(updatedAuction);
+
+            // Update local storage for Buyer Dashboard
+            const parsed = JSON.parse(rawAuth);
+            const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid;
+            if (userId) {
+                const storedRaw = window.localStorage.getItem("buyer-bids");
+                const existing = storedRaw ? JSON.parse(storedRaw) : [];
+                const bidEntry = {
+                    id: `cat-${auction.category}-${auction.title}`,
+                    title: auction.title,
+                    category: auction.category,
+                    amount: amount,
+                    imageUrl: auction.imageUrl,
+                    placedAt: new Date().toISOString(),
+                    userId,
+                };
+                const deduped = Array.isArray(existing)
+                    ? [bidEntry, ...existing.filter((b: any) => !(b.id === bidEntry.id && b.userId === userId))]
+                    : [bidEntry];
+                window.localStorage.setItem("buyer-bids", JSON.stringify(deduped));
+            }
+
+            setBidAmount("");
+            setBidError("");
+
+            if (options?.silent) {
+                pushNotification(`Smart agent placed bid at $${amount.toLocaleString()}.`, "success");
+            } else {
+                alert("Bid placed successfully!");
+            }
+        } catch (err: any) {
+            const message = err.message || "Failed to place bid";
+            setBidError(message);
+
+            // If the error indicates a stale bid, refresh the data immediately
+            if (message.includes("higher than current bid")) {
+                fetchAuction();
+            }
+        } finally {
+            setIsPlacingBid(false);
+        }
+    };
+
     const handleBid = async (e: FormEvent) => {
         e.preventDefault();
         if (!auction) return;
@@ -376,56 +485,40 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             return;
         }
 
-        // Check if user is logged in (basic check)
-        const rawAuth = typeof window !== "undefined" ? window.localStorage.getItem("auth") : null;
-        if (!rawAuth) {
-            setBidError("You must be logged in to place a bid.");
-            // Optionally redirect to login
-            return;
-        }
-
-        try {
-            // Place bid via API
-            const updatedAuction = await auctionAPI.placeBid(auction._id, amount);
-
-            // Update state with response from backend
-            setAuction(updatedAuction);
-
-            // Update local storage for Buyer Dashboard
-            const parsed = JSON.parse(rawAuth);
-            const userId = parsed?.user?._id || parsed?.user?.id || parsed?.user?.uid;
-            if (userId) {
-                const storedRaw = window.localStorage.getItem("buyer-bids");
-                const existing = storedRaw ? JSON.parse(storedRaw) : [];
-                const bidEntry = {
-                    id: `cat-${auction.category}-${auction.title}`, // Consistent ID format with previous code
-                    title: auction.title,
-                    category: auction.category,
-                    amount: amount,
-                    imageUrl: auction.imageUrl,
-                    placedAt: new Date().toISOString(),
-                    userId,
-                };
-                // Dedup logic
-                const deduped = Array.isArray(existing)
-                    ? [bidEntry, ...existing.filter((b: any) => !(b.id === bidEntry.id && b.userId === userId))]
-                    : [bidEntry];
-                window.localStorage.setItem("buyer-bids", JSON.stringify(deduped));
-            }
-
-            setBidAmount("");
-            setBidError("");
-            alert("Bid placed successfully!");
-        } catch (err: any) {
-            const message = err.message || "Failed to place bid";
-            setBidError(message);
-
-            // If the error indicates a stale bid, refresh the data immediately
-            if (message.includes("higher than current bid")) {
-                fetchAuction();
-            }
-        }
+        await placeBid(amount);
     };
+
+    useEffect(() => {
+        if (!auction || !currentUserId) return;
+        if (auction.auctionType !== "live") return;
+        if (countdownPhase !== "running" || auction.status !== "active") return;
+        if (isPlacingBid) return;
+
+        const isOwnAuction = auction.sellerId?._id === currentUserId;
+        if (isOwnAuction) return;
+
+        const isCurrentWinner = typeof auction.winnerId === "string"
+            ? auction.winnerId === currentUserId
+            : auction.winnerId?._id === currentUserId;
+        if (isCurrentWinner) return;
+
+        const preferredBid = smartSuggestedBid || projectedBid;
+        const amount = Number(preferredBid);
+        if (!amount || Number.isNaN(amount) || amount <= Number(auction.currentBid)) return;
+
+        const submitKey = `auto:${auction._id}:${auction.currentBid}:${amount}`;
+        if (lastAutoSubmitKeyRef.current === submitKey) return;
+
+        lastAutoSubmitKeyRef.current = submitKey;
+        placeBid(amount, { silent: true });
+    }, [
+        auction,
+        currentUserId,
+        smartSuggestedBid,
+        projectedBid,
+        countdownPhase,
+        isPlacingBid,
+    ]);
 
     if (loading) {
         return (
@@ -658,7 +751,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                             <p className="text-xs text-white/40">Start Price: ${auction.startPrice.toLocaleString()}</p>
                         </div>
 
-                        {smartSuggestedBid ? (
+                        {smartSuggestedBid && (
                             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-5 text-emerald-300 shadow-inner">
                                 <div className="flex items-center gap-3 mb-2">
                                     <span className="text-2xl">🤖</span>
@@ -672,28 +765,37 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                     <p className="text-xs font-semibold">Monitoring (Next bid: ${smartSuggestedBid.toLocaleString()})</p>
                                 </div>
                             </div>
-                        ) : (
-                            <>
-                                <form onSubmit={handleBid} className="flex gap-2">
-                                    <input
-                                        type="number"
-                                        min={auction.currentBid + 1}
-                                        value={bidAmount}
-                                        onChange={(e) => setBidAmount(e.target.value)}
-                                        placeholder={`${auction.currentBid + 1}`}
-                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={auction.status !== "active" || countdownPhase !== "running"}
-                                    >
-                                        Submit
-                                    </button>
-                                </form>
-                                {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
-                            </>
                         )}
+
+                        {!smartSuggestedBid && isLiveAuction && projectedBid && (
+                            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-200">
+                                Projected next bid loaded: ${projectedBid.toLocaleString()}
+                            </div>
+                        )}
+
+                        <>
+                            <form onSubmit={handleBid} className="flex gap-2">
+                                <input
+                                    type="number"
+                                    min={auction.currentBid + 1}
+                                    value={bidAmount}
+                                    onChange={(e) => {
+                                        manualBidEditRef.current = true;
+                                        setBidAmount(e.target.value);
+                                    }}
+                                    placeholder={`${auction.currentBid + 1}`}
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500 transition-colors"
+                                />
+                                <button
+                                    type="submit"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={auction.status !== "active" || countdownPhase !== "running"}
+                                >
+                                    {isLiveAuction && projectedBid ? `Submit $${projectedBid.toLocaleString()}` : "Submit"}
+                                </button>
+                            </form>
+                            {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}
+                        </>
                     </div>
                 </div>
             </div>
