@@ -28,6 +28,10 @@ const autoBidSettingSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        isProcessing: {
+            type: Boolean,
+            default: false,
+        },
     },
     { timestamps: true }
 );

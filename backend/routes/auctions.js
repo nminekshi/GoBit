@@ -640,6 +640,7 @@ router.post("/:id/bid", authenticate, async (req, res) => {
             bidderId: req.userId,
             bidAmount: req.body.bidAmount,
             user: req.user,
+            isAutoBid: req.body.isAutoBid || false,
         });
 
         const io = req.app.get("io");

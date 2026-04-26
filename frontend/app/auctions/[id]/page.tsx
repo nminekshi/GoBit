@@ -76,6 +76,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
     const lastProjectedBidRef = useRef<string | null>(null);
     const lastAutoSubmitKeyRef = useRef<string | null>(null);
     const manualBidEditRef = useRef(false);
+    const lastAttemptTimeRef = useRef(0);
 
     const pushNotification = (message: string, tone: "success" | "info" | "warning" = "info") => {
         const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -412,10 +413,13 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         setIsPlacingBid(true);
 
         try {
-            // Place bid via API
-            const updatedAuction = await auctionAPI.placeBid(auction._id, amount);
+            console.log(`[BID] Submitting bid: $${amount} for auction: ${auction._id} (Auto: ${options?.silent || false})`);
+            const updatedAuction = await auctionAPI.placeBid(auction._id, amount, options?.silent || false);
+            console.log(`[BID] Successfully placed bid: $${amount}`);
 
-            // Update state with response from backend
+            // Force a full refresh to ensure UI is in sync
+            await fetchAuction();
+            
             setAuction(updatedAuction);
 
             // Update local storage for Buyer Dashboard
@@ -449,10 +453,16 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             }
         } catch (err: any) {
             const message = err.message || "Failed to place bid";
+            console.error(`[BID-ERROR] ${message}`, err);
             setBidError(message);
 
+            // If it was an auto-bid that failed, clear the key so it can retry if state changes
+            if (options?.silent) {
+                lastAutoSubmitKeyRef.current = null;
+            }
+
             // If the error indicates a stale bid, refresh the data immediately
-            if (message.includes("higher than current bid")) {
+            if (message.includes("higher than current bid") || message.includes("refresh")) {
                 fetchAuction();
             }
         } finally {
@@ -509,7 +519,17 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         const submitKey = `auto:${auction._id}:${auction.currentBid}:${amount}`;
         if (lastAutoSubmitKeyRef.current === submitKey) return;
 
+        // Eager bidding for live auctions: No rate limit, just the key check
+        const isLive = auction.auctionType === "live";
+        if (!isLive) {
+            const now = Date.now();
+            if (now - lastAttemptTimeRef.current < 2000) return;
+            lastAttemptTimeRef.current = now;
+        }
+
         lastAutoSubmitKeyRef.current = submitKey;
+        
+        console.log(`[FRONTEND-AUTO-BID] Triggering auto-bid: $${amount} for ${auction.title}`);
         placeBid(amount, { silent: true });
     }, [
         auction,
@@ -788,10 +808,17 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                 />
                                 <button
                                     type="submit"
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={auction.status !== "active" || countdownPhase !== "running"}
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px] flex items-center justify-center gap-2"
+                                    disabled={auction.status !== "active" || countdownPhase !== "running" || isPlacingBid}
                                 >
-                                    {isLiveAuction && projectedBid ? `Submit $${projectedBid.toLocaleString()}` : "Submit"}
+                                    {isPlacingBid ? (
+                                        <>
+                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                            Placing...
+                                        </>
+                                    ) : (
+                                        isLiveAuction && projectedBid ? `Submit $${projectedBid.toLocaleString()}` : "Submit"
+                                    )}
                                 </button>
                             </form>
                             {bidError && <p className="text-rose-400 text-sm">{bidError}</p>}

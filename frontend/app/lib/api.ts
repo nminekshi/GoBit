@@ -198,7 +198,7 @@ export const auctionAPI = {
     },
 
     // Place a bid on an auction
-    async placeBid(id: string, bidAmount: number): Promise<any> {
+    async placeBid(id: string, bidAmount: number, isAutoBid: boolean = false): Promise<any> {
         try {
             const userId = getUserId();
             if (!userId) throw new Error("User not authenticated");
@@ -209,7 +209,10 @@ export const auctionAPI = {
                     "Content-Type": "application/json",
                     "x-user-id": userId,
                 },
-                body: JSON.stringify({ bidAmount }),
+                body: JSON.stringify({ 
+                    bidAmount,
+                    isAutoBid
+                }),
             });
 
             if (!response.ok) {

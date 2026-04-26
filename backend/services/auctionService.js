@@ -33,7 +33,15 @@ function isUserOnline(io, userId) {
     if (!io || !userId) return false;
     const roomName = `user:${userId.toString()}`;
     const room = io.sockets.adapter.rooms.get(roomName);
-    return room && room.size > 0;
+    const isOnline = !!(room && room.size > 0);
+    
+    if (!isOnline) {
+        console.log(`[BOT-STATUS] User ${userId} is OFFLINE (No sockets in room ${roomName})`);
+    } else {
+        console.log(`[BOT-STATUS] User ${userId} is ONLINE (${room.size} active connections)`);
+    }
+    
+    return isOnline;
 }
 
 function getLatestBid(auction) {
@@ -204,6 +212,14 @@ async function processSmartAgentBySetting(setting, io) {
 
                 if (leaderId === userId) continue;
 
+                // CHAIN CHECK: If user's last bid on THIS auction was manual, the Smart Agent skips it.
+                const userBids = auction.bids.filter(b => b.bidderId?.toString() === userId);
+                const lastUserBid = userBids.length > 0 ? userBids[userBids.length - 1] : null;
+                if (lastUserBid && !lastUserBid.isAutoBid) {
+                    console.log(`[SMART-AGENT] Skipping ${auction.title} for ${userId}: Last bid was MANUAL. Chain broken.`);
+                    continue;
+                }
+
                 const strategy = freshSetting.strategy || "standard";
                 if (strategy === "sniper") {
                     const timeLeft = auction.endTime ? new Date(auction.endTime).getTime() - now.getTime() : 0;
@@ -225,19 +241,30 @@ async function processSmartAgentBySetting(setting, io) {
                 const isFirstBid = !auction.bids || auction.bids.length === 0;
                 const nextBid = calculateNextBid(auction.currentBid, freshSetting.bidIncrement, freshSetting.strategy, isFirstBid);
 
-                if (nextBid > Number(freshSetting.maxBudget)) continue;
-                if (nextBid > remainingBudget) {
+                let finalBid = nextBid;
+                if (finalBid > Number(freshSetting.maxBudget)) {
+                    // Try bidding exactly the max budget if it's higher than current
+                    finalBid = Number(freshSetting.maxBudget);
+                    if (finalBid <= Number(auction.currentBid)) {
+                        console.log(`[SMART-AGENT] Skipping ${auction.title}: Max budget $${finalBid} is not higher than current bid $${auction.currentBid}`);
+                        continue;
+                    }
+                    console.log(`[SMART-AGENT] Capping bid at max budget $${finalBid} for ${auction.title}`);
+                }
+
+                if (finalBid > remainingBudget) {
+                    console.log(`[SMART-AGENT] Skipping ${auction.title}: Bid $${finalBid} exceeds remaining category budget $${remainingBudget}`);
                     await BotActivityLog.create({
                         userId: freshSetting.userId,
                         category: freshSetting.category,
                         auctionId: auction._id,
                         action: "skipped",
-                        message: `Skipped ${auction.title}: next bid $${nextBid} exceeds remaining budget $${remainingBudget}.`
+                        message: `Skipped ${auction.title}: next bid $${finalBid} exceeds remaining budget $${remainingBudget}.`
                     }).catch(() => null);
                     continue;
                 }
 
-                candidates.push({ auction, nextBid });
+                candidates.push({ auction, nextBid: finalBid });
             }
 
             if (!candidates.length) {
@@ -451,6 +478,8 @@ function buildLiveAuctionConfig(payload = {}) {
 }
 
 async function placeBid({ auctionId, bidderId, bidAmount, user, isAutoBid = false }) {
+    console.log(`[BACKEND-BID] Processing bid request: Auction:${auctionId}, Bidder:${bidderId}, Amount:${bidAmount}, isAuto:${isAutoBid}`);
+    
     const numericBid = Number(bidAmount);
     if (!numericBid || Number.isNaN(numericBid)) {
         const err = new Error("Bid amount is required");
@@ -537,6 +566,7 @@ async function placeBid({ auctionId, bidderId, bidAmount, user, isAutoBid = fals
     await auction.populate("sellerId", "username email");
     await auction.populate("bids.bidderId", "username");
 
+    console.log(`[BACKEND-BID] Bid SUCCESS: $${numericBid} on Auction:${auctionId} by User:${bidderId}`);
     return auction;
 }
 
@@ -580,50 +610,61 @@ async function processAutoBids(auctionId, io) {
                 let placedInRound = false;
 
                 for (const bot of activeBots) {
-                    const botUserId = bot.userId?.toString();
-                    if (!botUserId) continue;
-
-                    // Skip if user is not online
-                    if (!isUserOnline(io, botUserId)) continue;
-
-                    if (currentLeaderId && botUserId === currentLeaderId) {
-                        continue;
-                    }
-
-                    const isFirstBid = auction.bids.length === 0;
-                    const nextBid = calculateNextBid(auction.currentBid, bot.increment, "standard", isFirstBid);
-
-                    if (nextBid > Number(bot.maxBid)) {
-                        if (!maxReachedNotifiedUsers.has(botUserId)) {
-                            maxReachedNotifiedUsers.add(botUserId);
-                            notifyUser(io, botUserId, "auto-bid:max-reached", {
-                                auctionId: auction._id,
-                                currentBid: Number(auction.currentBid),
-                                maxBid: Number(bot.maxBid),
-                                message: "Auto-bid paused because your maximum bid was reached.",
-                            });
-                        }
-                        continue;
-                    }
-
-                    const lastBid = auction.bids.length > 0 ? auction.bids[auction.bids.length - 1] : null;
-                    if (
-                        lastBid?.bidderId?.toString() === botUserId &&
-                        Number(lastBid?.bidAmount) === nextBid
-                    ) {
-                        continue;
-                    }
+                    const lockedBot = await AutoBidSetting.findOneAndUpdate(
+                        { _id: bot._id, isProcessing: false, isActive: true },
+                        { isProcessing: true },
+                        { new: true }
+                    );
+                    if (!lockedBot) continue;
 
                     try {
-                        const botUser = await User.findById(bot.userId);
+                        const botUserId = lockedBot.userId?.toString();
+                        if (!botUserId) continue;
+
+                        if (!isUserOnline(io, botUserId)) continue;
+
+                        if (currentLeaderId && botUserId === currentLeaderId) {
+                            continue;
+                        }
+
+                        // CHAIN CHECK: Only trigger auto-bids if the user's last bid was an auto-bid (or no bid yet)
+                        const userBids = auction.bids.filter(b => b.bidderId?.toString() === botUserId);
+                        const lastUserBid = userBids.length > 0 ? userBids[userBids.length - 1] : null;
+                        if (lastUserBid && !lastUserBid.isAutoBid) {
+                            console.log(`[AUTO-BID] Skipping ${botUserId} on ${auction._id}: Last bid was MANUAL. Chain broken.`);
+                            continue;
+                        }
+
+                        const isFirstBid = auction.bids.length === 0;
+                        const nextBid = calculateNextBid(auction.currentBid, lockedBot.increment, "standard", isFirstBid);
+
+                        let finalBid = nextBid;
+                        if (finalBid > Number(lockedBot.maxBid)) {
+                            finalBid = Number(lockedBot.maxBid);
+                            if (finalBid <= Number(auction.currentBid)) {
+                                console.log(`[AUTO-BID] Max reached for ${botUserId} on ${auction._id}`);
+                                if (!maxReachedNotifiedUsers.has(botUserId)) {
+                                    maxReachedNotifiedUsers.add(botUserId);
+                                    notifyUser(io, botUserId, "auto-bid:max-reached", {
+                                        auctionId: auction._id,
+                                        currentBid: Number(auction.currentBid),
+                                        maxBid: Number(lockedBot.maxBid),
+                                        message: "Auto-bid paused because your maximum bid was reached.",
+                                    });
+                                }
+                                continue;
+                            }
+                        }
+
+                        const botUser = await User.findById(lockedBot.userId);
                         if (!botUser) continue;
 
-                        console.log(`[AutoBid] Bot for user ${botUserId} placing bid $${nextBid} on auction ${auctionId}`);
+                        console.log(`[AUTO-BID] Executing for ${botUserId}: $${finalBid} on ${auction.title}`);
 
                         const updated = await placeBid({
                             auctionId: auction._id,
                             bidderId: botUserId,
-                            bidAmount: nextBid,
+                            bidAmount: finalBid,
                             user: botUser,
                             isAutoBid: true,
                         });
@@ -634,22 +675,21 @@ async function processAutoBids(auctionId, io) {
 
                         notifyUser(io, botUserId, "auto-bid:placed", {
                             auctionId: auction._id,
-                            bidAmount: nextBid,
+                            bidAmount: finalBid,
                             currentBid: updated.currentBid,
-                            message: `Your auto-bid placed $${nextBid}.`,
+                            message: `Your auto-bid placed $${finalBid}.`,
                         });
 
                         const cooldown = getAutoBidCooldownMs(auction.auctionType);
-                        if (cooldown > 0) {
-                            await wait(cooldown);
-                        }
+                        if (cooldown > 0) await wait(cooldown);
 
                         placedInRound = true;
                         didPlaceBidInCycle = true;
                         break;
                     } catch (err) {
-                        console.warn(`[AutoBid] Failed for ${botUserId}: ${err.message}`);
-                        continue;
+                        console.warn(`[AutoBid] Failed for ${lockedBot.userId}: ${err.message}`);
+                    } finally {
+                        await AutoBidSetting.findByIdAndUpdate(lockedBot._id, { isProcessing: false });
                     }
                 }
 
