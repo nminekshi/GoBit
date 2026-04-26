@@ -31,6 +31,7 @@ type AgentOverview = {
     nextBid: number;
     endTime: string;
     auctionType: "live" | "normal";
+    isLeading?: boolean;
   }>;
 };
 
@@ -675,7 +676,7 @@ export default function SmartAutoBidAgentPanel() {
                 href={`/auctions/${target.auctionId}`}
                 className="group relative flex flex-row items-stretch rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
               >
-                <div className="relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44">
+                <div className={`relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44 ${!isEnabled ? 'grayscale opacity-60' : ''}`}>
                   <img
                     src={getRelevantImage(target.imageUrl, selected.category)}
                     alt={target.title}
@@ -684,22 +685,43 @@ export default function SmartAutoBidAgentPanel() {
                       (e.currentTarget as HTMLImageElement).src = CATEGORY_FALLBACKS[selected.category] || FALLBACK_IMAGE;
                     }}
                   />
-                  <div className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                    {target.auctionType}
+                  <div className="absolute top-2 left-2 flex flex-col gap-1">
+                    <div className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                      {target.auctionType}
+                    </div>
+                    {target.isLeading && (
+                      <div className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black backdrop-blur-md animate-pulse">
+                        WINNING
+                      </div>
+                    )}
                   </div>
+                  {!isEnabled && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                      <span className="bg-black/60 px-2 py-1 text-[10px] font-bold text-white/70 uppercase">Agent Paused</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex flex-1 flex-col justify-between p-4 px-5">
+                <div className={`flex flex-1 flex-col justify-between p-4 px-5 ${!isEnabled ? 'opacity-50' : ''}`}>
                   <div>
-                    <h4 className="font-bold text-white line-clamp-1 tracking-tight group-hover:text-emerald-300 transition-colors uppercase text-sm">{target.title}</h4>
+                    <h4 className={`font-bold line-clamp-1 tracking-tight transition-colors uppercase text-sm ${target.isLeading ? 'text-emerald-400' : 'text-white group-hover:text-emerald-300'}`}>
+                      {target.title}
+                    </h4>
                     <div className="mt-3 space-y-2">
                       <p className="flex items-center justify-between text-xs">
-                        <span className="text-white/50">Current</span>
-                        <span className="font-semibold text-white/90">${target.currentBid.toLocaleString()}</span>
+                        <span className="text-white/50">Highest Bid</span>
+                        <span className={`font-semibold ${target.isLeading ? 'text-emerald-400' : 'text-white/90'}`}>
+                          ${target.currentBid.toLocaleString()}
+                          {target.isLeading && <span className="ml-1 text-[10px] font-normal opacity-70">(You)</span>}
+                        </span>
                       </p>
                       <p className="flex items-center justify-between text-xs">
-                        <span className="text-emerald-400/60 font-medium italic">Projected</span>
-                        <span className="font-bold text-emerald-400/90 tracking-tighter">${target.nextBid.toLocaleString()}</span>
+                        <span className="text-emerald-400/60 font-medium italic">
+                          {target.isLeading ? "Target Max" : "Projected Bid"}
+                        </span>
+                        <span className="font-bold text-emerald-400/90 tracking-tighter">
+                          {target.isLeading ? `$${selected.maxBudget.toLocaleString()}` : `$${target.nextBid.toLocaleString()}`}
+                        </span>
                       </p>
                     </div>
                   </div>

@@ -43,6 +43,23 @@ function prioritizeAuctions(auctions) {
     });
 }
 
+function calculateNextBid(currentBid, settingIncrement, strategy = "standard") {
+    const currentBidNum = Number(currentBid) || 0;
+    let baseIncrement = Number(settingIncrement) || 1;
+
+    // Tactical scaling based on price brackets
+    if (currentBidNum > 500 && currentBidNum <= 2500) baseIncrement = Math.max(baseIncrement, 5);
+    if (currentBidNum > 2500 && currentBidNum <= 10000) baseIncrement = Math.max(baseIncrement, 25);
+    if (currentBidNum > 10000) baseIncrement = Math.max(baseIncrement, 100);
+
+    // Strategy multipliers
+    if (strategy === "aggressive") {
+        baseIncrement = baseIncrement * 3;
+    }
+
+    return currentBidNum + baseIncrement;
+}
+
 function calculateCommittedFromAuctions(auctions, userId) {
     const committedAuctions = [];
     let committedBudget = 0;
@@ -193,18 +210,7 @@ async function processSmartAgentBySetting(setting, io) {
                     });
                 }
 
-                let baseIncrement = Number(freshSetting.bidIncrement) || 1;
-
-                const currentBidNum = Number(auction.currentBid) || 0;
-                if (currentBidNum > 500 && currentBidNum <= 2500) baseIncrement = Math.max(baseIncrement, 5);
-                if (currentBidNum > 2500 && currentBidNum <= 10000) baseIncrement = Math.max(baseIncrement, 25);
-                if (currentBidNum > 10000) baseIncrement = Math.max(baseIncrement, 100);
-
-                if (strategy === "aggressive") {
-                    baseIncrement = baseIncrement * 3;
-                }
-
-                const nextBid = currentBidNum + baseIncrement;
+                const nextBid = calculateNextBid(auction.currentBid, freshSetting.bidIncrement, freshSetting.strategy);
 
                 if (nextBid > Number(freshSetting.maxBudget)) continue;
                 if (nextBid > remainingBudget) {
@@ -355,24 +361,32 @@ async function getSmartAgentOverviewForUser(userId) {
                     : undefined;
 
         const targets = prioritized
-            .filter((auction) => {
-                if (!isAuctionEligibleForUserBidding(auction, setting.userId)) return false;
+            .map((auction) => {
                 const latestBid = getLatestBid(auction);
                 const leaderId = latestBid?.bidderId?.toString();
-                if (leaderId === setting.userId.toString()) return false;
-                const nextBid = Number(auction.currentBid) + (Number(setting.bidIncrement) || 1);
-                return nextBid <= Number(setting.maxBudget) && nextBid <= remainingBudget;
+                const isLeading = leaderId === setting.userId.toString();
+                const nextBid = calculateNextBid(auction.currentBid, setting.bidIncrement, setting.strategy);
+                
+                // For overview, we return all active auctions the user is either leading or could bid on
+                const isEligible = isAuctionEligibleForUserBidding(auction, setting.userId);
+                const canAfford = nextBid <= Number(setting.maxBudget) && nextBid <= remainingBudget;
+
+                if (!isEligible) return null;
+                if (!isLeading && !canAfford) return null;
+
+                return {
+                    auctionId: auction._id,
+                    title: auction.title,
+                    imageUrl: auction.imageUrl,
+                    currentBid: Number(auction.currentBid),
+                    auctionType: auction.auctionType,
+                    endTime: auction.endTime,
+                    nextBid: isLeading ? 0 : nextBid,
+                    isLeading,
+                };
             })
-            .slice(0, Math.max(1, Number(setting.maxConcurrentAuctions) || 3))
-            .map((auction) => ({
-                auctionId: auction._id,
-                title: auction.title,
-                imageUrl: auction.imageUrl,
-                currentBid: Number(auction.currentBid),
-                auctionType: auction.auctionType,
-                endTime: auction.endTime,
-                nextBid: Number(auction.currentBid) + (Number(setting.bidIncrement) || 1),
-            }));
+            .filter(t => t !== null)
+            .slice(0, Math.max(5, Number(setting.maxConcurrentAuctions) || 3));
 
         output.push({
             _id: setting._id,
