@@ -481,22 +481,44 @@ export default function SmartAutoBidAgentPanel() {
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mt-4">
-                {categoryFields[category]?.map((field) => (
+                {categoryFields[category]?.map((field) => {
+                  let options = field.options;
+                  let disabled = false;
+                  if (field.dependsOn) {
+                    const parentValue = dynamicFields[field.dependsOn];
+                    if (parentValue && field.dependentOptions?.[parentValue]) {
+                      options = field.dependentOptions[parentValue];
+                    } else {
+                      options = [];
+                      disabled = true;
+                    }
+                  }
+
+                  return (
                   <div key={field.key}>
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">{field.label}</label>
                     {field.type === "select" ? (
                       <select
+                        disabled={disabled}
                         value={dynamicFields[field.key] || ""}
                         onChange={(e) => {
                           const newFields = { ...dynamicFields, [field.key]: e.target.value };
                           if (!e.target.value) delete newFields[field.key];
+                          
+                          // Clear children if parent changes
+                          categoryFields[category]?.forEach(child => {
+                            if (child.dependsOn === field.key) {
+                              delete newFields[child.key];
+                            }
+                          });
+
                           setDynamicFields(newFields);
                           saveDraft("dynamicFields", newFields);
                         }}
-                        className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                        className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 disabled:opacity-50"
                       >
-                        <option value="">Any</option>
-                        {field.options?.map((opt) => (
+                        <option value="">{disabled ? `Select ${categoryFields[category]?.find(f => f.key === field.dependsOn)?.label} first` : `Any`}</option>
+                        {options?.map((opt) => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
@@ -522,7 +544,7 @@ export default function SmartAutoBidAgentPanel() {
                       </div>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
             </div>
 

@@ -215,19 +215,42 @@ export default function CreateAuctionPage() {
                             <div className="space-y-4 rounded-2xl border border-white/10 bg-black/20 p-6">
                                 <h3 className="text-lg font-semibold text-white">Product Overview</h3>
                                 <div className="grid gap-6 sm:grid-cols-2">
-                                    {currentCategoryFields.map((field) => (
+                                    {currentCategoryFields.map((field) => {
+                                        let options = field.options;
+                                        let disabled = false;
+                                        if (field.dependsOn) {
+                                            const parentValue = details[field.dependsOn];
+                                            if (parentValue && field.dependentOptions?.[parentValue]) {
+                                                options = field.dependentOptions[parentValue];
+                                            } else {
+                                                options = [];
+                                                disabled = true;
+                                            }
+                                        }
+
+                                        return (
                                         <div key={field.key} className="space-y-2">
                                             <label className="block text-sm font-medium text-slate-300">
                                                 {field.label}
                                             </label>
                                             {field.type === "select" ? (
                                                 <select
+                                                    disabled={disabled}
                                                     value={details[field.key] || ""}
-                                                    onChange={(e) => setDetails({ ...details, [field.key]: e.target.value })}
-                                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition [&>option]:bg-[#0B1121]"
+                                                    onChange={(e) => {
+                                                        const newDetails = { ...details, [field.key]: e.target.value };
+                                                        // Clear children if parent changes
+                                                        currentCategoryFields.forEach(child => {
+                                                            if (child.dependsOn === field.key) {
+                                                                delete newDetails[child.key];
+                                                            }
+                                                        });
+                                                        setDetails(newDetails);
+                                                    }}
+                                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white focus:border-emerald-500 focus:bg-white/10 focus:outline-none transition [&>option]:bg-[#0B1121] disabled:opacity-50"
                                                 >
-                                                    <option value="">Select {field.label}</option>
-                                                    {field.options?.map((opt) => (
+                                                    <option value="">{disabled ? `Select ${currentCategoryFields.find(f => f.key === field.dependsOn)?.label} first` : `Select ${field.label}`}</option>
+                                                    {options?.map((opt) => (
                                                         <option key={opt} value={opt}>{opt}</option>
                                                     ))}
                                                 </select>
@@ -248,7 +271,7 @@ export default function CreateAuctionPage() {
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                    )})}
                                 </div>
                             </div>
                         )}
