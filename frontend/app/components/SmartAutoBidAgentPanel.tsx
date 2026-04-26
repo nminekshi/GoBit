@@ -517,7 +517,7 @@ export default function SmartAutoBidAgentPanel() {
                         }}
                         className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 disabled:opacity-50"
                       >
-                        <option value="">{disabled ? `Select ${categoryFields[category]?.find(f => f.key === field.dependsOn)?.label} first` : `Any`}</option>
+                        <option value="">{disabled ? `Select ${categoryFields[category]?.find(f => f.key === field.dependsOn)?.label} first` : `Select ${field.label}`}</option>
                         {options?.map((opt) => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
