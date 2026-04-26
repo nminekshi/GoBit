@@ -468,8 +468,11 @@ router.get("/:id", async (req, res) => {
         auction.views += 1;
         await auction.save();
 
+        // Flatten map fields (like details) so frontend can access keys via object indexing.
+        const auctionObject = auction.toObject({ flattenMaps: true });
+
         // Return auction plus a minimal debug section to inspect winner assignment on the client
-        res.json({ ...auction.toObject(), _debugWinner: debug });
+        res.json({ ...auctionObject, _debugWinner: debug });
     } catch (error) {
         console.error("Error fetching auction:", error);
         res.status(500).json({ error: "Failed to fetch auction" });
