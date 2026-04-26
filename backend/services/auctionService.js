@@ -29,6 +29,13 @@ function notifyUser(io, userId, eventName, payload) {
     io.to(`user:${userId.toString()}`).emit(eventName, payload);
 }
 
+function isUserOnline(io, userId) {
+    if (!io || !userId) return false;
+    const roomName = `user:${userId.toString()}`;
+    const room = io.sockets.adapter.rooms.get(roomName);
+    return room && room.size > 0;
+}
+
 function getLatestBid(auction) {
     return auction?.bids?.length ? auction.bids[auction.bids.length - 1] : null;
 }
@@ -43,8 +50,13 @@ function prioritizeAuctions(auctions) {
     });
 }
 
-function calculateNextBid(currentBid, settingIncrement, strategy = "standard") {
+function calculateNextBid(currentBid, settingIncrement, strategy = "standard", isFirstBid = false) {
     const currentBidNum = Number(currentBid) || 0;
+    
+    if (isFirstBid) {
+        return currentBidNum; // Initial currentBid is the startPrice
+    }
+
     let baseIncrement = Number(settingIncrement) || 1;
 
     // Tactical scaling based on price brackets
@@ -210,7 +222,8 @@ async function processSmartAgentBySetting(setting, io) {
                     });
                 }
 
-                const nextBid = calculateNextBid(auction.currentBid, freshSetting.bidIncrement, freshSetting.strategy);
+                const isFirstBid = !auction.bids || auction.bids.length === 0;
+                const nextBid = calculateNextBid(auction.currentBid, freshSetting.bidIncrement, freshSetting.strategy, isFirstBid);
 
                 if (nextBid > Number(freshSetting.maxBudget)) continue;
                 if (nextBid > remainingBudget) {
@@ -313,6 +326,8 @@ async function processSmartAgentsByAuction(auctionId, io) {
     });
 
     for (const setting of enabledSettings) {
+        // Skip if user is not online
+        if (!isUserOnline(io, setting.userId)) continue;
         await processSmartAgentBySetting(setting, io);
     }
 }
@@ -320,6 +335,8 @@ async function processSmartAgentsByAuction(auctionId, io) {
 async function processAllSmartAgents(io) {
     const enabledSettings = await SmartAutoBidAgent.find({ isEnabled: true });
     for (const setting of enabledSettings) {
+        // Skip if user is not online
+        if (!isUserOnline(io, setting.userId)) continue;
         await processSmartAgentBySetting(setting, io);
     }
 }
@@ -365,8 +382,9 @@ async function getSmartAgentOverviewForUser(userId) {
                 const latestBid = getLatestBid(auction);
                 const leaderId = latestBid?.bidderId?.toString();
                 const isLeading = leaderId === setting.userId.toString();
-                const nextBid = calculateNextBid(auction.currentBid, setting.bidIncrement, setting.strategy);
-                
+                const isFirstBid = !auction.bids || auction.bids.length === 0;
+                const nextBid = calculateNextBid(auction.currentBid, setting.bidIncrement, setting.strategy, isFirstBid);
+
                 // For overview, we return all active auctions the user is either leading or could bid on
                 const isEligible = isAuctionEligibleForUserBidding(auction, setting.userId);
                 const canAfford = nextBid <= Number(setting.maxBudget) && nextBid <= remainingBudget;
@@ -467,10 +485,21 @@ async function placeBid({ auctionId, bidderId, bidAmount, user, isAutoBid = fals
         throw err;
     }
 
-    if (numericBid <= auction.currentBid) {
-        const err = new Error(`Bid must be higher than current bid of $${auction.currentBid}`);
-        err.statusCode = 400;
-        throw err;
+    const currentBidNum = Number(auction.currentBid) || 0;
+    const isFirstBid = auction.bids.length === 0;
+
+    if (isFirstBid) {
+        if (numericBid < auction.startPrice) {
+            const err = new Error(`First bid must be at least the start price of $${auction.startPrice}`);
+            err.statusCode = 400;
+            throw err;
+        }
+    } else {
+        if (numericBid <= currentBidNum) {
+            const err = new Error(`Bid must be higher than current bid of $${auction.currentBid}`);
+            err.statusCode = 400;
+            throw err;
+        }
     }
 
     if (auction.auctionType === "live") {
@@ -554,12 +583,15 @@ async function processAutoBids(auctionId, io) {
                     const botUserId = bot.userId?.toString();
                     if (!botUserId) continue;
 
+                    // Skip if user is not online
+                    if (!isUserOnline(io, botUserId)) continue;
+
                     if (currentLeaderId && botUserId === currentLeaderId) {
                         continue;
                     }
 
-                    const increment = Number(bot.increment) || 1;
-                    const nextBid = Number(auction.currentBid) + increment;
+                    const isFirstBid = auction.bids.length === 0;
+                    const nextBid = calculateNextBid(auction.currentBid, bot.increment, "standard", isFirstBid);
 
                     if (nextBid > Number(bot.maxBid)) {
                         if (!maxReachedNotifiedUsers.has(botUserId)) {

@@ -65,6 +65,7 @@ app.set("io", io);
 io.on("connection", (socket) => {
   socket.on("join-user", (userId) => {
     if (!userId) return;
+    socket.userId = userId.toString();
     socket.join(`user:${userId}`);
   });
 
@@ -82,12 +83,12 @@ io.on("connection", (socket) => {
     if (!auctionId) return;
     socket.leave(`auction:${auctionId}`);
   });
-
   socket.on("live:bid", async (payload) => {
     try {
-      const { auctionId, bidAmount, userId } = payload || {};
+      const { auctionId, bidAmount } = payload || {};
+      const userId = socket.userId; // Use verified userId from socket
       if (!auctionId || !userId) {
-        return socket.emit("bid:error", { auctionId, message: "Missing auction or user" });
+        return socket.emit("bid:error", { auctionId, message: "Authentication required or missing auction" });
       }
       const updatedAuction = await placeBid({ auctionId, bidderId: userId, bidAmount });
       io.to(`auction:${auctionId}`).emit("auction:update", updatedAuction);
