@@ -61,11 +61,7 @@ function prioritizeAuctions(auctions) {
 function calculateNextBid(currentBid, settingIncrement, strategy = "standard", isFirstBid = false) {
     const currentBidNum = Number(currentBid) || 0;
     
-    if (isFirstBid) {
-        return currentBidNum; // Initial currentBid is the startPrice
-    }
-
-    let baseIncrement = Number(settingIncrement) || 1;
+    let baseIncrement = Number(settingIncrement) || 10;
 
     // Tactical scaling based on price brackets
     if (currentBidNum > 500 && currentBidNum <= 2500) baseIncrement = Math.max(baseIncrement, 5);
