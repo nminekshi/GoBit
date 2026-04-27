@@ -815,17 +815,25 @@ router.get("/my/bidding-summary", authenticate, async (req, res) => {
     try {
         const AutoBidSetting = require("../models/AutoBidSetting");
         const SmartAutoBidAgent = require("../models/SmartAutoBidAgent");
+        const BotActivityLog = require("../models/BotActivityLog");
+        const { getSmartAgentOverviewForUser } = require("../services/auctionService");
 
-        // 1. Get Category Bots (Smart Agents)
-        const smartAgents = await SmartAutoBidAgent.find({ userId: req.userId });
+        // 1. Get Smart Agents with their active targets (radar)
+        const smartAgentsOverview = await getSmartAgentOverviewForUser(req.userId);
 
         // 2. Get Item Bots (AutoBidSettings)
         const itemBots = await AutoBidSetting.find({ userId: req.userId, isActive: true })
             .populate("auctionId", "title imageUrl currentBid endTime status category");
 
+        // 3. Get Recent Activity Logs (all bots)
+        const logs = await BotActivityLog.find({ userId: req.userId })
+            .sort({ createdAt: -1 })
+            .limit(20);
+
         res.json({
-            smartAgents,
-            itemBots
+            smartAgents: smartAgentsOverview,
+            itemBots,
+            logs
         });
     } catch (error) {
         console.error("Error fetching bidding summary:", error);

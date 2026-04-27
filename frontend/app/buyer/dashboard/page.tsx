@@ -505,6 +505,12 @@ export default function BuyerDashboard() {
                           {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
                         </button>
                       ))}
+                      <Link href="/buyer/auto-bids">
+                        <button className="rounded-lg px-4 py-2 text-sm font-medium text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 border border-amber-500/10 hover:bg-amber-500/5">
+                          <Zap className="h-3.5 w-3.5" />
+                          My Auto Bids
+                        </button>
+                      </Link>
                     </div>
 
                     <div className="relative">
