@@ -33,6 +33,8 @@ interface SmartAgent {
     isEnabled: boolean;
     committedBudget: number;
     remainingBudget: number;
+    targetWinCount?: number;
+    currentWinCount?: number;
     targets: Array<{
         auctionId: string;
         title: string;
@@ -353,7 +355,12 @@ export default function MyAutoBidsPage() {
                                     {smartAgents.map(agent => (
                                         <div key={agent._id} className="rounded-2xl border border-white/5 bg-black/40 p-4">
                                             <div className="flex items-center justify-between mb-3">
-                                                <span className="text-sm font-bold capitalize text-white">{agent.category}</span>
+                                                <div>
+                                                    <span className="text-sm font-bold capitalize text-white">{agent.category}</span>
+                                                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter">
+                                                        Wins: {agent.currentWinCount || 0} / {agent.targetWinCount || 1}
+                                                    </p>
+                                                </div>
                                                 <button 
                                                     onClick={() => handleToggleSmartAgent(agent._id, agent.category, agent.isEnabled)}
                                                     className={`p-1.5 rounded-lg transition ${agent.isEnabled ? 'text-amber-400 hover:bg-amber-400/10' : 'text-emerald-400 hover:bg-emerald-400/10'}`}

@@ -70,7 +70,7 @@ export default function SmartAutoBidAgentPanel() {
   const [bidIncrement, setBidIncrement] = useState<number>(10);
   const [maxConcurrentAuctions, setMaxConcurrentAuctions] = useState<number>(3);
   const [strategy, setStrategy] = useState<string>("standard");
-  const [targetWinCount, setTargetWinCount] = useState<number>(1);
+  const [targetWinCount, setTargetWinCount] = useState<number>(10);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [priceMin, setPriceMin] = useState<string>("");

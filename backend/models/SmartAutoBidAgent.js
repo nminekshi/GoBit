@@ -42,7 +42,7 @@ const smartAutoBidAgentSchema = new mongoose.Schema(
         },
         targetWinCount: {
             type: Number,
-            default: 1,
+            default: 10,
             min: 1,
         },
         currentWinCount: {
