@@ -11,6 +11,7 @@ const {
   processAutoBids,
   processSmartAgentsByAuction,
   processAllSmartAgents,
+  clearAutomationLocks,
 } = require("./services/auctionService");
 
 const authRoutes = require("./routes/auth");
@@ -113,7 +114,7 @@ io.on("connection", (socket) => {
 
 if (!isTestEnv) {
   connectMongo()
-    .then(() => {
+    .then(async () => {
       setInterval(() => closeExpiredLiveAuctions(io), 5000);
       setInterval(() => closeExpiredNormalAuctions(io), 10000);
       setInterval(() => {
@@ -122,11 +123,15 @@ if (!isTestEnv) {
         });
       }, 8000);
 
+      await clearAutomationLocks();
+      console.log("Automation locks cleared");
+
       server.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
       });
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("Failed to connect to MongoDB", err);
       process.exit(1);
     });
 }

@@ -349,6 +349,7 @@ async function processSmartAgentBySetting(setting, io) {
 }
 
 async function processSmartAgentsByAuction(auctionId, io) {
+    console.log(`[DEBUG] SmartAgent check triggered for Auction: ${auctionId}`);
     const auction = await Auction.findById(auctionId);
     if (!auction || auction.status !== "active") return;
 
@@ -365,6 +366,7 @@ async function processSmartAgentsByAuction(auctionId, io) {
 }
 
 async function processAllSmartAgents(io) {
+    console.log(`[DEBUG] Processing all smart agents`);
     const enabledSettings = await SmartAutoBidAgent.find({ isEnabled: true });
     for (const setting of enabledSettings) {
         // OFFLINE BIDDING ENABLED
@@ -581,7 +583,9 @@ async function placeBid({ auctionId, bidderId, bidAmount, user, isAutoBid = fals
  * and places a new bid if they are currently outbid.
  */
 async function processAutoBids(auctionId, io) {
+    console.log(`[DEBUG] AutoBid check triggered for Auction: ${auctionId}`);
     const auctionKey = auctionId.toString();
+
 
     if (processingAutoBidAuctions.has(auctionKey)) {
         pendingAutoBidAuctions.add(auctionKey);
@@ -888,6 +892,16 @@ function buildPaymentEmailText({ auction, winner }) {
     ].join("\n");
 }
 
+async function clearAutomationLocks() {
+    try {
+        await AutoBidSetting.updateMany({ isProcessing: true }, { isProcessing: false });
+        await SmartAutoBidAgent.updateMany({ isProcessing: true }, { isProcessing: false });
+        console.log("[AUTO-BID] All automation locks cleared.");
+    } catch (err) {
+        console.error("[AUTO-BID] Failed to clear locks:", err.message);
+    }
+}
+
 module.exports = {
     LIVE_ENABLED_CATEGORIES,
     buildLiveAuctionConfig,
@@ -902,4 +916,5 @@ module.exports = {
     processAllSmartAgents,
     processSmartAgentBySetting,
     getSmartAgentOverviewForUser,
+    clearAutomationLocks,
 };
