@@ -932,7 +932,10 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                                         {bidderInitial}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-medium text-white">{bidderName}</p>
+                                                        <p className="text-sm font-medium text-white">
+                                                            {bidderName}
+                                                            {bid.isAutoBid && <span className="ml-2 text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-normal">Auto-bid</span>}
+                                                        </p>
                                                         <p className="text-xs text-white/40">{new Date(bid.timestamp).toLocaleString()}</p>
                                                     </div>
                                                 </div>

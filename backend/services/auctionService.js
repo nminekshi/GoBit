@@ -102,7 +102,8 @@ function isAuctionEligibleForUserBidding(auction, userId) {
     if (!auction || auction.status !== "active") return false;
     if (auction.sellerId?.toString() === userId.toString()) return false;
     if (auction.startTime && now < new Date(auction.startTime)) return false;
-    if (auction.endTime && now >= new Date(auction.endTime)) return false;
+    if (auction.endTime && now >= new Date(new Date(auction.endTime).getTime() + 2000)) return false; // 2s grace for bots
+
     return true;
 }
 
@@ -169,6 +170,16 @@ async function processSmartAgentBySetting(setting, io) {
                 }
             }
 
+            if (freshSetting.filters) {
+                if (freshSetting.filters.priceMin !== undefined) {
+                    query.currentBid = { ...query.currentBid, $gte: freshSetting.filters.priceMin };
+                }
+                if (freshSetting.filters.priceMax !== undefined) {
+                    query.currentBid = { ...query.currentBid, $gte: query.currentBid?.$gte || 0, $lte: freshSetting.filters.priceMax };
+                }
+            }
+
+
             const activeAuctions = await Auction.find(query);
 
             if (!activeAuctions.length) break;
@@ -208,13 +219,8 @@ async function processSmartAgentBySetting(setting, io) {
 
                 if (leaderId === userId) continue;
 
-                // CHAIN CHECK: If user's last bid on THIS auction was manual, the Smart Agent skips it.
-                const userBids = auction.bids.filter(b => b.bidderId?.toString() === userId);
-                const lastUserBid = userBids.length > 0 ? userBids[userBids.length - 1] : null;
-                if (lastUserBid && !lastUserBid.isAutoBid) {
-                    console.log(`[SMART-AGENT] Skipping ${auction.title} for ${userId}: Last bid was MANUAL. Chain broken.`);
-                    continue;
-                }
+                // CHAIN CHECK REMOVED: Auto-agents now persist even after manual bids
+
 
                 const strategy = freshSetting.strategy || "standard";
                 if (strategy === "sniper") {
@@ -290,7 +296,10 @@ async function processSmartAgentBySetting(setting, io) {
                         isAutoBid: true,
                     });
 
+                    console.log(`[SMART-AGENT] Successfully placed bid $${candidate.nextBid} for ${freshSetting.userId} on ${candidate.auction.title}`);
+
                     if (io) {
+
                         io.to(`auction:${candidate.auction._id}`).emit("auction:update", updated);
                     }
 
@@ -349,8 +358,8 @@ async function processSmartAgentsByAuction(auctionId, io) {
     });
 
     for (const setting of enabledSettings) {
-        // Skip if user is not online
-        if (!isUserOnline(io, setting.userId)) continue;
+        // OFFLINE BIDDING ENABLED
+
         await processSmartAgentBySetting(setting, io);
     }
 }
@@ -358,8 +367,8 @@ async function processSmartAgentsByAuction(auctionId, io) {
 async function processAllSmartAgents(io) {
     const enabledSettings = await SmartAutoBidAgent.find({ isEnabled: true });
     for (const setting of enabledSettings) {
-        // Skip if user is not online
-        if (!isUserOnline(io, setting.userId)) continue;
+        // OFFLINE BIDDING ENABLED
+
         await processSmartAgentBySetting(setting, io);
     }
 }
@@ -617,19 +626,15 @@ async function processAutoBids(auctionId, io) {
                         const botUserId = lockedBot.userId?.toString();
                         if (!botUserId) continue;
 
-                        if (!isUserOnline(io, botUserId)) continue;
+                        // OFFLINE BIDDING ENABLED: Removed isUserOnline check
+
 
                         if (currentLeaderId && botUserId === currentLeaderId) {
                             continue;
                         }
 
-                        // CHAIN CHECK: Only trigger auto-bids if the user's last bid was an auto-bid (or no bid yet)
-                        const userBids = auction.bids.filter(b => b.bidderId?.toString() === botUserId);
-                        const lastUserBid = userBids.length > 0 ? userBids[userBids.length - 1] : null;
-                        if (lastUserBid && !lastUserBid.isAutoBid) {
-                            console.log(`[AUTO-BID] Skipping ${botUserId} on ${auction._id}: Last bid was MANUAL. Chain broken.`);
-                            continue;
-                        }
+                        // CHAIN CHECK REMOVED: Auto-bids now persist even after manual bids
+
 
                         const isFirstBid = auction.bids.length === 0;
                         const nextBid = calculateNextBid(auction.currentBid, lockedBot.increment, "standard", isFirstBid);
@@ -653,9 +658,13 @@ async function processAutoBids(auctionId, io) {
                         }
 
                         const botUser = await User.findById(lockedBot.userId);
-                        if (!botUser) continue;
+                        if (!botUser) {
+                            console.log(`[AUTO-BID] Skipping ${botUserId}: User not found`);
+                            continue;
+                        }
 
-                        console.log(`[AUTO-BID] Executing for ${botUserId}: $${finalBid} on ${auction.title}`);
+                        console.log(`[AUTO-BID] Executing for ${botUserId}: $${finalBid} on ${auction.title} (Max: ${lockedBot.maxBid})`);
+
 
                         const updated = await placeBid({
                             auctionId: auction._id,

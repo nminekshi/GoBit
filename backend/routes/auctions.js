@@ -657,9 +657,10 @@ router.post("/:id/bid", authenticate, async (req, res) => {
         }
 
         // Trigger auto-bid bot check
-        const { processAutoBids } = require("../services/auctionService");
+        const { processAutoBids, processSmartAgentsByAuction } = require("../services/auctionService");
         await processAutoBids(updatedAuction._id, io);
         await processSmartAgentsByAuction(updatedAuction._id, io);
+
 
         res.json(updatedAuction);
     } catch (error) {
@@ -704,9 +705,11 @@ router.post("/:id/auto-bid", authenticate, async (req, res) => {
         );
 
         // Immediate bot check (in case user sets bot when they are ALREADY outbid)
-        const { processAutoBids } = require("../services/auctionService");
+        const { processAutoBids, processSmartAgentsByAuction } = require("../services/auctionService");
         const io = req.app.get("io");
         processAutoBids(req.params.id, io);
+        processSmartAgentsByAuction(req.params.id, io);
+
 
         res.json({ message: "Auto-bid setting saved", setting });
     } catch (error) {
