@@ -339,13 +339,13 @@ export const auctionAPI = {
             if (!response.ok) throw new Error("Failed to fetch watchlist");
             return await response.json();
         } catch (error) {
-            console.error("Error fetching my watchlist:", error);
+            console.error("Error fetching watchlist:", error);
             return [];
         }
     },
 
     // Fetch buyer summary stats
-    async fetchBuyerSummary(): Promise<{ activeBidsCount: number; watchlistCount: number; wonCount: number }> {
+    async fetchBuyerSummary(): Promise<any> {
         try {
             const userId = getUserId();
             if (!userId) return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
@@ -358,6 +358,23 @@ export const auctionAPI = {
         } catch (error) {
             console.error("Error fetching buyer summary:", error);
             return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
+        }
+    },
+
+    // Fetch bidding summary (item bots + category agents)
+    async fetchBiddingSummary(): Promise<any> {
+        try {
+            const userId = getUserId();
+            if (!userId) return { smartAgents: [], itemBots: [] };
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/bidding-summary`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch bidding summary");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching bidding summary:", error);
+            return { smartAgents: [], itemBots: [] };
         }
     },
 

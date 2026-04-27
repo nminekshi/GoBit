@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Eye, Bookmark, Settings, Menu, Star, Bot } from "lucide-react";
+import { LayoutDashboard, Eye, Bookmark, Settings, Menu, Star, Bot, Zap } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -73,6 +73,7 @@ const getPhaseLabel = (startTime?: string | Date, endTime?: string | Date) => {
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, tab: "all" as const },
   { label: "Active Bids", icon: Eye, tab: "bidding" as const },
+  { label: "My Auto-Bids", icon: Zap, href: "/buyer/auto-bids" },
   { label: "Watchlist", icon: Bookmark, tab: "watchlist" as const },
   { label: "My Reviews", icon: Star, tab: "reviews" as const },
   { label: "Smart Agent", icon: Bot, href: "/buyer/smart-auto-bidding" },

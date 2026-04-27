@@ -810,6 +810,29 @@ router.get("/my/auto-agent", authenticate, async (req, res) => {
     }
 });
 
+// GET /auctions/my/bidding-summary - Detailed summary of all auto-bids (item + category)
+router.get("/my/bidding-summary", authenticate, async (req, res) => {
+    try {
+        const AutoBidSetting = require("../models/AutoBidSetting");
+        const SmartAutoBidAgent = require("../models/SmartAutoBidAgent");
+
+        // 1. Get Category Bots (Smart Agents)
+        const smartAgents = await SmartAutoBidAgent.find({ userId: req.userId });
+
+        // 2. Get Item Bots (AutoBidSettings)
+        const itemBots = await AutoBidSetting.find({ userId: req.userId, isActive: true })
+            .populate("auctionId", "title imageUrl currentBid endTime status category");
+
+        res.json({
+            smartAgents,
+            itemBots
+        });
+    } catch (error) {
+        console.error("Error fetching bidding summary:", error);
+        res.status(500).json({ error: "Failed to fetch bidding summary" });
+    }
+});
+
 // GET /auctions/my/auto-agent/logs/:category - Get logs for agent
 router.get("/my/auto-agent/logs/:category", authenticate, async (req, res) => {
     try {
