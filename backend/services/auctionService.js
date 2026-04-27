@@ -344,14 +344,12 @@ async function getSmartAgentOverviewForUser(userId) {
         };
 
         if (setting.filters && setting.filters.dynamicFields) {
-            const dynamicFields = setting.filters.dynamicFields;
-            if (dynamicFields instanceof Map) {
-                dynamicFields.forEach((val, key) => {
-                    if (val) query[`details.${key}`] = new RegExp(val, "i");
-                });
-            } else if (typeof dynamicFields === 'object') {
-                for (const [key, val] of Object.entries(dynamicFields)) {
-                    if (val) query[`details.${key}`] = new RegExp(val, "i");
+            const fields = setting.filters.dynamicFields;
+            // Handle both Map and Object safely
+            const entries = fields instanceof Map ? Array.from(fields.entries()) : Object.entries(fields);
+            for (const [key, val] of entries) {
+                if (val && typeof val === 'string') {
+                    query[`details.${key}`] = new RegExp(val, "i");
                 }
             }
         }
@@ -361,13 +359,12 @@ async function getSmartAgentOverviewForUser(userId) {
         const { committedBudget, committedAuctions } = calculateCommittedFromAuctions(activeAuctions, setting.userId);
         const remainingBudget = Math.max(0, Number(setting.maxBudget) - committedBudget);
         const prioritized = prioritizeAuctions(activeAuctions);
+        
+        // Safe normalization for frontend
         const dynamicFields = setting.filters?.dynamicFields;
-        const normalizedDynamicFields =
-            dynamicFields instanceof Map
-                ? Object.fromEntries(dynamicFields.entries())
-                : dynamicFields && typeof dynamicFields === "object"
-                    ? dynamicFields
-                    : undefined;
+        const normalizedDynamicFields = dynamicFields instanceof Map 
+            ? Object.fromEntries(dynamicFields.entries()) 
+            : (dynamicFields || {});
 
         const targets = prioritized
             .map((auction) => {

@@ -20,7 +20,10 @@ import {
     Clock,
     History,
     ChevronRight,
-    Search
+    Search,
+    Edit2,
+    Check,
+    X
 } from "lucide-react";
 import { API_BASE_URL } from "../../lib/api";
 
@@ -44,6 +47,7 @@ interface SmartAgent {
         endTime: string;
         isLeading?: boolean;
     }>;
+    filters?: any;
 }
 
 interface ItemBot {
@@ -104,6 +108,11 @@ export default function MyAutoBidsPage() {
     const [logs, setLogs] = useState<ActivityLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    
+    // Inline editing state
+    const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+    const [tempLimitValue, setTempLimitValue] = useState<number>(1);
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const loadData = async () => {
         try {
@@ -153,12 +162,36 @@ export default function MyAutoBidsPage() {
                     bidIncrement: agent.bidIncrement,
                     maxConcurrentAuctions: 3,
                     strategy: agent.strategy,
+                    targetWinCount: agent.targetWinCount,
                     isEnabled: true
                 });
             }
             loadData();
         } catch (err: any) {
             alert(err.message || "Failed to update agent status");
+        }
+    };
+
+    const handleUpdateWinLimit = async (agent: SmartAgent) => {
+        setIsUpdating(true);
+        try {
+            const { auctionAPI } = await import("../../lib/api");
+            await auctionAPI.saveSmartAutoAgent({
+                category: agent.category,
+                maxBudget: agent.maxBudget,
+                bidIncrement: agent.bidIncrement,
+                maxConcurrentAuctions: 3,
+                strategy: agent.strategy,
+                targetWinCount: tempLimitValue,
+                isEnabled: agent.isEnabled,
+                filters: agent.filters
+            });
+            setEditingLimitId(null);
+            loadData();
+        } catch (err: any) {
+            alert(err.message || "Failed to update win limit");
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -237,7 +270,7 @@ export default function MyAutoBidsPage() {
                                             <Search className="h-10 w-10" />
                                         </div>
                                         <h3 className="text-2xl font-bold text-white/80">No Targets Acquired</h3>
-                                        <p className="mt-2 text-slate-500 max-w-sm mx-auto">Your smart agents are scanning categories for items matching your filters. Recommended items will appear here once found.</p>
+                                        <p className="mt-2 text-slate-500 max-sm mx-auto">Your smart agents are scanning categories for items matching your filters. Recommended items will appear here once found.</p>
                                         <Link href="/buyer/smart-auto-bidding">
                                             <button className="mt-8 rounded-2xl bg-white/10 px-8 py-3 font-bold transition hover:bg-white/20">Configure Agent Filters</button>
                                         </Link>
@@ -357,9 +390,41 @@ export default function MyAutoBidsPage() {
                                             <div className="flex items-center justify-between mb-3">
                                                 <div>
                                                     <span className="text-sm font-bold capitalize text-white">{agent.category}</span>
-                                                    <p className="text-[9px] text-slate-500 uppercase tracking-tighter">
-                                                        Wins: {agent.currentWinCount || 0} / {agent.targetWinCount || 1}
-                                                    </p>
+                                                    
+                                                    {editingLimitId === agent._id ? (
+                                                        <div className="mt-1 flex items-center gap-2">
+                                                            <input 
+                                                                type="number" 
+                                                                value={tempLimitValue}
+                                                                onChange={(e) => setTempLimitValue(Number(e.target.value))}
+                                                                className="w-12 rounded bg-white/10 px-1 py-0.5 text-[9px] text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                                min={1}
+                                                            />
+                                                            <button 
+                                                                onClick={() => handleUpdateWinLimit(agent)}
+                                                                disabled={isUpdating}
+                                                                className="text-emerald-400 hover:text-emerald-300"
+                                                            >
+                                                                <Check className="h-3 w-3" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setEditingLimitId(null)}
+                                                                className="text-slate-500 hover:text-slate-400"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mt-1 flex items-center gap-1.5 group cursor-pointer" onClick={() => {
+                                                            setEditingLimitId(agent._id);
+                                                            setTempLimitValue(agent.targetWinCount || 10);
+                                                        }}>
+                                                            <p className="text-[9px] text-slate-500 uppercase tracking-tighter">
+                                                                Wins: {agent.currentWinCount || 0} / {agent.targetWinCount || 10}
+                                                            </p>
+                                                            <Edit2 className="h-2.5 w-2.5 text-slate-600 group-hover:text-emerald-400 transition" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <button 
                                                     onClick={() => handleToggleSmartAgent(agent._id, agent.category, agent.isEnabled)}

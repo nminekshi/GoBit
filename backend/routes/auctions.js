@@ -44,7 +44,7 @@ const authenticate = async (req, res, next) => {
     try {
         // For now, we'll accept a userId in the request body or headers
         // In production, you'd verify a JWT token here
-        const userId = req.headers["x-user-id"] || req.body.userId;
+        const userId = req.headers["x-user-id"] || req.body?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "Authentication required" });
@@ -66,7 +66,7 @@ const authenticate = async (req, res, next) => {
         next();
     } catch (error) {
         console.error("Authentication error:", error);
-        res.status(500).json({ error: "Authentication failed" });
+        res.status(401).json({ error: "Authentication failed" });
     }
 };
 

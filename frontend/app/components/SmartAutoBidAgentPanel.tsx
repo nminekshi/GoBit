@@ -137,7 +137,7 @@ export default function SmartAutoBidAgentPanel() {
         setBidIncrement(Number(chosen.bidIncrement));
         setMaxConcurrentAuctions(Number(chosen.maxConcurrentAuctions));
         setStrategy(chosen.strategy || "standard");
-        setTargetWinCount(Number(chosen.targetWinCount) || 1);
+        setTargetWinCount(Number(chosen.targetWinCount) || 10);
         setIsEnabled(Boolean(chosen.isEnabled));
         setPriceMin(chosen.filters?.priceMin?.toString() || "");
         setPriceMax(chosen.filters?.priceMax?.toString() || "");
@@ -342,7 +342,7 @@ export default function SmartAutoBidAgentPanel() {
                           setBidIncrement(10);
                           setMaxConcurrentAuctions(3);
                           setStrategy("standard");
-                          setTargetWinCount(1);
+                          setTargetWinCount(10);
                           setPriceMin("");
                           setPriceMax("");
                           setDynamicFields({});
@@ -431,7 +431,7 @@ export default function SmartAutoBidAgentPanel() {
                     type="number"
                     value={targetWinCount}
                     min={1}
-                    disabled={!isEnabled}
+                    // disabled={!isEnabled}
                     onChange={(e) => {
                       setTargetWinCount(Number(e.target.value));
                       saveDraft("targetWinCount", Number(e.target.value));
