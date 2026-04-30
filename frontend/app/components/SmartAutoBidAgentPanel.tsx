@@ -360,7 +360,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Maximum Overall Budget</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       value={maxBudget}
@@ -368,7 +368,7 @@ export default function SmartAutoBidAgentPanel() {
                         setMaxBudget(Number(e.target.value));
                         saveDraft("maxBudget", Number(e.target.value));
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
@@ -376,7 +376,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Base Bid Increment</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       value={bidIncrement}
@@ -384,7 +384,7 @@ export default function SmartAutoBidAgentPanel() {
                         setBidIncrement(Number(e.target.value));
                         saveDraft("bidIncrement", Number(e.target.value));
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
@@ -451,7 +451,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Minimum Price</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       placeholder="e.g. 50"
@@ -460,14 +460,14 @@ export default function SmartAutoBidAgentPanel() {
                         setPriceMin(e.target.value);
                         saveDraft("priceMin", e.target.value);
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Maximum Price</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       placeholder="e.g. 5000"
@@ -476,7 +476,7 @@ export default function SmartAutoBidAgentPanel() {
                         setPriceMax(e.target.value);
                         saveDraft("priceMax", e.target.value);
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
@@ -615,7 +615,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div className="grid gap-4">
                   <div className="rounded-xl border border-white/5 bg-white/5 p-4 transition hover:bg-white/10">
                     <p className="text-xs font-semibold uppercase tracking-wider text-white/50">Committed Portfolio</p>
-                    <p className="mt-1 text-2xl font-bold text-white">${selected.committedBudget.toLocaleString()}</p>
+                    <p className="mt-1 text-2xl font-bold text-white">LKR {selected.committedBudget.toLocaleString()}</p>
                   </div>
 
                   <div className={`rounded-xl border p-4 transition ${selected.remainingBudget === 0 ? 'border-red-500/30 bg-red-500/10' : 'border-emerald-500/20 bg-emerald-500/10'}`}>
@@ -623,7 +623,7 @@ export default function SmartAutoBidAgentPanel() {
                       Available Firepower
                     </p>
                     <p className={`mt-1 text-2xl font-bold ${selected.remainingBudget === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      ${selected.remainingBudget.toLocaleString()}
+                      LKR {selected.remainingBudget.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -711,7 +711,7 @@ export default function SmartAutoBidAgentPanel() {
                       <p className="flex items-center justify-between text-xs">
                         <span className="text-white/50">Highest Bid</span>
                         <span className={`font-semibold ${target.isLeading ? 'text-emerald-400' : 'text-white/90'}`}>
-                          ${target.currentBid.toLocaleString()}
+                          LKR {target.currentBid.toLocaleString()}
                           {target.isLeading && <span className="ml-1 text-[10px] font-normal opacity-70">(You)</span>}
                         </span>
                       </p>
@@ -720,7 +720,7 @@ export default function SmartAutoBidAgentPanel() {
                           {target.isLeading ? "Target Max" : "Projected Bid"}
                         </span>
                         <span className="font-bold text-emerald-400/90 tracking-tighter">
-                          {target.isLeading ? `$${selected.maxBudget.toLocaleString()}` : `$${target.nextBid.toLocaleString()}`}
+                          {target.isLeading ? `LKR ${selected.maxBudget.toLocaleString()}` : `LKR ${target.nextBid.toLocaleString()}`}
                         </span>
                       </p>
                     </div>

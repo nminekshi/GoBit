@@ -306,11 +306,11 @@ export default function MyAutoBidsPage() {
                                                     <div className="flex items-center justify-between rounded-2xl bg-white/5 p-4 border border-white/5">
                                                         <div>
                                                             <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Current Price</p>
-                                                            <p className="text-xl font-black text-white">${target.currentBid.toLocaleString()}</p>
+                                                            <p className="text-xl font-black text-white">LKR {target.currentBid.toLocaleString()}</p>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Next Auto-Bid</p>
-                                                            <p className="text-xl font-black text-emerald-400">${target.nextBid.toLocaleString()}</p>
+                                                            <p className="text-xl font-black text-emerald-400">LKR {target.nextBid.toLocaleString()}</p>
                                                         </div>
                                                     </div>
 
@@ -354,11 +354,11 @@ export default function MyAutoBidsPage() {
                                                     <div className="mt-2 flex items-center gap-4">
                                                         <div className="text-xs">
                                                             <span className="text-slate-500 uppercase tracking-tighter">Current: </span>
-                                                            <span className="font-bold text-amber-400">${bot.auctionId.currentBid}</span>
+                                                            <span className="font-bold text-amber-400">LKR {bot.auctionId.currentBid}</span>
                                                         </div>
                                                         <div className="text-xs">
                                                             <span className="text-slate-500 uppercase tracking-tighter">Limit: </span>
-                                                            <span className="font-bold text-white">${bot.maxBid}</span>
+                                                            <span className="font-bold text-white">LKR {bot.maxBid}</span>
                                                         </div>
                                                     </div>
                                                 </div>

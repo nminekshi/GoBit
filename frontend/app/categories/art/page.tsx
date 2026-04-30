@@ -7,7 +7,7 @@ const hero: CategoryHero = {
     "Every lot is museum packed, provenance checked, and concierge-ready for global delivery windows.",
   highlight: "Private collectors pre-qualified · white-glove escrow on close",
   statLabel: "Highest active bid",
-  statValue: "$18K",
+  statValue: "LKR 18K",
   statDetail: "Classic oil reserve met",
   actions: [],
 };

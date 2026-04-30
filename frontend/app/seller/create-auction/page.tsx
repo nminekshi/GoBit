@@ -310,13 +310,13 @@ export default function CreateAuctionPage() {
                                 Starting Price <span className="text-rose-400">*</span>
                             </label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">LKR</span>
                                 <input
                                     required
                                     type="number"
                                     value={formData.startPrice}
                                     onChange={(e) => setFormData({ ...formData, startPrice: e.target.value })}
-                                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-8 pr-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition"
+                                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-14 pr-4 py-3 text-white placeholder:text-white/20 focus:border-emerald-500 focus:bg-white/10 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 transition"
                                     placeholder="100000"
                                 />
                             </div>

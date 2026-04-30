@@ -227,7 +227,7 @@ export default function CheckoutPage() {
                     <span className="h-px bg-white/20 flex-1"></span> Winning Amount <span className="h-px bg-white/20 flex-1"></span>
                   </p>
                   <p className="text-3xl lg:text-4xl text-emerald-400 font-black tracking-tighter relative z-10 text-center">
-                    ${winningAmount?.toLocaleString()}
+                    LKR {winningAmount?.toLocaleString()}
                   </p>
                </div>
                
@@ -319,7 +319,7 @@ export default function CheckoutPage() {
                     <div className="flex justify-between items-end mb-6">
                         <span className="text-white/50 text-xs font-bold uppercase tracking-[0.1em]">Total Due</span>
                         <div className="text-right flex items-baseline">
-                           <span className="text-emerald-500 text-lg font-medium">$</span>
+                           <span className="text-emerald-500 text-lg font-medium">LKR</span>
                            <span className="text-3xl sm:text-4xl font-bold text-white ml-1 drop-shadow-md tracking-tighter">{winningAmount?.toLocaleString()}</span>
                         </div>
                     </div>

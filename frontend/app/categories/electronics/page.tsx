@@ -7,7 +7,7 @@ const hero: CategoryHero = {
     "Phones, wearables, pro audio, and flagship TVs sourced from verified retailers and production houses.",
   highlight: "IMEI + serials logged · warranty transfer ready",
   statLabel: "Median hammer",
-  statValue: "$1.2K",
+  statValue: "LKR 1.2K",
   statDetail: "Premium phones this cycle",
   actions: [],
 };

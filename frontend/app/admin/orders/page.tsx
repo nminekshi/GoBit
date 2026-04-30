@@ -103,7 +103,7 @@ export default function AdminPayoutsPage() {
         <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
           <div className="flex items-center justify-between px-2 pb-3 text-sm text-white/70">
             <span>Total completed: {rows.length} payouts</span>
-            <span className="font-semibold text-emerald-300">${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="font-semibold text-emerald-300">LKR {total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10">
@@ -138,7 +138,7 @@ export default function AdminPayoutsPage() {
                     <span className="font-semibold text-white">{p.id}</span>
                     <span className="text-white/80">{p.buyer}</span>
                     <span className="text-white/80">{p.seller ?? "-"}</span>
-                    <span className="text-white/80">${p.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="text-white/80">LKR {p.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <div className="flex items-center justify-end gap-2 text-xs font-semibold">
                       <StatusBadge status={p.status} />
                       <span className="text-white/60">{p.eta}</span>

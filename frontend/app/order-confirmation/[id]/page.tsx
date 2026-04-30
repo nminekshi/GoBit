@@ -134,7 +134,7 @@ export default function OrderConfirmationPage() {
             <div className="flex items-center justify-between pt-2 relative z-10">
               <span className="text-xs font-bold tracking-[0.2em] text-white/60 uppercase">Amount</span>
               <span className="text-3xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.2)] tracking-tight">
-                ${amount?.toLocaleString()}
+                LKR {amount?.toLocaleString()}
               </span>
             </div>
 

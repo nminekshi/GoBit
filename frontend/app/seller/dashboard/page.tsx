@@ -267,7 +267,7 @@ export default function SellerDashboard() {
             <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
                 <p className="text-sm font-medium text-slate-400">Total Earnings</p>
-                <p className="mt-2 text-3xl font-bold text-emerald-400">${totalEarnings.toLocaleString()}</p>
+                <p className="mt-2 text-3xl font-bold text-emerald-400">LKR {totalEarnings.toLocaleString()}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
                 <p className="text-sm font-medium text-slate-400">Active Listings</p>
@@ -393,7 +393,7 @@ export default function SellerDashboard() {
                                 <p className="text-xs uppercase tracking-wide text-white/50">
                                   Current bid
                                 </p>
-                                <p className="text-lg font-semibold text-white">${auction.currentBid.toLocaleString()}</p>
+                                <p className="text-lg font-semibold text-white">LKR {auction.currentBid.toLocaleString()}</p>
                               </div>
                               <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                                 <p className="text-xs uppercase tracking-wide text-white/50">

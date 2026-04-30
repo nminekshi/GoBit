@@ -359,7 +359,7 @@ export default function Home() {
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-gray-300">
-                      <span>Current bid: ${currentBidDisplay.toLocaleString()}</span>
+                      <span>Current bid: LKR {currentBidDisplay.toLocaleString()}</span>
                       <span>{watchers} watchers</span>
                     </div>
                     <div className="mt-auto flex flex-col gap-3 pt-4">
@@ -372,7 +372,7 @@ export default function Home() {
                       <Link href={`/auctions/${auction._id}`} className="w-full">
                         <span className="inline-flex w-full items-center justify-center py-3 rounded-2xl border border-white text-white font-semibold hover:bg-white/10 transition">Go to Auction</span>
                       </Link>
-                      <p className="text-[11px] text-gray-400 text-center">Minimum next bid ${minNextBid.toLocaleString()}</p>
+                      <p className="text-[11px] text-gray-400 text-center">Minimum next bid LKR {minNextBid.toLocaleString()}</p>
                     </div>
                   </div>
                 );
@@ -503,8 +503,8 @@ export default function Home() {
                 <span>Starting bid</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-semibold mt-1">
-                <span>${(selectedItem.currentBid ?? selectedItem.startPrice ?? 0).toLocaleString()}</span>
-                <span>${(selectedItem.startPrice ?? selectedItem.currentBid ?? 0).toLocaleString()}</span>
+                <span>LKR {(selectedItem.currentBid ?? selectedItem.startPrice ?? 0).toLocaleString()}</span>
+                <span>LKR {(selectedItem.startPrice ?? selectedItem.currentBid ?? 0).toLocaleString()}</span>
               </div>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">
@@ -518,7 +518,7 @@ export default function Home() {
                 value={bid}
                 onChange={(e) => setBid(e.target.value)}
                 className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 focus:border-white focus:outline-none"
-                placeholder={`Enter amount above $${(selectedItem.currentBid || selectedItem.startPrice || 0).toLocaleString()}`}
+                placeholder={`Enter amount above LKR ${(selectedItem.currentBid || selectedItem.startPrice || 0).toLocaleString()}`}
                 autoFocus
               />
               {error && <div className="text-red-400 text-sm">{error}</div>}

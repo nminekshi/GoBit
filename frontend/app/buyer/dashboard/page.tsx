@@ -640,14 +640,14 @@ function AuctionCard({
           Sold by <span className="text-white/80">{auction.seller}</span>
         </p>
         {auction.myBid && (
-          <p className="text-xs font-semibold text-emerald-300">Your bid ${auction.myBid.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-emerald-300">Your bid LKR {auction.myBid.toLocaleString()}</p>
         )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-white/50">Current bid</p>
-          <p className="text-lg font-semibold">${auction.currentBid.toLocaleString()}</p>
+          <p className="text-lg font-semibold">LKR {auction.currentBid.toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-white/50">Ends in</p>
@@ -689,7 +689,7 @@ function AuctionCard({
             onClick={() => onBid(auction.id)}
             className="flex-1 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
           >
-            Place bid ${`${(auction.currentBid + 50).toLocaleString()}`}
+            Place bid LKR {(auction.currentBid + 50).toLocaleString()}
           </button>
         )}
         <button

@@ -7,7 +7,7 @@ const hero = {
     "Battery health, service history, and telemetry logs ship with every vehicle so you can deploy to drivers or collectors the same week.",
   highlight: "Title-in-hand + transport scheduling included",
   statLabel: "Avg. recon cost",
-  statValue: "$1.8K",
+  statValue: "LKR 1.8K",
   statDetail: "based on last 20 closings",
   actions: [],
 };

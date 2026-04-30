@@ -168,7 +168,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
         const handleAutoBidPlaced = (payload: any) => {
             if (payload?.auctionId !== auction._id) return;
-            pushNotification(payload?.message || `Auto-bid placed at $${payload?.bidAmount}.`, "success");
+            pushNotification(payload?.message || `Auto-bid placed at LKR ${payload?.bidAmount}.`, "success");
         };
 
         const handleAutoBidMaxReached = (payload: any) => {
@@ -413,9 +413,9 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         setIsPlacingBid(true);
 
         try {
-            console.log(`[BID] Submitting bid: $${amount} for auction: ${auction._id} (Auto: ${options?.silent || false})`);
+            console.log(`[BID] Submitting bid: LKR ${amount} for auction: ${auction._id} (Auto: ${options?.silent || false})`);
             const updatedAuction = await auctionAPI.placeBid(auction._id, amount, options?.silent || false);
-            console.log(`[BID] Successfully placed bid: $${amount}`);
+            console.log(`[BID] Successfully placed bid: LKR ${amount}`);
 
             // Force a full refresh to ensure UI is in sync
             await fetchAuction();
@@ -447,7 +447,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
             setBidError("");
 
             if (options?.silent) {
-                pushNotification(`Smart agent placed bid at $${amount.toLocaleString()}.`, "success");
+                pushNotification(`Smart agent placed bid at LKR ${amount.toLocaleString()}.`, "success");
             } else {
                 alert("Bid placed successfully!");
             }
@@ -491,7 +491,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
         }
 
         if (amount <= auction.currentBid) {
-            setBidError(`Bid must be higher than current bid ($${auction.currentBid})`);
+            setBidError(`Bid must be higher than current bid (LKR ${auction.currentBid})`);
             return;
         }
 
@@ -529,7 +529,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
         lastAutoSubmitKeyRef.current = submitKey;
         
-        console.log(`[FRONTEND-AUTO-BID] Triggering auto-bid: $${amount} for ${auction.title}`);
+        console.log(`[FRONTEND-AUTO-BID] Triggering auto-bid: LKR ${amount} for ${auction.title}`);
         placeBid(amount, { silent: true });
     }, [
         auction,
@@ -620,7 +620,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                 src={auction.imageUrl}
                                 alt={auction.title}
                                 fill
-                                className="object-cover hover:scale-105 transition-transform duration-700 ease-in-out"
+                                className="object-contain transition-transform duration-700 ease-in-out"
                                 priority
                             />
                         </div>
@@ -767,8 +767,8 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
 
                         <div className="space-y-1">
                             <p className="text-sm text-white/60">Current bid:</p>
-                            <p className="text-3xl font-bold text-white">${auction.currentBid.toLocaleString()}</p>
-                            <p className="text-xs text-white/40">Start Price: ${auction.startPrice.toLocaleString()}</p>
+                            <p className="text-3xl font-bold text-white">LKR {auction.currentBid.toLocaleString()}</p>
+                            <p className="text-xs text-white/40">Start Price: LKR {auction.startPrice.toLocaleString()}</p>
                         </div>
 
                         {smartSuggestedBid && (
@@ -782,14 +782,14 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                 </p>
                                 <div className="mt-3 inline-flex items-center gap-2 bg-emerald-500/20 px-3 py-1.5 rounded-lg">
                                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                                    <p className="text-xs font-semibold">Monitoring (Next bid: ${smartSuggestedBid.toLocaleString()})</p>
+                                    <p className="text-xs font-semibold">Monitoring (Next bid: LKR {smartSuggestedBid.toLocaleString()})</p>
                                 </div>
                             </div>
                         )}
 
                         {!smartSuggestedBid && isLiveAuction && projectedBid && (
                             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-200">
-                                Projected next bid loaded: ${projectedBid.toLocaleString()}
+                                Projected next bid loaded: LKR {projectedBid.toLocaleString()}
                             </div>
                         )}
 
@@ -817,7 +817,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                             Placing...
                                         </>
                                     ) : (
-                                        isLiveAuction && projectedBid ? `Submit $${projectedBid.toLocaleString()}` : "Submit"
+                                        isLiveAuction && projectedBid ? `Submit LKR ${projectedBid.toLocaleString()}` : "Submit"
                                     )}
                                 </button>
                             </form>
@@ -862,7 +862,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                             </tr>
                                             <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                                                 <td className="py-4 px-6 text-white/60 font-medium">Price</td>
-                                                <td className="py-4 px-6 text-emerald-400 text-right font-medium">${auction.startPrice.toLocaleString()}</td>
+                                                <td className="py-4 px-6 text-emerald-400 text-right font-medium">LKR {auction.startPrice.toLocaleString()}</td>
                                             </tr>
                                             <tr className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                                                 <td className="py-4 px-6 text-white/60 font-medium">Status</td>
@@ -940,7 +940,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="text-emerald-400 font-bold">${bid.bidAmount.toLocaleString()}</p>
+                                                    <p className="text-emerald-400 font-bold">LKR {bid.bidAmount.toLocaleString()}</p>
                                                     {bid.isAutoBid && (
                                                         <Zap className="h-3 w-3 text-emerald-400/60" />
                                                     )}
@@ -982,7 +982,7 @@ export default function AuctionDetailsPage({ params }: { params: Promise<{ id: s
                                                     <p className="text-sm uppercase tracking-wide text-white/50">{(item as any).category}</p>
                                                     <h4 className="text-lg font-semibold text-white line-clamp-1">{(item as any).title}</h4>
                                                     <div className="flex items-center justify-between text-sm">
-                                                        <span className="text-emerald-400 font-semibold">${((item as any).currentBid || (item as any).startPrice || 0).toLocaleString()}</span>
+                                                        <span className="text-emerald-400 font-semibold">LKR {((item as any).currentBid || (item as any).startPrice || 0).toLocaleString()}</span>
                                                         <span className="text-white/50">Bids {(item as any).bidsCount || 0}</span>
                                                     </div>
                                                 </div>

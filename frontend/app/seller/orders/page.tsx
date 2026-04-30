@@ -166,9 +166,9 @@ export default function OrdersPage() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard icon={Wallet} label={`Paid (${activeTab})`} value={`$${paidTotal.toLocaleString()}`} accent="emerald" />
-          <StatCard icon={Clock} label={`Pending (${activeTab})`} value={`$${pendingTotal.toLocaleString()}`} accent="amber" />
-          <StatCard icon={Banknote} label="Next payout" value={`$${pendingTotal.toLocaleString()}`} accent="cyan" sub={`${activeTab === "All" ? "Based on pending" : `Filtered: ${activeTab}`}`} />
+          <StatCard icon={Wallet} label={`Paid (${activeTab})`} value={`LKR ${paidTotal.toLocaleString()}`} accent="emerald" />
+          <StatCard icon={Clock} label={`Pending (${activeTab})`} value={`LKR ${pendingTotal.toLocaleString()}`} accent="amber" />
+          <StatCard icon={Banknote} label="Next payout" value={`LKR ${pendingTotal.toLocaleString()}`} accent="cyan" sub={`${activeTab === "All" ? "Based on pending" : `Filtered: ${activeTab}`}`} />
           <StatCard icon={Package} label="Orders this week" value={ordersThisWeek.toString()} accent="indigo" sub={`${ordersThisWeek} in last 7 days (${activeTab})`} />
         </section>
 
@@ -286,7 +286,7 @@ export default function OrdersPage() {
                       <td className="px-4 py-3 text-white/70">{o.buyer}</td>
                       <td className="px-4 py-3 text-white/70">{o.method}</td>
                       <td className="px-4 py-3 text-white/60">{o.date}</td>
-                      <td className="px-4 py-3 font-semibold text-emerald-200">${o.amount.toLocaleString()}</td>
+                      <td className="px-4 py-3 font-semibold text-emerald-200">LKR {o.amount.toLocaleString()}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_BADGES[o.status]}`}>
                           {o.status === "Paid" && <CheckCircle className="h-3.5 w-3.5" />}
