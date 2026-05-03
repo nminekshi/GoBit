@@ -57,7 +57,7 @@ export default function AdminDashboard() {
 
   const kpis = [
     { label: "Active auctions", value: stats?.activeAuctions || 0, delta: "Live Market", accent: "emerald", icon: Activity },
-    { label: "GMV (Platform)", value: `$${(stats?.gmv || 0).toLocaleString()}`, delta: "Total USD Flow", accent: "blue", icon: Wallet },
+    { label: "GMV (Platform)", value: `LKR ${(stats?.gmv || 0).toLocaleString()}`, delta: "Total USD Flow", accent: "blue", icon: Wallet },
     { label: "Total users", value: stats?.totalUsers || 0, delta: "Registered", accent: "purple", icon: Users },
     { label: "ML Intercepts", value: stats?.totalIntercepts || 0, delta: "AI Interdictions", accent: "amber", icon: ShieldCheck },
   ] as const;
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
                       <div key={idx}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-semibold text-white/80 truncate max-w-[200px]">{auction.title}</span>
-                          <span className="text-xs font-bold font-mono text-white">${auction.value.toLocaleString()}</span>
+                          <span className="text-xs font-bold font-mono text-white">LKR {auction.value.toLocaleString()}</span>
                         </div>
                         <div className="h-5 w-full rounded-full bg-white/5 overflow-hidden">
                           <div

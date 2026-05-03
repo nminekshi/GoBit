@@ -282,7 +282,7 @@ export default function CategoryDetailPage({
                           <p className="text-xs uppercase tracking-wide text-white/50">
                             Current bid
                           </p>
-                          <p className="text-lg font-semibold">${item.currentBid.toLocaleString()}</p>
+                          <p className="text-lg font-semibold">LKR {item.currentBid.toLocaleString()}</p>
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
                           <p className="text-xs uppercase tracking-wide text-white/50">

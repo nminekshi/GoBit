@@ -93,7 +93,7 @@ export default function AutoBidControl({ auctionId, currentBid }: AutoBidControl
             <div className="space-y-4">
                 <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/40">
-                        My Maximum Limit ($)
+                        My Maximum Limit (LKR)
                     </label>
                     <input
                         type="number"
@@ -107,7 +107,7 @@ export default function AutoBidControl({ auctionId, currentBid }: AutoBidControl
 
                 <div>
                     <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/40">
-                        Bid Increment ($)
+                        Bid Increment (LKR)
                     </label>
                     <input
                         type="number"

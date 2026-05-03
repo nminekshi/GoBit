@@ -19,7 +19,7 @@ const APPEARANCE_MODES: { label: string; value: ThemeChoice }[] = [
 
 const LANG_OPTIONS = ["English (US)", "Spanish (ES)", "French (FR)"];
 const TIMEZONE_OPTIONS = ["UTC -05:00", "UTC", "UTC +01:00", "UTC +05:30"];
-const CURRENCY_OPTIONS = ["USD ($)", "EUR (€)", "GBP (£)", "LKR (Rs)"];
+const CURRENCY_OPTIONS = ["USD (LKR)", "EUR (€)", "GBP (£)", "LKR (Rs)"];
 const PRIVACY_DEFAULTS = [
   { label: "Hide username on bids", enabled: true },
   { label: "Mask phone from sellers", enabled: true },

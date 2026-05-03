@@ -11,6 +11,7 @@ const {
   processAutoBids,
   processSmartAgentsByAuction,
   processAllSmartAgents,
+  clearAutomationLocks,
 } = require("./services/auctionService");
 
 const authRoutes = require("./routes/auth");
@@ -65,6 +66,7 @@ app.set("io", io);
 io.on("connection", (socket) => {
   socket.on("join-user", (userId) => {
     if (!userId) return;
+    socket.userId = userId.toString();
     socket.join(`user:${userId}`);
   });
 
@@ -82,12 +84,12 @@ io.on("connection", (socket) => {
     if (!auctionId) return;
     socket.leave(`auction:${auctionId}`);
   });
-
   socket.on("live:bid", async (payload) => {
     try {
-      const { auctionId, bidAmount, userId } = payload || {};
+      const { auctionId, bidAmount } = payload || {};
+      const userId = socket.userId; // Use verified userId from socket
       if (!auctionId || !userId) {
-        return socket.emit("bid:error", { auctionId, message: "Missing auction or user" });
+        return socket.emit("bid:error", { auctionId, message: "Authentication required or missing auction" });
       }
       const updatedAuction = await placeBid({ auctionId, bidderId: userId, bidAmount });
       io.to(`auction:${auctionId}`).emit("auction:update", updatedAuction);
@@ -112,7 +114,7 @@ io.on("connection", (socket) => {
 
 if (!isTestEnv) {
   connectMongo()
-    .then(() => {
+    .then(async () => {
       setInterval(() => closeExpiredLiveAuctions(io), 5000);
       setInterval(() => closeExpiredNormalAuctions(io), 10000);
       setInterval(() => {
@@ -121,11 +123,15 @@ if (!isTestEnv) {
         });
       }, 8000);
 
+      await clearAutomationLocks();
+      console.log("Automation locks cleared");
+
       server.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
       });
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("Failed to connect to MongoDB", err);
       process.exit(1);
     });
 }

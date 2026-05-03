@@ -120,12 +120,11 @@ export const auctionAPI = {
         id: string,
         data: {
             title?: string;
-            description?: string;
-            category?: string;
-            startPrice?: number;
-            imageUrl?: string;
-            status?: string;
-            endTime?: Date;
+            filters?: {
+            priceMin?: number;
+            priceMax?: number;
+            dynamicFields?: Record<string, string>;
+        };    endTime?: Date;
             commission?: number;
             isVerified?: boolean;
         }
@@ -199,7 +198,7 @@ export const auctionAPI = {
     },
 
     // Place a bid on an auction
-    async placeBid(id: string, bidAmount: number): Promise<any> {
+    async placeBid(id: string, bidAmount: number, isAutoBid: boolean = false): Promise<any> {
         try {
             const userId = getUserId();
             if (!userId) throw new Error("User not authenticated");
@@ -210,7 +209,10 @@ export const auctionAPI = {
                     "Content-Type": "application/json",
                     "x-user-id": userId,
                 },
-                body: JSON.stringify({ bidAmount }),
+                body: JSON.stringify({ 
+                    bidAmount,
+                    isAutoBid
+                }),
             });
 
             if (!response.ok) {
@@ -337,13 +339,13 @@ export const auctionAPI = {
             if (!response.ok) throw new Error("Failed to fetch watchlist");
             return await response.json();
         } catch (error) {
-            console.error("Error fetching my watchlist:", error);
+            console.error("Error fetching watchlist:", error);
             return [];
         }
     },
 
     // Fetch buyer summary stats
-    async fetchBuyerSummary(): Promise<{ activeBidsCount: number; watchlistCount: number; wonCount: number }> {
+    async fetchBuyerSummary(): Promise<any> {
         try {
             const userId = getUserId();
             if (!userId) return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
@@ -356,6 +358,23 @@ export const auctionAPI = {
         } catch (error) {
             console.error("Error fetching buyer summary:", error);
             return { activeBidsCount: 0, watchlistCount: 0, wonCount: 0 };
+        }
+    },
+
+    // Fetch bidding summary (item bots + category agents)
+    async fetchBiddingSummary(): Promise<any> {
+        try {
+            const userId = getUserId();
+            if (!userId) return { smartAgents: [], itemBots: [] };
+
+            const response = await fetch(`${API_BASE_URL}/auctions/my/bidding-summary`, {
+                headers: { "x-user-id": userId },
+            });
+            if (!response.ok) throw new Error("Failed to fetch bidding summary");
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching bidding summary:", error);
+            return { smartAgents: [], itemBots: [] };
         }
     },
 
@@ -480,6 +499,11 @@ export const auctionAPI = {
         isEnabled?: boolean;
         strategy?: string;
         targetWinCount?: number;
+        filters?: {
+            priceMin?: number;
+            priceMax?: number;
+            dynamicFields?: Record<string, string>;
+        };
     }): Promise<any | null> {
         try {
             const userId = getUserId();

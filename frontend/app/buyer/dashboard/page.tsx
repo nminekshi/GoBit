@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Eye, Bookmark, Settings, Menu, Star, Bot } from "lucide-react";
+import { LayoutDashboard, Eye, Bookmark, Settings, Menu, Star, Bot, Zap } from "lucide-react";
 
 // --- Types ---
 interface Auction {
@@ -73,6 +73,7 @@ const getPhaseLabel = (startTime?: string | Date, endTime?: string | Date) => {
 const NAV_ITEMS = [
   { label: "Overview", icon: LayoutDashboard, tab: "all" as const },
   { label: "Active Bids", icon: Eye, tab: "bidding" as const },
+  { label: "My Auto-Bids", icon: Zap, href: "/buyer/auto-bids" },
   { label: "Watchlist", icon: Bookmark, tab: "watchlist" as const },
   { label: "My Reviews", icon: Star, tab: "reviews" as const },
   { label: "Smart Agent", icon: Bot, href: "/buyer/smart-auto-bidding" },
@@ -504,6 +505,12 @@ export default function BuyerDashboard() {
                           {tab === "all" ? "All Auctions" : tab === "bidding" ? "My Bids" : "Watchlist"}
                         </button>
                       ))}
+                      <Link href="/buyer/auto-bids">
+                        <button className="rounded-lg px-4 py-2 text-sm font-medium text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 border border-amber-500/10 hover:bg-amber-500/5">
+                          <Zap className="h-3.5 w-3.5" />
+                          My Auto Bids
+                        </button>
+                      </Link>
                     </div>
 
                     <div className="relative">
@@ -633,14 +640,14 @@ function AuctionCard({
           Sold by <span className="text-white/80">{auction.seller}</span>
         </p>
         {auction.myBid && (
-          <p className="text-xs font-semibold text-emerald-300">Your bid ${auction.myBid.toLocaleString()}</p>
+          <p className="text-xs font-semibold text-emerald-300">Your bid LKR {auction.myBid.toLocaleString()}</p>
         )}
       </div>
 
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-white/50">Current bid</p>
-          <p className="text-lg font-semibold">${auction.currentBid.toLocaleString()}</p>
+          <p className="text-lg font-semibold">LKR {auction.currentBid.toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
           <p className="text-[11px] uppercase tracking-wide text-white/50">Ends in</p>
@@ -682,7 +689,7 @@ function AuctionCard({
             onClick={() => onBid(auction.id)}
             className="flex-1 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90"
           >
-            Place bid ${`${(auction.currentBid + 50).toLocaleString()}`}
+            Place bid LKR {(auction.currentBid + 50).toLocaleString()}
           </button>
         )}
         <button

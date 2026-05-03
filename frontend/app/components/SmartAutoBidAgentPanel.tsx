@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { API_BASE_URL, auctionAPI, categorySlugToName } from "../lib/api";
+import { categoryFields } from "../lib/categoryFields";
 import { getSocket } from "../lib/socket";
 import { Bot, Settings, Zap, TrendingUp, DollarSign, Activity, Target, Power, Plus, Trash2, CheckCircle2, ShieldAlert } from "lucide-react";
 
@@ -17,6 +18,11 @@ type AgentOverview = {
   targetWinCount?: number;
   committedBudget: number;
   remainingBudget: number;
+  filters?: {
+    priceMin?: number;
+    priceMax?: number;
+    dynamicFields?: Record<string, string>;
+  };
   targets: Array<{
     auctionId: string;
     title: string;
@@ -25,6 +31,7 @@ type AgentOverview = {
     nextBid: number;
     endTime: string;
     auctionType: "live" | "normal";
+    isLeading?: boolean;
   }>;
 };
 
@@ -63,9 +70,12 @@ export default function SmartAutoBidAgentPanel() {
   const [bidIncrement, setBidIncrement] = useState<number>(10);
   const [maxConcurrentAuctions, setMaxConcurrentAuctions] = useState<number>(3);
   const [strategy, setStrategy] = useState<string>("standard");
-  const [targetWinCount, setTargetWinCount] = useState<number>(1);
+  const [targetWinCount, setTargetWinCount] = useState<number>(10);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
+  const [dynamicFields, setDynamicFields] = useState<Record<string, string>>({});
   const [overview, setOverview] = useState<AgentOverview[]>([]);
   const [botLogs, setBotLogs] = useState<any[]>([]);
   const [message, setMessage] = useState<string>("");
@@ -86,7 +96,10 @@ export default function SmartAutoBidAgentPanel() {
           if (draft.maxConcurrentAuctions) setMaxConcurrentAuctions(draft.maxConcurrentAuctions);
           if (draft.strategy) setStrategy(draft.strategy);
           if (draft.targetWinCount) setTargetWinCount(draft.targetWinCount);
-        } catch (e) {}
+          if (draft.priceMin !== undefined) setPriceMin(draft.priceMin);
+          if (draft.priceMax !== undefined) setPriceMax(draft.priceMax);
+          if (draft.dynamicFields !== undefined) setDynamicFields(draft.dynamicFields);
+        } catch (e) { }
       }
     }
     setIsMounted(true);
@@ -97,7 +110,7 @@ export default function SmartAutoBidAgentPanel() {
       const raw = localStorage.getItem(`smartAutoBidDraft_${category}`);
       let draft: any = {};
       if (raw) {
-        try { draft = JSON.parse(raw); } catch (e) {}
+        try { draft = JSON.parse(raw); } catch (e) { }
       }
       draft[field] = value;
       localStorage.setItem(`smartAutoBidDraft_${category}`, JSON.stringify(draft));
@@ -124,11 +137,13 @@ export default function SmartAutoBidAgentPanel() {
         setBidIncrement(Number(chosen.bidIncrement));
         setMaxConcurrentAuctions(Number(chosen.maxConcurrentAuctions));
         setStrategy(chosen.strategy || "standard");
-        setTargetWinCount(Number(chosen.targetWinCount) || 1);
+        setTargetWinCount(Number(chosen.targetWinCount) || 10);
         setIsEnabled(Boolean(chosen.isEnabled));
+        setPriceMin(chosen.filters?.priceMin?.toString() || "");
+        setPriceMax(chosen.filters?.priceMax?.toString() || "");
+        setDynamicFields(chosen.filters?.dynamicFields || {});
       } else {
         setIsEnabled(false);
-        // Do not force-reset inputs here, let them keep their drafted changes.
       }
     }
   };
@@ -208,6 +223,9 @@ export default function SmartAutoBidAgentPanel() {
     setStrategy(selected.strategy || "standard");
     setTargetWinCount(Number(selected.targetWinCount) || 1);
     setIsEnabled(Boolean(selected.isEnabled));
+    setPriceMin(selected.filters?.priceMin?.toString() || "");
+    setPriceMax(selected.filters?.priceMax?.toString() || "");
+    setDynamicFields(selected.filters?.dynamicFields || {});
   }, [selected?._id]);
 
   const handleSave = async () => {
@@ -237,6 +255,11 @@ export default function SmartAutoBidAgentPanel() {
       isEnabled,
       strategy,
       targetWinCount,
+      filters: {
+        priceMin: priceMin ? Number(priceMin) : undefined,
+        priceMax: priceMax ? Number(priceMax) : undefined,
+        dynamicFields: Object.keys(dynamicFields).length > 0 ? dynamicFields : undefined,
+      }
     });
 
     if (result) {
@@ -300,8 +323,7 @@ export default function SmartAutoBidAgentPanel() {
                       setCategory(newCat);
                       if (typeof window !== "undefined") {
                         localStorage.setItem("smartAutoBidCategory", newCat);
-                        
-                        // Load draft for new category
+
                         const raw = localStorage.getItem(`smartAutoBidDraft_${newCat}`);
                         if (raw) {
                           try {
@@ -311,14 +333,19 @@ export default function SmartAutoBidAgentPanel() {
                             setMaxConcurrentAuctions(draft.maxConcurrentAuctions || 3);
                             setStrategy(draft.strategy || "standard");
                             setTargetWinCount(draft.targetWinCount || 1);
-                          } catch (e) {}
+                            setPriceMin(draft.priceMin || "");
+                            setPriceMax(draft.priceMax || "");
+                            setDynamicFields(draft.dynamicFields || {});
+                          } catch (e) { }
                         } else {
-                          // Defaults if no draft
                           setMaxBudget(30000);
                           setBidIncrement(10);
                           setMaxConcurrentAuctions(3);
                           setStrategy("standard");
-                          setTargetWinCount(1);
+                          setTargetWinCount(10);
+                          setPriceMin("");
+                          setPriceMax("");
+                          setDynamicFields({});
                         }
                       }
                     }}
@@ -333,7 +360,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Maximum Overall Budget</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       value={maxBudget}
@@ -341,7 +368,7 @@ export default function SmartAutoBidAgentPanel() {
                         setMaxBudget(Number(e.target.value));
                         saveDraft("maxBudget", Number(e.target.value));
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
@@ -349,7 +376,7 @@ export default function SmartAutoBidAgentPanel() {
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Base Bid Increment</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
                     <input
                       type="number"
                       value={bidIncrement}
@@ -357,7 +384,7 @@ export default function SmartAutoBidAgentPanel() {
                         setBidIncrement(Number(e.target.value));
                         saveDraft("bidIncrement", Number(e.target.value));
                       }}
-                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-8 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                     />
                   </div>
                 </div>
@@ -368,7 +395,7 @@ export default function SmartAutoBidAgentPanel() {
                 <h4 className="flex items-center gap-2 text-sm font-medium text-emerald-300">
                   <Zap className="h-4 w-4" /> Tactical Strategy
                 </h4>
-                
+
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Bidding Behaviour</label>
                   <select
@@ -404,7 +431,7 @@ export default function SmartAutoBidAgentPanel() {
                     type="number"
                     value={targetWinCount}
                     min={1}
-                    disabled={!isEnabled}
+                    // disabled={!isEnabled}
                     onChange={(e) => {
                       setTargetWinCount(Number(e.target.value));
                       saveDraft("targetWinCount", Number(e.target.value));
@@ -412,6 +439,113 @@ export default function SmartAutoBidAgentPanel() {
                     className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white disabled:opacity-40 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Box 3: Targeting Filters */}
+            <div className="mt-6 space-y-4 rounded-xl border border-white/5 bg-white/5 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-medium text-emerald-300">
+                <Target className="h-4 w-4" /> Targeting Filters (Optional)
+              </h4>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Minimum Price</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
+                    <input
+                      type="number"
+                      placeholder="e.g. 50"
+                      value={priceMin}
+                      onChange={(e) => {
+                        setPriceMin(e.target.value);
+                        saveDraft("priceMin", e.target.value);
+                      }}
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">Maximum Price</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">LKR</span>
+                    <input
+                      type="number"
+                      placeholder="e.g. 5000"
+                      value={priceMax}
+                      onChange={(e) => {
+                        setPriceMax(e.target.value);
+                        saveDraft("priceMax", e.target.value);
+                      }}
+                      className="w-full rounded-lg border border-white/10 bg-black/40 pl-14 pr-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mt-4">
+                {categoryFields[category]?.map((field) => {
+                  let options = field.options;
+                  let disabled = false;
+                  if (field.dependsOn) {
+                    const parentValue = dynamicFields[field.dependsOn];
+                    if (parentValue && field.dependentOptions?.[parentValue]) {
+                      options = field.dependentOptions[parentValue];
+                    } else {
+                      options = [];
+                      disabled = true;
+                    }
+                  }
+
+                  return (
+                  <div key={field.key}>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-white/50">{field.label}</label>
+                    {field.type === "select" ? (
+                      <select
+                        disabled={disabled}
+                        value={dynamicFields[field.key] || ""}
+                        onChange={(e) => {
+                          const newFields = { ...dynamicFields, [field.key]: e.target.value };
+                          if (!e.target.value) delete newFields[field.key];
+                          
+                          // Clear children if parent changes
+                          categoryFields[category]?.forEach(child => {
+                            if (child.dependsOn === field.key) {
+                              delete newFields[child.key];
+                            }
+                          });
+
+                          setDynamicFields(newFields);
+                          saveDraft("dynamicFields", newFields);
+                        }}
+                        className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 disabled:opacity-50"
+                      >
+                        <option value="">{disabled ? `Select ${categoryFields[category]?.find(f => f.key === field.dependsOn)?.label} first` : `Select ${field.label}`}</option>
+                        {options?.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type={field.type === "number" ? "number" : "text"}
+                          placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                          value={dynamicFields[field.key] || ""}
+                          onChange={(e) => {
+                            const newFields = { ...dynamicFields, [field.key]: e.target.value };
+                            if (!e.target.value) delete newFields[field.key];
+                            setDynamicFields(newFields);
+                            saveDraft("dynamicFields", newFields);
+                          }}
+                          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                        />
+                        {field.suffix && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-xs">
+                            {field.suffix}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )})}
               </div>
             </div>
 
@@ -481,15 +615,15 @@ export default function SmartAutoBidAgentPanel() {
                 <div className="grid gap-4">
                   <div className="rounded-xl border border-white/5 bg-white/5 p-4 transition hover:bg-white/10">
                     <p className="text-xs font-semibold uppercase tracking-wider text-white/50">Committed Portfolio</p>
-                    <p className="mt-1 text-2xl font-bold text-white">${selected.committedBudget.toLocaleString()}</p>
+                    <p className="mt-1 text-2xl font-bold text-white">LKR {selected.committedBudget.toLocaleString()}</p>
                   </div>
-                  
+
                   <div className={`rounded-xl border p-4 transition ${selected.remainingBudget === 0 ? 'border-red-500/30 bg-red-500/10' : 'border-emerald-500/20 bg-emerald-500/10'}`}>
                     <p className={`text-xs font-semibold uppercase tracking-wider ${selected.remainingBudget === 0 ? 'text-red-300' : 'text-emerald-200/70'}`}>
                       Available Firepower
                     </p>
                     <p className={`mt-1 text-2xl font-bold ${selected.remainingBudget === 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      ${selected.remainingBudget.toLocaleString()}
+                      LKR {selected.remainingBudget.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -501,7 +635,7 @@ export default function SmartAutoBidAgentPanel() {
             <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
               <TrendingUp className="h-5 w-5 text-emerald-400" /> Event Feed
             </h3>
-            
+
             {notifications.length === 0 ? (
               <p className="text-sm text-white/40 text-center py-4 italic">No recent events logged.</p>
             ) : (
@@ -523,7 +657,7 @@ export default function SmartAutoBidAgentPanel() {
         <h3 className="mb-6 flex items-center gap-2 text-lg font-semibold text-white">
           <Target className="h-5 w-5 text-emerald-400" /> Target Radar
         </h3>
-        
+
         {!selected || selected.targets.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/20 py-12">
             <Target className="mb-3 h-10 w-10 text-white/20" />
@@ -542,7 +676,7 @@ export default function SmartAutoBidAgentPanel() {
                 href={`/auctions/${target.auctionId}`}
                 className="group relative flex flex-row items-stretch rounded-xl border border-white/10 bg-black/40 overflow-hidden transition hover:-translate-y-1 hover:border-emerald-500/50 hover:shadow-xl hover:shadow-emerald-500/10"
               >
-                <div className="relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44">
+                <div className={`relative w-32 shrink-0 overflow-hidden sm:w-40 md:w-36 lg:w-44 ${!isEnabled ? 'grayscale opacity-60' : ''}`}>
                   <img
                     src={getRelevantImage(target.imageUrl, selected.category)}
                     alt={target.title}
@@ -551,22 +685,43 @@ export default function SmartAutoBidAgentPanel() {
                       (e.currentTarget as HTMLImageElement).src = CATEGORY_FALLBACKS[selected.category] || FALLBACK_IMAGE;
                     }}
                   />
-                  <div className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
-                    {target.auctionType}
+                  <div className="absolute top-2 left-2 flex flex-col gap-1">
+                    <div className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+                      {target.auctionType}
+                    </div>
+                    {target.isLeading && (
+                      <div className="rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black backdrop-blur-md animate-pulse">
+                        WINNING
+                      </div>
+                    )}
                   </div>
+                  {!isEnabled && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                      <span className="bg-black/60 px-2 py-1 text-[10px] font-bold text-white/70 uppercase">Agent Paused</span>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex flex-1 flex-col justify-between p-4 px-5">
+
+                <div className={`flex flex-1 flex-col justify-between p-4 px-5 ${!isEnabled ? 'opacity-50' : ''}`}>
                   <div>
-                    <h4 className="font-bold text-white line-clamp-1 tracking-tight group-hover:text-emerald-300 transition-colors uppercase text-sm">{target.title}</h4>
+                    <h4 className={`font-bold line-clamp-1 tracking-tight transition-colors uppercase text-sm ${target.isLeading ? 'text-emerald-400' : 'text-white group-hover:text-emerald-300'}`}>
+                      {target.title}
+                    </h4>
                     <div className="mt-3 space-y-2">
                       <p className="flex items-center justify-between text-xs">
-                        <span className="text-white/50">Current</span>
-                        <span className="font-semibold text-white/90">${target.currentBid.toLocaleString()}</span>
+                        <span className="text-white/50">Highest Bid</span>
+                        <span className={`font-semibold ${target.isLeading ? 'text-emerald-400' : 'text-white/90'}`}>
+                          LKR {target.currentBid.toLocaleString()}
+                          {target.isLeading && <span className="ml-1 text-[10px] font-normal opacity-70">(You)</span>}
+                        </span>
                       </p>
                       <p className="flex items-center justify-between text-xs">
-                        <span className="text-emerald-400/60 font-medium italic">Projected</span>
-                        <span className="font-bold text-emerald-400/90 tracking-tighter">${target.nextBid.toLocaleString()}</span>
+                        <span className="text-emerald-400/60 font-medium italic">
+                          {target.isLeading ? "Target Max" : "Projected Bid"}
+                        </span>
+                        <span className="font-bold text-emerald-400/90 tracking-tighter">
+                          {target.isLeading ? `LKR ${selected.maxBudget.toLocaleString()}` : `LKR ${target.nextBid.toLocaleString()}`}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -595,11 +750,10 @@ export default function SmartAutoBidAgentPanel() {
                 <span className="text-emerald-400/80 shrink-0">
                   {new Date(log.createdAt).toISOString().split('T')[1].slice(0, 8)}
                 </span>
-                <span className={`shrink-0 w-24 uppercase font-bold tracking-wider text-xs flex items-center ${
-                  log.action === 'error' ? 'text-red-400' : 
-                  log.action === 'skipped' ? 'text-amber-400' : 
-                  log.action === 'bid_placed' ? 'text-emerald-400' : 'text-blue-400'
-                }`}>
+                <span className={`shrink-0 w-24 uppercase font-bold tracking-wider text-xs flex items-center ${log.action === 'error' ? 'text-red-400' :
+                    log.action === 'skipped' ? 'text-amber-400' :
+                      log.action === 'bid_placed' ? 'text-emerald-400' : 'text-blue-400'
+                  }`}>
                   [{log.action}]
                 </span>
                 <span className="text-white/80 mt-1 md:mt-0">{log.message}</span>

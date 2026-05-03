@@ -205,8 +205,8 @@ export default function AdminAuctionsPage() {
                       {a.commission || 0}%
                       <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
-                    <span className="text-white/80">${(a.startPrice || 0).toLocaleString()}</span>
-                    <span className="text-white font-medium">${(a.currentBid || a.startPrice || 0).toLocaleString()}</span>
+                    <span className="text-white/80">LKR {(a.startPrice || 0).toLocaleString()}</span>
+                    <span className="text-white font-medium">LKR {(a.currentBid || a.startPrice || 0).toLocaleString()}</span>
                     <div>
                       <button
                         onClick={() => handleToggleVerify(a._id, !!a.isVerified)}

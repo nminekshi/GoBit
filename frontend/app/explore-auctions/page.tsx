@@ -109,8 +109,8 @@ export default function ExploreAuctionsPage() {
                 <div className="text-lg font-bold text-gray-800 mb-1">{a.title}</div>
                 <div className="text-gray-500 text-sm mb-1">{a.category}</div>
                 <div className="flex gap-6 text-base mb-1">
-                  <span>Current Bid <span className="text-blue-600 font-bold">${a.currentBid}</span></span>
-                  <span>AI Predicted <span className="text-green-600 font-bold">${a.aiPredicted}</span></span>
+                  <span>Current Bid <span className="text-blue-600 font-bold">LKR {a.currentBid}</span></span>
+                  <span>AI Predicted <span className="text-green-600 font-bold">LKR {a.aiPredicted}</span></span>
                 </div>
                 <div className="flex gap-6 text-gray-500 text-sm">
                   <span>{a.timeLeft}</span>
@@ -134,8 +134,8 @@ export default function ExploreAuctionsPage() {
                 <div className="font-bold text-lg text-gray-800 mb-1">{a.title}</div>
                 <div className="text-gray-500 text-sm mb-1">{a.category}</div>
                 <div className="flex gap-4 text-base mb-1">
-                  <span>Current Bid <span className="text-blue-600 font-bold">${a.currentBid}</span></span>
-                  <span>AI Predicted <span className="text-green-600 font-bold">${a.aiPredicted}</span></span>
+                  <span>Current Bid <span className="text-blue-600 font-bold">LKR {a.currentBid}</span></span>
+                  <span>AI Predicted <span className="text-green-600 font-bold">LKR {a.aiPredicted}</span></span>
                 </div>
                 <div className="flex gap-4 text-gray-500 text-sm mb-2">
                   <span>{a.timeLeft}</span>

@@ -44,7 +44,7 @@ const authenticate = async (req, res, next) => {
     try {
         // For now, we'll accept a userId in the request body or headers
         // In production, you'd verify a JWT token here
-        const userId = req.headers["x-user-id"] || req.body.userId;
+        const userId = req.headers["x-user-id"] || req.body?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "Authentication required" });
@@ -66,7 +66,7 @@ const authenticate = async (req, res, next) => {
         next();
     } catch (error) {
         console.error("Authentication error:", error);
-        res.status(500).json({ error: "Authentication failed" });
+        res.status(401).json({ error: "Authentication failed" });
     }
 };
 
@@ -175,7 +175,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
     try {
         const activeAuctions = await Auction.countDocuments({ status: "active" });
         const totalUsers = await User.countDocuments();
-        
+
         // Sum currentBid for GMV
         const gmvResult = await Auction.aggregate([
             { $match: { currentBid: { $gt: 0 } } },
@@ -206,7 +206,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
                 });
             }
         });
-        
+
         allBids.sort((a, b) => new Date(b.fullTime) - new Date(a.fullTime));
         const liveActivity = allBids.slice(0, 4);
 
@@ -225,7 +225,7 @@ router.get("/admin/dashboard-stats", authenticate, isAdmin, async (req, res) => 
         // Pending Approvals (Active Auctions or Pending Users proxy)
         const pendingAuctions = await Auction.find({ status: "pending" }, "title seller")
             .populate("seller", "username").lean().limit(4);
-            
+
         let pendingApprovals = pendingAuctions.map(a => ({
             id: "A-" + a._id.toString().substring(18).toUpperCase(),
             title: a.title,
@@ -303,7 +303,7 @@ router.get("/admin/suspicious-bids", authenticate, isAdmin, async (req, res) => 
 
         // Sort by highest risk score first
         suspiciousBids.sort((a, b) => b.riskScore - a.riskScore);
-        
+
         res.json(suspiciousBids);
     } catch (error) {
         console.error("Error fetching suspicious bids:", error);
@@ -468,8 +468,11 @@ router.get("/:id", async (req, res) => {
         auction.views += 1;
         await auction.save();
 
+        // Flatten map fields (like details) so frontend can access keys via object indexing.
+        const auctionObject = auction.toObject({ flattenMaps: true });
+
         // Return auction plus a minimal debug section to inspect winner assignment on the client
-        res.json({ ...auction.toObject(), _debugWinner: debug });
+        res.json({ ...auctionObject, _debugWinner: debug });
     } catch (error) {
         console.error("Error fetching auction:", error);
         res.status(500).json({ error: "Failed to fetch auction" });
@@ -637,6 +640,7 @@ router.post("/:id/bid", authenticate, async (req, res) => {
             bidderId: req.userId,
             bidAmount: req.body.bidAmount,
             user: req.user,
+            isAutoBid: req.body.isAutoBid || false,
         });
 
         const io = req.app.get("io");
@@ -653,9 +657,10 @@ router.post("/:id/bid", authenticate, async (req, res) => {
         }
 
         // Trigger auto-bid bot check
-        const { processAutoBids } = require("../services/auctionService");
+        const { processAutoBids, processSmartAgentsByAuction } = require("../services/auctionService");
         await processAutoBids(updatedAuction._id, io);
         await processSmartAgentsByAuction(updatedAuction._id, io);
+
 
         res.json(updatedAuction);
     } catch (error) {
@@ -700,9 +705,11 @@ router.post("/:id/auto-bid", authenticate, async (req, res) => {
         );
 
         // Immediate bot check (in case user sets bot when they are ALREADY outbid)
-        const { processAutoBids } = require("../services/auctionService");
+        const { processAutoBids, processSmartAgentsByAuction } = require("../services/auctionService");
         const io = req.app.get("io");
         processAutoBids(req.params.id, io);
+        processSmartAgentsByAuction(req.params.id, io);
+
 
         res.json({ message: "Auto-bid setting saved", setting });
     } catch (error) {
@@ -742,7 +749,7 @@ router.delete("/:id/auto-bid", authenticate, async (req, res) => {
 // POST /auctions/my/auto-agent - Create or update smart category auto-bidding agent
 router.post("/my/auto-agent", authenticate, async (req, res) => {
     try {
-        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled, strategy, targetWinCount } = req.body;
+        const { category, maxBudget, bidIncrement, maxConcurrentAuctions, isEnabled, strategy, targetWinCount, filters } = req.body;
 
         if (!category || typeof category !== "string") {
             return res.status(400).json({ error: "Category is required" });
@@ -774,6 +781,7 @@ router.post("/my/auto-agent", authenticate, async (req, res) => {
                 isEnabled: isEnabled !== false,
                 strategy: ["standard", "sniper", "aggressive"].includes(strategy) ? strategy : "standard",
                 targetWinCount: Math.max(1, Number(targetWinCount) || 1),
+                filters: filters,
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -799,6 +807,37 @@ router.get("/my/auto-agent", authenticate, async (req, res) => {
     } catch (error) {
         console.error("Error fetching smart auto-bid overview:", error);
         res.status(500).json({ error: "Failed to fetch smart auto-bid overview" });
+    }
+});
+
+// GET /auctions/my/bidding-summary - Detailed summary of all auto-bids (item + category)
+router.get("/my/bidding-summary", authenticate, async (req, res) => {
+    try {
+        const AutoBidSetting = require("../models/AutoBidSetting");
+        const SmartAutoBidAgent = require("../models/SmartAutoBidAgent");
+        const BotActivityLog = require("../models/BotActivityLog");
+        const { getSmartAgentOverviewForUser } = require("../services/auctionService");
+
+        // 1. Get Smart Agents with their active targets (radar)
+        const smartAgentsOverview = await getSmartAgentOverviewForUser(req.userId);
+
+        // 2. Get Item Bots (AutoBidSettings)
+        const itemBots = await AutoBidSetting.find({ userId: req.userId, isActive: true })
+            .populate("auctionId", "title imageUrl currentBid endTime status category");
+
+        // 3. Get Recent Activity Logs (all bots)
+        const logs = await BotActivityLog.find({ userId: req.userId })
+            .sort({ createdAt: -1 })
+            .limit(20);
+
+        res.json({
+            smartAgents: smartAgentsOverview,
+            itemBots,
+            logs
+        });
+    } catch (error) {
+        console.error("Error fetching bidding summary:", error);
+        res.status(500).json({ error: "Failed to fetch bidding summary" });
     }
 });
 

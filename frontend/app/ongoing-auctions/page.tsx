@@ -241,7 +241,7 @@ export default function OngoingAuctionsPage() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <p className="text-slate-500">Current bid</p>
-                    <p className="text-2xl font-semibold text-[#0b1524]">${heroHighlight.currentBid?.toLocaleString() || heroHighlight.startPrice?.toLocaleString()}</p>
+                    <p className="text-2xl font-semibold text-[#0b1524]">LKR {heroHighlight.currentBid?.toLocaleString() || heroHighlight.startPrice?.toLocaleString()}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                     <p className="text-slate-500">Ends in</p>
@@ -330,7 +330,7 @@ export default function OngoingAuctionsPage() {
                         <span>{formatCountdown(lot.endTime)}</span>
                       </div>
                       <p className="mt-2 font-semibold">{lot.title}</p>
-                      <p className="text-sm text-white/60">${(lot.currentBid || lot.startPrice).toLocaleString()}</p>
+                      <p className="text-sm text-white/60">LKR {(lot.currentBid || lot.startPrice).toLocaleString()}</p>
                     </Link>
                   ))}
                 </div>
@@ -388,11 +388,11 @@ export default function OngoingAuctionsPage() {
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div className="rounded-2xl bg-white/5 p-3">
                             <p className="text-white/60">Current bid</p>
-                            <p className="text-2xl font-semibold">${(item.currentBid || item.startPrice).toLocaleString()}</p>
+                            <p className="text-2xl font-semibold">LKR {(item.currentBid || item.startPrice).toLocaleString()}</p>
                           </div>
                           <div className="rounded-2xl bg-white/5 p-3">
                             <p className="text-white/60">Start price</p>
-                            <p className="text-2xl font-semibold">${item.startPrice?.toLocaleString()}</p>
+                            <p className="text-2xl font-semibold">LKR {item.startPrice?.toLocaleString()}</p>
                           </div>
                         </div>
                         <div>
@@ -448,8 +448,8 @@ export default function OngoingAuctionsPage() {
                 <span>Start</span>
               </div>
               <div className="flex items-center justify-between text-2xl font-semibold mt-1">
-                <span>${(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}</span>
-                <span>${selectedItem.startPrice?.toLocaleString()}</span>
+                <span>LKR {(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}</span>
+                <span>LKR {selectedItem.startPrice?.toLocaleString()}</span>
               </div>
             </div>
             <form onSubmit={handleBid} className="mt-6 space-y-4">
@@ -463,7 +463,7 @@ export default function OngoingAuctionsPage() {
                 value={bid}
                 onChange={(e) => setBid(e.target.value)}
                 className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/30 focus:border-white focus:outline-none"
-                placeholder={`Enter amount above $${(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}`}
+                placeholder={`Enter amount above LKR ${(selectedItem.currentBid || selectedItem.startPrice).toLocaleString()}`}
                 autoFocus
               />
               {bidError && <div className="text-red-400 text-sm">{bidError}</div>}

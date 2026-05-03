@@ -204,7 +204,7 @@ export default function FraudDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap font-mono text-emerald-400">
-                          ${bid.bidAmount.toLocaleString()}
+                          LKR {bid.bidAmount.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col">
