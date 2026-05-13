@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-white px-6 py-10 text-gray-900 md:px-12 lg:px-20">
@@ -12,11 +14,13 @@ export default function TermsPage() {
 
       <main className="grid gap-10 lg:grid-cols-[1.5fr_minmax(0,1fr)] items-start">
         <section className="space-y-8">
-          <div className="w-full h-64 md:h-72 flex justify-center items-center rounded-3xl bg-gray-50 overflow-hidden">
-            <img
+          <div className="relative w-full h-64 md:h-72 flex justify-center items-center rounded-3xl bg-gray-50 overflow-hidden">
+            <Image
               src="/Terms and Conditions.png"
               alt="Terms and Conditions"
-              className="h-full w-full object-contain md:object-cover"
+              fill
+              sizes="(min-width: 768px) 80vw, 100vw"
+              className="object-contain md:object-cover"
             />
           </div>
 

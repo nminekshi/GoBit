@@ -72,11 +72,13 @@ export default function TrendingAuctionsPage() {
     setError(null);
     try {
       const data = await auctionAPI.fetchAuctions();
-      const active = (data || []).filter(isActive);
-      const ranked = active.sort((a: any, b: any) => (b.watchers || 0) + (b.bids?.length || 0) - ((a.watchers || 0) + (a.bids?.length || 0)));
+      const items = Array.isArray(data) ? (data as Auction[]) : [];
+      const active = items.filter(isActive);
+      const ranked = [...active].sort((a, b) => (b.watchers || 0) + (b.bids?.length || 0) - ((a.watchers || 0) + (a.bids?.length || 0)));
       setAuctions(ranked);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load trending auctions");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load trending auctions";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -137,8 +139,9 @@ export default function TrendingAuctionsPage() {
       await loadAuctions();
       closeModal();
       alert("Bid placed successfully!");
-    } catch (err: any) {
-      setBidError(err?.message || "Failed to place bid");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to place bid";
+      setBidError(message);
     }
   };
 
