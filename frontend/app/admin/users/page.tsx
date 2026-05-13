@@ -188,7 +188,7 @@ export default function AdminUsersPage() {
         },
       });
 
-      const data = await parseJsonSafe(res);
+      const data = (await parseJsonSafe(res)) as { message?: string };
       if (!res.ok) {
         setError(data?.message || "Failed to delete user");
         setActionMessage(null);
