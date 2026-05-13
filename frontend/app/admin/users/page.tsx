@@ -148,7 +148,7 @@ export default function AdminUsersPage() {
         }),
       });
 
-      const data = await parseJsonSafe(res);
+      const data = (await parseJsonSafe(res)) as { message?: string };
       if (!res.ok) {
         setInviteError(data?.message || "Failed to invite user.");
         return;
