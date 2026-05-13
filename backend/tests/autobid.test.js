@@ -8,6 +8,8 @@ jest.mock("../models/User", () => ({
 
 jest.mock("../models/AutoBidSetting", () => ({
   find: jest.fn(),
+  findOneAndUpdate: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
 }));
 
 jest.mock("../utils/fraudDetection", () => ({
@@ -58,18 +60,28 @@ describe("processAutoBids", () => {
 
     Auction.findById.mockResolvedValue(auctionDoc);
 
+    const botSetting = {
+      _id: "507f1f77bcf86cd799439015",
+      userId: botId,
+      maxBid: 140,
+      increment: 10,
+      isProcessing: false,
+      isActive: true,
+    };
+
     const sortMock = jest
       .fn()
-      .mockResolvedValueOnce([
-        {
-          userId: botId,
-          maxBid: 140,
-          increment: 10,
-        },
-      ])
+      .mockResolvedValueOnce([botSetting])
       .mockResolvedValueOnce([]);
 
     AutoBidSetting.find.mockReturnValue({ sort: sortMock });
+    AutoBidSetting.findOneAndUpdate.mockImplementation(async (query) => {
+      if (query._id === botSetting._id && query.isProcessing === false) {
+        return { ...botSetting, isProcessing: true };
+      }
+      return null;
+    });
+    AutoBidSetting.findByIdAndUpdate.mockResolvedValue({});
 
     User.findById.mockResolvedValue({ _id: botId, username: "bot-user" });
 
@@ -118,12 +130,36 @@ describe("processAutoBids", () => {
 
     Auction.findById.mockResolvedValue(auctionDoc);
 
+    const botASetting = {
+      _id: "507f1f77bcf86cd799439026",
+      userId: botAId,
+      maxBid: 130,
+      increment: 10,
+      isProcessing: false,
+      isActive: true,
+    };
+    const botBSetting = {
+      _id: "507f1f77bcf86cd799439027",
+      userId: botBId,
+      maxBid: 120,
+      increment: 10,
+      isProcessing: false,
+      isActive: true,
+    };
+
     AutoBidSetting.find.mockReturnValue({
-      sort: jest.fn().mockResolvedValue([
-        { userId: botAId, maxBid: 130, increment: 10 },
-        { userId: botBId, maxBid: 120, increment: 10 },
-      ]),
+      sort: jest.fn().mockResolvedValue([botASetting, botBSetting]),
     });
+    AutoBidSetting.findOneAndUpdate.mockImplementation(async (query) => {
+      if (query._id === botASetting._id && query.isProcessing === false) {
+        return { ...botASetting, isProcessing: true };
+      }
+      if (query._id === botBSetting._id && query.isProcessing === false) {
+        return { ...botBSetting, isProcessing: true };
+      }
+      return null;
+    });
+    AutoBidSetting.findByIdAndUpdate.mockResolvedValue({});
 
     User.findById.mockImplementation(async (id) => ({ _id: id, username: `u-${id.slice(-4)}` }));
 
