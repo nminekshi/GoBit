@@ -64,12 +64,13 @@ function Navbar() {
 
   useEffect(() => {
     const onStorage = (event: StorageEvent) => {
-      if (!event.key) return;
+      const eventKey = event.key;
+      if (!eventKey) return;
       setUser((prev) => {
         if (!prev?.id) return prev;
         const key = (suffix: string) => `${prev.id}_${suffix}`;
         const watchedKeys = [key("profileAvatar"), key("profileName"), key("profileEmail")];
-        if (!watchedKeys.includes(event.key)) return prev;
+        if (!watchedKeys.includes(eventKey)) return prev;
         return {
           ...prev,
           avatar: window.localStorage.getItem(key("profileAvatar")),
