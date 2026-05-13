@@ -120,11 +120,13 @@ export const auctionAPI = {
         id: string,
         data: {
             title?: string;
-            filters?: {
-            priceMin?: number;
-            priceMax?: number;
-            dynamicFields?: Record<string, string>;
-        };    endTime?: Date;
+            description?: string;
+            imageUrl?: string;
+            status?: string;
+            endTime?: Date;
+            category?: string;
+            startPrice?: number;
+            details?: Record<string, string>;
             commission?: number;
             isVerified?: boolean;
         }
