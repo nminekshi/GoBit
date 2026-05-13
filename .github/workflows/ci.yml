@@ -44,12 +44,14 @@ jobs:
     - name: Verify MongoDB readiness
       run: |
         for i in {1..15}; do
-          if docker exec mongo mongosh --quiet --eval "db.adminCommand({ ping: 1 })"; then
+          container_id=$(docker ps -q --filter "ancestor=mongo:7")
+          if [ -n "$container_id" ] && docker exec "$container_id" mongosh --quiet --eval "db.adminCommand({ ping: 1 })"; then
             exit 0
           fi
           sleep 2
         done
         echo "MongoDB did not become ready in time" >&2
+        docker ps -a
         exit 1
 
     - name: Run Tests
